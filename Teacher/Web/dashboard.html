@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAD.RV Teacher Dashboard</title>
+    <!-- INLINE_CSS -->
+</head>
+<body>
+    <!-- Header Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat">
+            <span class="stat-value" id="statOnline">0</span>
+            <span class="stat-label">Online</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value stat-locked" id="statLocked">0</span>
+            <span class="stat-label">Locked</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value stat-streaming" id="statStreaming">0</span>
+            <span class="stat-label">Streaming</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value stat-offline" id="statOffline">0</span>
+            <span class="stat-label">Offline</span>
+        </div>
+    </div>
+
+    <!-- Student Grid -->
+    <div class="student-grid" id="studentGrid">
+        <!-- Student tiles are dynamically created -->
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">&#xE7EF;</div>
+            <h2>No Students Connected</h2>
+            <p>Waiting for student endpoints to come online...</p>
+        </div>
+    </div>
+
+    <!-- Remote View Modal -->
+    <div class="modal-overlay" id="rvModal" style="display:none">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="rvTitle">Remote View — Student</span>
+                <div class="modal-actions">
+                    <button class="modal-btn" onclick="toggleRvCensored()" title="Toggle Privacy Mode">
+                        &#xE890;
+                    </button>
+                    <button class="modal-btn danger" onclick="lockFromRv()" title="Lock This Student">
+                        &#xE72E;
+                    </button>
+                    <button class="modal-btn" onclick="closeRv()">&#xE711;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <canvas id="rvCanvas" width="1920" height="1080"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- INLINE_JS -->
+</body>
+</html>

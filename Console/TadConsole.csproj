@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>TadConsole</RootNamespace>
+    <AssemblyName>TadConsole</AssemblyName>
+    <!-- <ApplicationIcon>Resources\shield.ico</ApplicationIcon> -->
+    <Version>1.0.0.1</Version>
+    <Company>TAD Europe</Company>
+    <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
+    <Product>TAD.RV Management Console</Product>
+    <Description>GUI management console for deploying, configuring, and monitoring the TAD.RV endpoint protection platform.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+  </ItemGroup>
+
+  <!-- WinForms reference (FolderBrowserDialog only) — no global using to avoid WPF conflicts -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+  </ItemGroup>
+
+  <!-- Link to the shared interop file -->
+  <ItemGroup>
+    <Compile Include="..\Shared\TadSharedInterop.cs" Link="Shared\TadSharedInterop.cs" />
+  </ItemGroup>
+
+</Project>

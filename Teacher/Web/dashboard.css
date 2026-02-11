@@ -1,0 +1,285 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   TAD.RV Teacher Dashboard — Styles
+   (C) 2026 TAD Europe — https://tad-it.eu
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --bg-primary: #0D1117;
+    --bg-secondary: #161B22;
+    --bg-tertiary: #21262D;
+    --border: #30363D;
+    --text-primary: #C9D1D9;
+    --text-secondary: #8B949E;
+    --accent-blue: #58A6FF;
+    --accent-green: #3FB950;
+    --accent-red: #F85149;
+    --accent-orange: #D29922;
+    --accent-purple: #BC8CFF;
+    --tile-width: 280px;
+    --tile-height: 200px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    overflow-x: hidden;
+}
+
+/* ── Stats Bar ────────────────────────────────────────────────────────── */
+
+.stats-bar {
+    display: flex;
+    gap: 24px;
+    padding: 12px 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent-green);
+    font-variant-numeric: tabular-nums;
+}
+.stat-locked { color: var(--accent-red); }
+.stat-streaming { color: var(--accent-blue); }
+.stat-offline { color: var(--text-secondary); }
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ── Student Grid ─────────────────────────────────────────────────────── */
+
+.student-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--tile-width), 1fr));
+    gap: 16px;
+    padding: 20px 24px;
+    min-height: calc(100vh - 100px);
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    color: var(--text-secondary);
+}
+.empty-icon {
+    font-family: 'Segoe MDL2 Assets';
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+.empty-state h2 { font-weight: 500; margin-bottom: 8px; }
+.empty-state p  { font-size: 14px; }
+
+/* ── Student Tile ─────────────────────────────────────────────────────── */
+
+.student-tile {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.15s;
+    cursor: pointer;
+    position: relative;
+}
+.student-tile:hover {
+    border-color: var(--accent-blue);
+    transform: translateY(-2px);
+}
+.student-tile.locked  { border-color: var(--accent-red); }
+.student-tile.offline { opacity: 0.5; }
+
+/* Thumbnail area */
+.tile-thumb {
+    width: 100%;
+    height: 140px;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+.tile-thumb canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.tile-thumb .placeholder {
+    font-family: 'Segoe MDL2 Assets';
+    font-size: 36px;
+    color: var(--text-secondary);
+    opacity: 0.3;
+}
+
+/* Status badges */
+.tile-badges {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+}
+.badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.badge-online    { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+.badge-locked    { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+.badge-streaming { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+.badge-offline   { background: rgba(139, 148, 158, 0.2); color: var(--text-secondary); }
+
+/* Tile info bar */
+.tile-info {
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.tile-hostname {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+}
+.tile-user {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Tile action buttons (shown on hover) */
+.tile-actions {
+    position: absolute;
+    bottom: 44px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    background: linear-gradient(transparent, rgba(13, 17, 23, 0.9));
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.student-tile:hover .tile-actions { opacity: 1; }
+
+.tile-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-family: 'Segoe MDL2 Assets';
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.tile-btn:hover { background: var(--accent-blue); color: #fff; }
+.tile-btn.danger:hover { background: var(--accent-red); }
+.tile-btn.success:hover { background: var(--accent-green); }
+
+/* ── Remote View Modal ────────────────────────────────────────────────── */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-content {
+    width: 90vw;
+    max-width: 1400px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+}
+.modal-actions {
+    display: flex;
+    gap: 6px;
+}
+.modal-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-primary);
+    font-family: 'Segoe MDL2 Assets';
+    font-size: 14px;
+    cursor: pointer;
+}
+.modal-btn:hover { background: var(--bg-primary); }
+.modal-btn.danger:hover { background: var(--accent-red); color: #fff; }
+
+.modal-body {
+    padding: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-body canvas {
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+}
+
+/* ── Active Window Tooltip ────────────────────────────────────────────── */
+.tile-window {
+    padding: 0 12px 8px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

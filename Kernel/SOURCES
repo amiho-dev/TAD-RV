@@ -1,0 +1,21 @@
+TARGETNAME=TAD.RV
+TARGETTYPE=DRIVER
+DRIVERTYPE=FS
+
+KMDF_VERSION_MAJOR=1
+
+MSC_WARNING_LEVEL=/W4 /WX
+
+# Spectre V1 mitigation
+SPECTRE_MITIGATION=1
+
+C_DEFINES=$(C_DEFINES) -D_KERNEL_MODE -DPOOL_NX_OPTIN=1
+
+INCLUDES=$(INCLUDES);$(DDK_INC_PATH);..\Shared
+
+TARGETLIBS=$(TARGETLIBS)                       \
+           $(DDK_LIB_PATH)\fltMgr.lib          \
+           $(DDK_LIB_PATH)\ntstrsafe.lib
+
+SOURCES=TAD_RV.c    \
+        TAD_RV.rc

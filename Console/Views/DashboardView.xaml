@@ -1,0 +1,217 @@
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DashboardView.xaml — Real-time driver and service status
+     ═══════════════════════════════════════════════════════════════════════ -->
+<UserControl x:Class="TadConsole.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource PrimaryBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,28">
+        <StackPanel MaxWidth="900">
+
+            <!-- Page Header -->
+            <TextBlock Text="Dashboard"
+                       Style="{StaticResource SectionHeader}"
+                       FontSize="24" Margin="0,0,0,4" />
+            <TextBlock Text="Real-time status of TAD.RV components"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="13" Margin="0,0,0,24" />
+
+            <!-- ── Status Cards Row ──────────────────────────────────── -->
+            <UniformGrid Columns="2" Margin="0,0,0,16">
+
+                <!-- Driver Status Card -->
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,8,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <TextBlock Text="&#xE964;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="20"
+                                       Foreground="{StaticResource HighlightBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="Kernel Driver — TAD.RV"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <Ellipse Width="10" Height="10" Margin="0,0,8,0">
+                                <Ellipse.Fill>
+                                    <SolidColorBrush Color="{Binding DriverStatusColor}" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <TextBlock Text="{Binding DriverStatus}"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Start" Style="{StaticResource SuccessButton}"
+                                    Command="{Binding StartDriverCommand}"
+                                    Padding="14,6" FontSize="11" Margin="0,0,6,0" />
+                            <Button Content="Stop" Style="{StaticResource DangerButton}"
+                                    Command="{Binding StopDriverCommand}"
+                                    Padding="14,6" FontSize="11" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Service Status Card -->
+                <Border Style="{StaticResource CardStyle}" Margin="8,0,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <TextBlock Text="&#xE912;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="20"
+                                       Foreground="{StaticResource HighlightBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="TadBridgeService"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <Ellipse Width="10" Height="10" Margin="0,0,8,0">
+                                <Ellipse.Fill>
+                                    <SolidColorBrush Color="{Binding ServiceStatusColor}" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <TextBlock Text="{Binding ServiceStatus}"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding ServicePid, StringFormat='PID: {0}'}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontSize="11" Margin="0,0,0,12" />
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Start" Style="{StaticResource SuccessButton}"
+                                    Command="{Binding StartServiceCommand}"
+                                    Padding="14,6" FontSize="11" Margin="0,0,6,0" />
+                            <Button Content="Stop" Style="{StaticResource DangerButton}"
+                                    Command="{Binding StopServiceCommand}"
+                                    Padding="14,6" FontSize="11" Margin="0,0,6,0" />
+                            <Button Content="Restart" Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding RestartServiceCommand}"
+                                    Padding="14,6" FontSize="11" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- ── Registry Configuration Card ────────────────────────── -->
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <TextBlock Text="&#xEDA2;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="18"
+                                   Foreground="{StaticResource HighlightBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="Registry Configuration"
+                                   FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Margin="10,0,0,0" VerticalAlignment="Center" />
+
+                        <Border Margin="16,0,0,0"
+                                VerticalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border" BasedOn="{StaticResource StatusBadge}">
+                                    <Setter Property="Background" Value="#1A3C3C3C" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RegistryExists}" Value="True">
+                                            <Setter Property="Background" Value="#1A27AE60" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock FontSize="11">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Not Found" />
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RegistryExists}" Value="True">
+                                                <Setter Property="Text" Value="Active" />
+                                                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                    </StackPanel>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="170" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Install Directory"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding InstallDir}"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Domain Controller"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DomainController}"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Deployed At"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DeployedAt}"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Provisioned"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="3" Grid.Column="1"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="No" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Provisioned}" Value="True">
+                                            <Setter Property="Text" Value="Yes" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Organizational Unit"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding OrganizationalUnit}"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Policy Version"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding PolicyVersion}"
+                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Refresh Button -->
+            <Button Content="↻ Refresh Now"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding RefreshCommand}"
+                    HorizontalAlignment="Left"
+                    Margin="0,8,0,0" />
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
