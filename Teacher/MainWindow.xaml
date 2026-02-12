@@ -6,55 +6,10 @@
         WindowState="Maximized"
         Background="#0D1117">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="48" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="32" />
-        </Grid.RowDefinitions>
-
-        <!-- Top Toolbar -->
-        <Border Grid.Row="0" Background="#161B22" BorderBrush="#30363D" BorderThickness="0,0,0,1">
-            <DockPanel Margin="12,0">
-                <TextBlock Text="&#xE71E;" FontFamily="Segoe MDL2 Assets" FontSize="20"
-                           Foreground="#58A6FF" VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock Text="  TAD.RV Teacher Controller" FontSize="16" FontWeight="SemiBold"
-                           Foreground="#C9D1D9" VerticalAlignment="Center" DockPanel.Dock="Left" />
-
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                    <Button x:Name="BtnLockAll" Content="&#xE72E; Lock All" Click="BtnLockAll_Click"
-                            Style="{StaticResource ToolButton}" Tag="danger" />
-                    <Button x:Name="BtnUnlockAll" Content="&#xE785; Unlock All" Click="BtnUnlockAll_Click"
-                            Style="{StaticResource ToolButton}" Tag="success" Margin="8,0,0,0" />
-                    <Button x:Name="BtnCollect" Content="&#xE8B7; Collect Files" Click="BtnCollect_Click"
-                            Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0" />
-                    <Button x:Name="BtnRefresh" Content="&#xE72C; Refresh" Click="BtnRefresh_Click"
-                            Style="{StaticResource ToolButton}" Margin="8,0,0,0" />
-                </StackPanel>
-            </DockPanel>
-        </Border>
-
-        <!-- WebView2 Dashboard -->
-        <wv2:WebView2 x:Name="DashboardWebView" Grid.Row="1"
-                      DefaultBackgroundColor="#0D1117" />
-
-        <!-- Status Bar -->
-        <Border Grid.Row="2" Background="#161B22" BorderBrush="#30363D" BorderThickness="0,1,0,0">
-            <DockPanel Margin="12,0">
-                <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#8B949E"
-                           FontSize="11" VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock x:Name="TxtConnected" Text="0/30 connected" Foreground="#8B949E"
-                           FontSize="11" VerticalAlignment="Center" DockPanel.Dock="Right"
-                           HorizontalAlignment="Right" />
-            </DockPanel>
-        </Border>
-    </Grid>
-
     <Window.Resources>
         <Style x:Key="ToolButton" TargetType="Button">
             <Setter Property="Background" Value="#21262D" />
             <Setter Property="Foreground" Value="#C9D1D9" />
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Padding" Value="12,6" />
             <Setter Property="BorderThickness" Value="1" />
@@ -91,4 +46,68 @@
             </Setter>
         </Style>
     </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="32" />
+        </Grid.RowDefinitions>
+
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0" Background="#161B22" BorderBrush="#30363D" BorderThickness="0,0,0,1">
+            <DockPanel Margin="12,0">
+                <TextBlock Text="&#xE71E;" FontFamily="Segoe MDL2 Assets" FontSize="20"
+                           Foreground="#58A6FF" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                <TextBlock Text="  TAD.RV Teacher Controller" FontSize="16" FontWeight="SemiBold"
+                           Foreground="#C9D1D9" VerticalAlignment="Center" DockPanel.Dock="Left" />
+
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                    <Button x:Name="BtnLockAll" Click="BtnLockAll_Click"
+                            Style="{StaticResource ToolButton}" Tag="danger">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Lock All" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnUnlockAll" Click="BtnUnlockAll_Click"
+                            Style="{StaticResource ToolButton}" Tag="success" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Unlock All" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnCollect" Click="BtnCollect_Click"
+                            Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Collect Files" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnRefresh" Click="BtnRefresh_Click"
+                            Style="{StaticResource ToolButton}" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Text="Refresh" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- WebView2 Dashboard -->
+        <wv2:WebView2 x:Name="DashboardWebView" Grid.Row="1"
+                      DefaultBackgroundColor="#0D1117" />
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="#161B22" BorderBrush="#30363D" BorderThickness="0,1,0,0">
+            <DockPanel Margin="12,0">
+                <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#8B949E"
+                           FontSize="11" VerticalAlignment="Center" DockPanel.Dock="Left" />
+                <TextBlock x:Name="TxtConnected" Text="0/30 connected" Foreground="#8B949E"
+                           FontSize="11" VerticalAlignment="Center" DockPanel.Dock="Right"
+                           HorizontalAlignment="Right" />
+            </DockPanel>
+        </Border>
+    </Grid>
 </Window>

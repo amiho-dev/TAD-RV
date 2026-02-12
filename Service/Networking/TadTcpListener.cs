@@ -55,7 +55,36 @@ public sealed class TadTcpListener : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         _listener = new TcpListener(IPAddress.Any, ListenPort);
-        _listener.Start();
+
+        // Retry binding — the port may be held by a previous instance
+        const int maxRetries = 5;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                _listener.Start();
+                break; // success
+            }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+            {
+                if (attempt == maxRetries)
+                {
+                    _log.LogWarning(
+                        "Port {Port} is still in use after {Attempts} attempts — " +
+                        "TCP listener disabled (another instance may be running)",
+                        ListenPort, maxRetries);
+                    return; // exit gracefully instead of crashing the host
+                }
+
+                _log.LogWarning(
+                    "Port {Port} in use — retry {Attempt}/{Max} in 3s",
+                    ListenPort, attempt, maxRetries);
+
+                try { await Task.Delay(3000, ct); }
+                catch (OperationCanceledException) { return; }
+            }
+        }
+
         _log.LogInformation("TCP listener started on port {Port}", ListenPort);
 
         // Periodic status beacon

@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
 
+  <Import Project="..\version-client.props" />
+
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -12,9 +14,6 @@
     <OutputType>Exe</OutputType>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
-    <Version>1.0.0.1</Version>
-    <Company>TAD Europe</Company>
-    <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
     <Product>TAD.RV Bridge Service</Product>
     <Description>User-mode management service for the TAD.RV kernel driver. Handles AD integration, policy provisioning, and heartbeat watchdog.</Description>
   </PropertyGroup>
@@ -26,6 +25,7 @@
     <PackageReference Include="System.DirectoryServices.AccountManagement" Version="8.0.1" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
   </ItemGroup>
 
   <!-- Link to the shared interop file as a compile item -->

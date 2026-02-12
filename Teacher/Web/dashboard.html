@@ -7,33 +7,127 @@
     <!-- INLINE_CSS -->
 </head>
 <body>
-    <!-- Header Stats Bar -->
-    <div class="stats-bar">
-        <div class="stat">
-            <span class="stat-value" id="statOnline">0</span>
-            <span class="stat-label">Online</span>
+    <!-- ── Top Navigation ─────────────────────────────────────────── -->
+    <div class="top-nav">
+        <div class="top-nav-left">
+            <span class="top-nav-brand">&#xE8D8;</span>
+            <span class="top-nav-title">TAD.RV Teacher</span>
         </div>
-        <div class="stat">
-            <span class="stat-value stat-locked" id="statLocked">0</span>
-            <span class="stat-label">Locked</span>
-        </div>
-        <div class="stat">
-            <span class="stat-value stat-streaming" id="statStreaming">0</span>
-            <span class="stat-label">Streaming</span>
-        </div>
-        <div class="stat">
-            <span class="stat-value stat-offline" id="statOffline">0</span>
-            <span class="stat-label">Offline</span>
+        <div class="top-nav-right">
+            <div class="room-selector" id="roomSelector">
+                <button class="room-selector-btn" id="roomSelectorBtn" onclick="toggleRoomDropdown()">
+                    <span class="room-selector-icon">&#xE80F;</span>
+                    <span class="room-selector-text" id="currentRoomLabel">No Room Selected</span>
+                    <span class="room-selector-arrow">&#xE70D;</span>
+                </button>
+                <div class="room-dropdown" id="roomDropdown">
+                    <div class="room-dropdown-header">Select Classroom</div>
+                    <div class="room-dropdown-list" id="roomDropdownList">
+                        <div class="room-dropdown-empty">No classrooms configured.<br>Create rooms in the Console app.</div>
+                    </div>
+                    <button class="room-dropdown-refresh" onclick="loadRoomsFromHost()">&#xE72C; Refresh</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Student Grid -->
-    <div class="student-grid" id="studentGrid">
-        <!-- Student tiles are dynamically created -->
-        <div class="empty-state" id="emptyState">
-            <div class="empty-icon">&#xE7EF;</div>
-            <h2>No Students Connected</h2>
-            <p>Waiting for student endpoints to come online...</p>
+    <!-- ═══ Dashboard ═══════════════════════════════════════════ -->
+    <div class="dashboard-content">
+        <!-- Header Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <span class="stat-value" id="statOnline">0</span>
+                <span class="stat-label">Online</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value stat-locked" id="statLocked">0</span>
+                <span class="stat-label">Locked</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value stat-streaming" id="statStreaming">0</span>
+                <span class="stat-label">Streaming</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value stat-frozen" id="statFrozen">0</span>
+                <span class="stat-label">Frozen</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value stat-offline" id="statOffline">0</span>
+                <span class="stat-label">Offline</span>
+            </div>
+            <div class="stats-spacer"></div>
+            <button class="stats-action-btn freeze" onclick="openFreezeModal()" title="Custom Action — Freeze Timer">
+                &#xE768; Freeze Timer
+            </button>
+        </div>
+
+        <!-- Student Grid -->
+        <div class="student-grid" id="studentGrid">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">&#xE7EF;</div>
+                <h2>No Students Connected</h2>
+                <p>Waiting for student endpoints to come online...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Custom Action: Freeze Timer Modal ═══════════════════════ -->
+    <div class="modal-overlay" id="freezeModal" style="display:none">
+        <div class="modal-content freeze-modal">
+            <div class="modal-header">
+                <span>&#xE768; Custom Action — Freeze Timer</span>
+                <button class="modal-btn" onclick="closeFreezeModal()">&#xE711;</button>
+            </div>
+            <div class="freeze-body">
+                <div class="freeze-desc">
+                    Lock keyboard &amp; mouse and display a fullscreen overlay with countdown.
+                    Endpoints automatically unlock when the timer expires.
+                </div>
+
+                <div class="freeze-field">
+                    <label class="freeze-label">Duration</label>
+                    <div class="freeze-presets" id="freezePresets">
+                        <button class="freeze-chip" data-secs="60" onclick="setFreezeDuration(60)">1 min</button>
+                        <button class="freeze-chip" data-secs="120" onclick="setFreezeDuration(120)">2 min</button>
+                        <button class="freeze-chip active" data-secs="300" onclick="setFreezeDuration(300)">5 min</button>
+                        <button class="freeze-chip" data-secs="600" onclick="setFreezeDuration(600)">10 min</button>
+                        <button class="freeze-chip" data-secs="900" onclick="setFreezeDuration(900)">15 min</button>
+                        <button class="freeze-chip" data-secs="1800" onclick="setFreezeDuration(1800)">30 min</button>
+                    </div>
+                    <div class="freeze-custom-row">
+                        <input type="number" class="freeze-input" id="freezeSeconds" value="300" min="10" max="7200" />
+                        <span class="freeze-unit">seconds</span>
+                    </div>
+                </div>
+
+                <div class="freeze-field">
+                    <label class="freeze-label">Message (shown on student screen)</label>
+                    <input type="text" class="freeze-input full" id="freezeMessage"
+                           value="Your screen has been frozen by the teacher."
+                           placeholder="Custom message..." />
+                </div>
+
+                <div class="freeze-field">
+                    <label class="freeze-label">Target</label>
+                    <div class="freeze-target-row">
+                        <label class="freeze-radio">
+                            <input type="radio" name="freezeTarget" value="all" checked /> All Students
+                        </label>
+                        <label class="freeze-radio">
+                            <input type="radio" name="freezeTarget" value="selected" /> Selected Only
+                        </label>
+                    </div>
+                    <div class="freeze-selected-list" id="freezeSelectedList" style="display:none">
+                        <!-- Populated by JS when "Selected Only" is chosen -->
+                    </div>
+                </div>
+
+                <div class="freeze-actions">
+                    <button class="freeze-btn cancel" onclick="closeFreezeModal()">Cancel</button>
+                    <button class="freeze-btn danger" onclick="cancelActiveFreeze()">&#xE711; Cancel Active Freeze</button>
+                    <button class="freeze-btn primary" onclick="executeFreeze()">&#xE768; Start Freeze</button>
+                </div>
+            </div>
         </div>
     </div>
 

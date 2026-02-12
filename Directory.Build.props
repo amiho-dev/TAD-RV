@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- Shared metadata for all TAD-RV projects -->
+  <PropertyGroup>
+    <Company>TAD Europe</Company>
+    <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
+  </PropertyGroup>
+
+</Project>

@@ -38,13 +38,23 @@ public sealed class HeartbeatWorker : BackgroundService
         _log.LogInformation("HeartbeatWorker started (interval={Interval})", Interval);
 
         // Wait for the main worker to connect first
-        while (!_driver.IsConnected && !stoppingToken.IsCancellationRequested)
+        try
         {
-            await Task.Delay(500, stoppingToken);
+            while (!_driver.IsConnected && !stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(500, stoppingToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _log.LogInformation("HeartbeatWorker stopped (cancelled while waiting for connection)");
+            return;
         }
 
         using var timer = new PeriodicTimer(Interval);
 
+        try
+        {
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             try
@@ -75,7 +85,8 @@ public sealed class HeartbeatWorker : BackgroundService
                 {
                     _log.LogError("5 consecutive heartbeat failures — reconnecting…");
                     _driver.Disconnect();
-                    await Task.Delay(2000, stoppingToken);
+                    try { await Task.Delay(2000, stoppingToken); }
+                    catch (OperationCanceledException) { break; }
                     _driver.Connect();
                     _driver.ProtectPid((uint)Environment.ProcessId);
                     _consecutiveFailures = 0;
@@ -91,6 +102,8 @@ public sealed class HeartbeatWorker : BackgroundService
                 _consecutiveFailures++;
             }
         }
+        }
+        catch (OperationCanceledException) { /* host shutting down */ }
 
         _log.LogInformation("HeartbeatWorker stopped");
     }

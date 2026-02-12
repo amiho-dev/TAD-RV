@@ -33,9 +33,17 @@ public sealed class AlertReaderWorker : BackgroundService
         _log.LogInformation("AlertReaderWorker started");
 
         // Wait for the main worker to establish driver connection
-        while (!_driver.IsConnected && !stoppingToken.IsCancellationRequested)
+        try
         {
-            await Task.Delay(1000, stoppingToken);
+            while (!_driver.IsConnected && !stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(1000, stoppingToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _log.LogInformation("AlertReaderWorker stopped (cancelled while waiting for connection)");
+            return;
         }
 
         while (!stoppingToken.IsCancellationRequested)
@@ -60,7 +68,8 @@ public sealed class AlertReaderWorker : BackgroundService
             catch (Exception ex)
             {
                 _log.LogError(ex, "Alert reader exception — retrying in 5s");
-                await Task.Delay(5000, stoppingToken);
+                try { await Task.Delay(5000, stoppingToken); }
+                catch (OperationCanceledException) { break; }
             }
         }
 

@@ -1,9 +1,7 @@
 // ───────────────────────────────────────────────────────────────────────────
-// App.xaml.cs — Application startup with elevation check
+// App.xaml.cs — Application entry point
 // ───────────────────────────────────────────────────────────────────────────
 
-using System.Diagnostics;
-using System.Security.Principal;
 using System.Windows;
 
 namespace TadConsole;
@@ -14,40 +12,23 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Check if running with administrator privileges
-        var identity = WindowsIdentity.GetCurrent();
-        var principal = new WindowsPrincipal(identity);
-
-        if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
+        // Global unhandled exception handler
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
-            var result = MessageBox.Show(
-                "TAD.RV Management Console requires Administrator privileges.\n\n" +
-                "Click OK to restart elevated, or Cancel to exit.",
-                "TAD.RV — Elevation Required",
-                MessageBoxButton.OKCancel,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.OK)
+            if (args.ExceptionObject is Exception ex)
             {
-                // Relaunch with elevation
-                var proc = new ProcessStartInfo
-                {
-                    UseShellExecute = true,
-                    FileName        = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "TadConsole.exe",
-                    Verb            = "runas"
-                };
-
-                try
-                {
-                    Process.Start(proc);
-                }
-                catch
-                {
-                    // User declined UAC
-                }
+                MessageBox.Show(
+                    $"Unhandled error:\n\n{ex.Message}\n\n{ex.StackTrace}",
+                    "TAD.RV — Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        };
 
-            Shutdown();
-        }
+        DispatcherUnhandledException += (_, args) =>
+        {
+            MessageBox.Show(
+                $"UI error:\n\n{args.Exception.Message}",
+                "TAD.RV — Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            args.Handled = true;
+        };
     }
 }

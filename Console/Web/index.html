@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TAD.RV Management Console</title>
+  <!-- INLINE_CSS -->
+</head>
+<body>
+  <div class="app">
+    <!-- ── Sidebar ─────────────────────────────────────────────── -->
+    <nav class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">&#xE8D8;</div>
+        <span class="brand-text">TAD.RV</span>
+      </div>
+      <div class="nav-section">
+        <button class="nav-btn active" data-page="dashboard" title="Dashboard">
+          <span class="nav-icon">&#xE80F;</span>
+          <span class="nav-label">Dashboard</span>
+        </button>
+        <button class="nav-btn" data-page="deploy" title="Deploy">
+          <span class="nav-icon">&#xE896;</span>
+          <span class="nav-label">Deploy</span>
+        </button>
+        <button class="nav-btn" data-page="policy" title="Policy">
+          <span class="nav-icon">&#xE8D7;</span>
+          <span class="nav-label">Policy</span>
+        </button>
+        <button class="nav-btn" data-page="alerts" title="Alerts">
+          <span class="nav-icon">&#xE783;</span>
+          <span class="nav-label">Alerts</span>
+          <span class="nav-badge" id="alertBadge" style="display:none">0</span>
+        </button>
+        <button class="nav-btn" data-page="classrooms" title="Classrooms">
+          <span class="nav-icon">&#xE912;</span>
+          <span class="nav-label">Classrooms</span>
+        </button>
+      </div>
+      <div class="sidebar-footer">
+        <div class="env-badge" id="envBadge">TEST</div>
+        <div class="version-text" id="versionText">v1.0.0.1</div>
+      </div>
+    </nav>
+
+    <!-- ── Main Content ────────────────────────────────────────── -->
+    <main class="main">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        </div>
+        <div class="topbar-right">
+          <span class="admin-badge" id="adminBadge" style="display:none">
+            <span class="admin-icon">&#xE7EF;</span> Admin
+          </span>
+          <span class="clock" id="clock"></span>
+        </div>
+      </header>
+
+      <!-- Pages -->
+      <div class="page-container">
+        <!-- ── Dashboard ───────────────────────────────────────── -->
+        <section class="page active" id="page-dashboard">
+          <!-- Status Cards Row -->
+          <div class="card-row" id="statusCards">
+            <div class="status-card" id="driverCard">
+              <div class="card-header">
+                <span class="card-icon">&#xE964;</span>
+                <span class="card-title">Kernel Driver</span>
+              </div>
+              <div class="card-status" id="driverStatus">
+                <span class="status-dot unknown"></span>
+                <span class="status-text">Checking…</span>
+              </div>
+              <div class="card-detail" id="driverDetail">TAD.RV</div>
+            </div>
+            <div class="status-card" id="bridgeCard">
+              <div class="card-header">
+                <span class="card-icon">&#xE968;</span>
+                <span class="card-title">Bridge Service</span>
+              </div>
+              <div class="card-status" id="bridgeStatus">
+                <span class="status-dot unknown"></span>
+                <span class="status-text">Checking…</span>
+              </div>
+              <div class="card-detail" id="bridgeDetail">TadBridgeService</div>
+            </div>
+            <div class="status-card" id="systemCard">
+              <div class="card-header">
+                <span class="card-icon">&#xE7F4;</span>
+                <span class="card-title">System</span>
+              </div>
+              <div class="card-status" id="systemStatus">
+                <span class="status-dot unknown"></span>
+                <span class="status-text">Loading…</span>
+              </div>
+              <div class="card-detail" id="systemDetail"></div>
+            </div>
+          </div>
+
+          <!-- Health Checks -->
+          <div class="section">
+            <div class="section-header">
+              <span class="section-icon">&#xE8CB;</span>
+              <h2>Health Checks</h2>
+              <button class="btn-ghost" onclick="refreshDashboard()"><span>&#xE72C;</span> Refresh</button>
+            </div>
+            <div class="health-grid" id="healthGrid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- System Info + Registry -->
+          <div class="two-col">
+            <div class="section">
+              <div class="section-header">
+                <span class="section-icon">&#xE770;</span>
+                <h2>System Information</h2>
+              </div>
+              <div class="info-table" id="sysInfoTable">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-header">
+                <span class="section-icon">&#xE74C;</span>
+                <h2>Registry Configuration</h2>
+              </div>
+              <div class="info-table" id="regInfoTable">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Deploy ──────────────────────────────────────────── -->
+        <section class="page" id="page-deploy">
+          <div class="section">
+            <div class="section-header">
+              <span class="section-icon">&#xE896;</span>
+              <h2>Deployment Configuration</h2>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Driver Binary (TAD.RV.sys)</label>
+                <div class="input-row">
+                  <input type="text" id="deployDriverPath" class="input" placeholder="Path to TAD.RV.sys" />
+                  <button class="btn-ghost" onclick="browseFile('deployDriverPath')">Browse</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Service Publish Folder</label>
+                <div class="input-row">
+                  <input type="text" id="deployServicePath" class="input" placeholder="Path to TadBridgeService publish output" />
+                  <button class="btn-ghost" onclick="browseFolder('deployServicePath')">Browse</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Target Install Directory</label>
+                <input type="text" id="deployTargetDir" class="input" value="C:\Program Files\TAD_RV" />
+              </div>
+              <div class="form-group">
+                <label>Domain Controller</label>
+                <input type="text" id="deployDC" class="input" value="dc01.school.local" />
+              </div>
+              <div class="form-row">
+                <label class="toggle">
+                  <input type="checkbox" id="deployInstallDriver" checked />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Install Kernel Driver</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" id="deployInstallService" checked />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Install Bridge Service</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Deploy Actions -->
+          <div class="action-bar">
+            <button class="btn btn-primary" id="btnDeploy" onclick="startDeploy()">
+              <span>&#xE896;</span> Begin Deployment
+            </button>
+            <button class="btn btn-danger" id="btnCancelDeploy" onclick="cancelDeploy()" style="display:none">
+              <span>&#xE711;</span> Cancel
+            </button>
+          </div>
+
+          <!-- Progress -->
+          <div class="section" id="deployProgress" style="display:none">
+            <div class="section-header">
+              <span class="section-icon">&#xE895;</span>
+              <h2>Deployment Progress</h2>
+              <span class="progress-pct" id="deployPct">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="deployProgressFill"></div>
+            </div>
+            <div class="step-list" id="deploySteps">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Deploy Log -->
+          <div class="section" id="deployLogSection" style="display:none">
+            <div class="section-header">
+              <span class="section-icon">&#xE756;</span>
+              <h2>Deployment Log</h2>
+            </div>
+            <pre class="log-output" id="deployLog"></pre>
+          </div>
+        </section>
+
+        <!-- ── Policy ──────────────────────────────────────────── -->
+        <section class="page" id="page-policy">
+          <div class="two-col">
+            <div class="section">
+              <div class="section-header">
+                <span class="section-icon">&#xE8D7;</span>
+                <h2>Policy Flags</h2>
+              </div>
+              <div class="policy-flags" id="policyFlags">
+                <label class="toggle">
+                  <input type="checkbox" data-flag="ScreenCapture" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Screen Capture</span>
+                  <span class="toggle-desc">Capture student screens at configured interval</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" data-flag="WebFilter" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Web Filtering</span>
+                  <span class="toggle-desc">Block access to restricted websites</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" data-flag="AppBlock" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Application Blocking</span>
+                  <span class="toggle-desc">Prevent launch of blacklisted executables</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" data-flag="UsbBlock" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">USB Storage Block</span>
+                  <span class="toggle-desc">Block removable USB storage devices</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" data-flag="PrintBlock" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Print Blocking</span>
+                  <span class="toggle-desc">Disable print spooler during class hours</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" data-flag="NetworkAudit" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Network Audit</span>
+                  <span class="toggle-desc">Log all network connections made by endpoints</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" data-flag="Heartbeat" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Heartbeat</span>
+                  <span class="toggle-desc">Send periodic health heartbeats to management</span>
+                </label>
+                <label class="toggle">
+                  <input type="checkbox" data-flag="Stealth" onchange="onPolicyChange()" />
+                  <span class="toggle-slider"></span>
+                  <span class="toggle-label">Stealth Mode</span>
+                  <span class="toggle-desc">Hide TAD.RV tray icon from end users</span>
+                </label>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-header">
+                <span class="section-icon">&#xE943;</span>
+                <h2>Policy JSON Preview</h2>
+                <span class="policy-version" id="policyVersion">v0</span>
+              </div>
+              <pre class="json-preview" id="policyPreview">{}</pre>
+              <div class="action-bar" style="margin-top:12px">
+                <button class="btn btn-primary" onclick="savePolicy()">
+                  <span>&#xE74E;</span> Save Policy
+                </button>
+                <button class="btn btn-ghost" onclick="importPolicy()">
+                  <span>&#xE8E5;</span> Import
+                </button>
+                <button class="btn btn-ghost" onclick="exportPolicy()">
+                  <span>&#xE78C;</span> Export
+                </button>
+                <button class="btn btn-danger" onclick="resetProvisioning()" style="margin-left:auto">
+                  <span>&#xE72C;</span> Reset Provisioning
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Alerts ──────────────────────────────────────────── -->
+        <section class="page" id="page-alerts">
+          <div class="section">
+            <div class="section-header">
+              <span class="section-icon">&#xE783;</span>
+              <h2>Event Log</h2>
+              <div class="filter-bar">
+                <input type="text" id="alertSearch" class="input input-sm" placeholder="Search events…" oninput="filterAlerts()" />
+                <div class="filter-pills">
+                  <button class="pill active" data-filter="all" onclick="setAlertFilter('all')">All</button>
+                  <button class="pill" data-filter="error" onclick="setAlertFilter('error')">Error</button>
+                  <button class="pill" data-filter="warning" onclick="setAlertFilter('warning')">Warning</button>
+                  <button class="pill" data-filter="info" onclick="setAlertFilter('info')">Info</button>
+                </div>
+                <button class="btn-ghost" onclick="refreshAlerts()"><span>&#xE72C;</span> Refresh</button>
+              </div>
+            </div>
+            <div class="alerts-table-wrap">
+              <table class="alerts-table" id="alertsTable">
+                <thead>
+                  <tr>
+                    <th style="width:60px">Level</th>
+                    <th style="width:170px">Timestamp</th>
+                    <th style="width:60px">ID</th>
+                    <th style="width:130px">Source</th>
+                    <th>Message</th>
+                  </tr>
+                </thead>
+                <tbody id="alertsBody">
+                  <tr class="empty-row"><td colspan="5">Loading events…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Detail Pane -->
+          <div class="section" id="alertDetail" style="display:none">
+            <div class="section-header">
+              <span class="section-icon">&#xE8FD;</span>
+              <h2>Event Detail</h2>
+              <button class="btn-ghost" onclick="closeAlertDetail()"><span>&#xE711;</span> Close</button>
+            </div>
+            <pre class="log-output" id="alertDetailText"></pre>
+          </div>
+        </section>
+
+        <!-- ── Classrooms ──────────────────────────────────────── -->
+        <section class="page" id="page-classrooms">
+          <div class="admin-layout">
+            <!-- Sidebar: Room List -->
+            <div class="admin-sidebar">
+              <div class="admin-sidebar-header">
+                <h3>Classrooms</h3>
+                <button class="admin-btn-sm" onclick="createRoom()" title="New Room">&#xE710;</button>
+              </div>
+              <div class="room-list" id="roomList">
+                <!-- Populated by JS -->
+              </div>
+              <div class="admin-sidebar-footer">
+                <button class="admin-btn full" onclick="importLayout()"><span>&#xE8E5;</span> Import</button>
+                <button class="admin-btn full" onclick="exportAllLayouts()"><span>&#xE78C;</span> Export All</button>
+              </div>
+            </div>
+
+            <!-- Main: Classroom Designer -->
+            <div class="admin-main">
+              <!-- Designer Toolbar -->
+              <div class="designer-toolbar" id="designerToolbar">
+                <div class="toolbar-left">
+                  <span class="toolbar-title" id="designerRoomName">Select a classroom</span>
+                  <button class="admin-btn-sm" id="btnRenameRoom" onclick="renameActiveRoom()" title="Rename" style="display:none">&#xE8AC;</button>
+                </div>
+                <div class="toolbar-center">
+                  <div class="tool-group">
+                    <button class="tool-btn active" data-tool="select" onclick="setDesignerTool('select')" title="Select &amp; Move">
+                      <span>&#xE8B0;</span>
+                    </button>
+                    <button class="tool-btn" data-tool="desk" onclick="setDesignerTool('desk')" title="Place Desk">
+                      <span>&#xE821;</span>
+                    </button>
+                    <button class="tool-btn" data-tool="teacher-desk" onclick="setDesignerTool('teacher-desk')" title="Teacher Desk">
+                      <span>&#xE7EF;</span>
+                    </button>
+                    <button class="tool-btn" data-tool="wall" onclick="setDesignerTool('wall')" title="Wall / Divider">
+                      <span>&#xE879;</span>
+                    </button>
+                    <button class="tool-btn" data-tool="door" onclick="setDesignerTool('door')" title="Door">
+                      <span>&#xE7AD;</span>
+                    </button>
+                    <button class="tool-btn" data-tool="label" onclick="setDesignerTool('label')" title="Text Label">
+                      <span>&#xE8D2;</span>
+                    </button>
+                  </div>
+                  <div class="toolbar-sep"></div>
+                  <button class="admin-btn-sm" onclick="toggleGrid()" title="Toggle Grid">&#xE80A;</button>
+                  <button class="admin-btn-sm" onclick="zoomIn()" title="Zoom In">&#xE8A3;</button>
+                  <button class="admin-btn-sm" onclick="zoomOut()" title="Zoom Out">&#xE71F;</button>
+                  <button class="admin-btn-sm" onclick="fitToView()" title="Fit to View">&#xE9A6;</button>
+                </div>
+                <div class="toolbar-right">
+                  <button class="admin-btn accent" onclick="saveActiveRoom()" id="btnSaveRoom" style="display:none">
+                    <span>&#xE74E;</span> Save
+                  </button>
+                  <button class="admin-btn danger" onclick="deleteActiveRoom()" id="btnDeleteRoom" style="display:none">
+                    <span>&#xE74D;</span> Delete
+                  </button>
+                </div>
+              </div>
+
+              <!-- Canvas Area -->
+              <div class="designer-canvas-wrap" id="designerCanvasWrap">
+                <div class="designer-empty" id="designerEmpty">
+                  <div class="empty-icon">&#xE912;</div>
+                  <h2>Classroom Designer</h2>
+                  <p>Select a room from the sidebar or create a new one to start designing.</p>
+                </div>
+                <canvas id="designerCanvas" width="1200" height="800" style="display:none"></canvas>
+              </div>
+
+              <!-- Properties Panel (right) -->
+              <div class="props-panel" id="propsPanel" style="display:none">
+                <div class="props-header">
+                  <h4>Properties</h4>
+                  <button class="admin-btn-sm" onclick="closePropsPanel()">&#xE711;</button>
+                </div>
+                <div class="props-body" id="propsBody">
+                  <!-- Dynamic properties form -->
+                </div>
+                <div class="props-footer">
+                  <button class="admin-btn danger full" onclick="deleteSelected()">&#xE74D; Delete Object</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <!-- INLINE_JS -->
+</body>
+</html>

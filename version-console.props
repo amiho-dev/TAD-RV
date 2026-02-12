@@ -1,0 +1,13 @@
+<Project>
+
+  <!--
+    Version for TadConsole (AD Domain Controller management console).
+    Bump this independently when the Console component changes.
+  -->
+  <PropertyGroup>
+    <Version>1.0.0.1</Version>
+    <FileVersion>1.0.0.1</FileVersion>
+    <InformationalVersion>1.0.0.1-console</InformationalVersion>
+  </PropertyGroup>
+
+</Project>

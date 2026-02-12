@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\version-teacher.props" />
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -10,11 +12,14 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>TadTeacher</RootNamespace>
     <AssemblyName>TadTeacher</AssemblyName>
-    <Version>1.0.0.1</Version>
-    <Company>TAD Europe</Company>
-    <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
     <Product>TAD.RV Teacher Controller</Product>
     <Description>Teacher dashboard for real-time monitoring and control of student endpoints.</Description>
+
+    <!-- Single-file publish: produces one .exe you can just copy -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>

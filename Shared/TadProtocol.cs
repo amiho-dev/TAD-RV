@@ -29,6 +29,7 @@ public enum TadCommand : byte
     RvFocusStop     = 0x23,     // Stop main-stream (keep sub-stream running)
     CollectFiles    = 0x30,     // Request file collection from student
     PushMessage     = 0x40,     // Display a message on student screen
+    FreezeTimer     = 0x50,     // Freeze keyboard+mouse+lock screen for N seconds
 
     // Student → Teacher
     Pong            = 0x81,
@@ -58,6 +59,18 @@ public sealed class StudentStatus
     public double CpuUsage { get; set; }
     public long RamUsedMb { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    /// <summary>AD role resolved by AdGroupWatcher: Student, Teacher, Admin, Unknown.</summary>
+    public string Role { get; set; } = "Student";
+
+    /// <summary>AD group memberships (display names).</summary>
+    public List<string> AdGroups { get; set; } = new();
+
+    /// <summary>True if a FreezeTimer is currently active on this endpoint.</summary>
+    public bool IsFrozen { get; set; }
+
+    /// <summary>Seconds remaining on the active freeze timer (0 if not frozen).</summary>
+    public int FreezeSecondsRemaining { get; set; }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -153,6 +166,23 @@ public static class TadFrameCodec
 // ═══════════════════════════════════════════════════════════════════════════
 // Privacy Redaction Rectangle
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Freeze Timer Request (Teacher → Student)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Payload for TadCommand.FreezeTimer.
+/// Locks keyboard + mouse and shows a fullscreen lock overlay with countdown.
+/// The student endpoint auto-unlocks when the timer reaches zero.
+/// Set DurationSeconds = 0 to cancel an active freeze.
+/// </summary>
+public sealed class FreezeTimerRequest
+{
+    public int DurationSeconds { get; set; } = 300; // 5 minutes default
+    public string Message { get; set; } = "Your screen has been frozen by the teacher.";
+    public bool ShowCountdown { get; set; } = true;
+}
 
 /// <summary>
 /// Coordinates of a password field to black out before streaming.

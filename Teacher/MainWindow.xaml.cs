@@ -14,6 +14,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Win32;
 
 namespace TadTeacher;
 
@@ -106,6 +107,42 @@ public partial class MainWindow : Window
                 case "unlock":
                     _clientManager.UnlockStudent(msg.Target);
                     break;
+
+                // ── Custom Actions ────────────────────────────────────
+                case "freeze":
+                    if (int.TryParse(msg.Target, out _)) // target is IP, duration in Data
+                    {
+                        // freeze all
+                        _clientManager.BroadcastFreeze(int.Parse(msg.Target), msg.Data ?? "Your screen has been frozen by the teacher.");
+                    }
+                    break;
+                case "freeze_student":
+                    {
+                        int dur = 300;
+                        if (msg.Data != null && int.TryParse(msg.Data, out int parsed)) dur = parsed;
+                        _clientManager.FreezeStudent(msg.Target, dur, msg.Extra ?? "Your screen has been frozen by the teacher.");
+                    }
+                    break;
+                case "freeze_all":
+                    {
+                        int dur = 300;
+                        if (msg.Data != null && int.TryParse(msg.Data, out int parsed)) dur = parsed;
+                        _clientManager.BroadcastFreeze(dur, msg.Extra ?? "Your screen has been frozen by the teacher.");
+                        Dispatcher.InvokeAsync(() => TxtStatus.Text = $"Freeze: {dur}s timer started for all students");
+                    }
+                    break;
+
+                // ── Room Loading ──────────────────────────────────────
+                case "teacher_load_rooms":
+                    HandleTeacherLoadRooms();
+                    break;
+                case "unfreeze_student":
+                    _clientManager.UnfreezeStudent(msg.Target);
+                    break;
+                case "unfreeze_all":
+                    _clientManager.BroadcastUnfreeze();
+                    Dispatcher.InvokeAsync(() => TxtStatus.Text = "Freeze cancelled for all students");
+                    break;
             }
         }
         catch { /* Ignore malformed messages */ }
@@ -176,6 +213,49 @@ public partial class MainWindow : Window
         TxtConnected.Text = $"{connected}/{total} connected";
     }
 
+    // ─── Room Loading (reads Console's shared classroom file) ──────
+
+    private static string RoomsFilePath
+    {
+        get
+        {
+            string exeDir = AppContext.BaseDirectory;
+            string exePath = Path.Combine(exeDir, "TAD_Classrooms.json");
+            if (File.Exists(exePath)) return exePath;
+
+            // Fallback to user's Documents (same as Console fallback)
+            string docsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "TAD", "TAD_Classrooms.json");
+            return docsPath;
+        }
+    }
+
+    private void HandleTeacherLoadRooms()
+    {
+        try
+        {
+            string data = "[]";
+            if (File.Exists(RoomsFilePath))
+                data = File.ReadAllText(RoomsFilePath, Encoding.UTF8);
+            SendToWeb("rooms_loaded", data);
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.InvokeAsync(() =>
+                TxtStatus.Text = $"Failed to load rooms: {ex.Message}");
+        }
+    }
+
+    private void SendToWeb(string type, object data)
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            var json = JsonSerializer.Serialize(new { type, data });
+            DashboardWebView.CoreWebView2?.PostWebMessageAsJson(json);
+        });
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _statusTimer.Stop();
@@ -189,4 +269,6 @@ file sealed class WebMessage
 {
     public string Action { get; set; } = "";
     public string Target { get; set; } = "";  // IP address
+    public string? Data { get; set; }          // JSON payload for admin ops
+    public string? Extra { get; set; }         // Additional data (e.g. freeze message)
 }

@@ -236,7 +236,9 @@ public sealed class PrivacyRedactor : IDisposable
     public void Dispose()
     {
         _cts?.Cancel();
-        _scanTask?.Wait(TimeSpan.FromSeconds(2));
+        try { _scanTask?.Wait(TimeSpan.FromSeconds(2)); }
+        catch (AggregateException) { /* Task was cancelled — expected */ }
+        catch (ObjectDisposedException) { }
         _cts?.Dispose();
     }
 }

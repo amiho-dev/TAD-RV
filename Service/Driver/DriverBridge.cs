@@ -17,7 +17,7 @@ namespace TadBridge.Driver;
 /// Low-level communication channel to the TAD.RV kernel driver.
 /// Lifetime managed by DI — Singleton.
 /// </summary>
-public sealed class DriverBridge : IDisposable
+public class DriverBridge : IDisposable
 {
     private readonly ILogger<DriverBridge> _log;
     private SafeFileHandle? _deviceHandle;
@@ -30,9 +30,9 @@ public sealed class DriverBridge : IDisposable
 
     // ─── Device Handle ────────────────────────────────────────────────
 
-    public bool IsConnected => _deviceHandle is { IsInvalid: false, IsClosed: false };
+    public virtual bool IsConnected => _deviceHandle is { IsInvalid: false, IsClosed: false };
 
-    public void Connect()
+    public virtual void Connect()
     {
         lock (_lock)
         {
@@ -60,7 +60,7 @@ public sealed class DriverBridge : IDisposable
         }
     }
 
-    public void Disconnect()
+    public virtual void Disconnect()
     {
         lock (_lock)
         {
@@ -74,7 +74,7 @@ public sealed class DriverBridge : IDisposable
     /// <summary>
     /// Register our PID for kernel-level process protection.
     /// </summary>
-    public void ProtectPid(uint pid)
+    public virtual void ProtectPid(uint pid)
     {
         var input = new TadProtectPidInput { TargetPid = pid, Flags = 0 };
         SendIoctl(TadIoctl.IOCTL_TAD_PROTECT_PID, input);
@@ -84,7 +84,7 @@ public sealed class DriverBridge : IDisposable
     /// <summary>
     /// Present the 256-bit auth key to unlock the driver for unloading.
     /// </summary>
-    public bool Unlock()
+    public virtual bool Unlock()
     {
         var input = new TadUnlockInput { AuthKey = TadIoctl.AuthKey };
         return TrySendIoctl(TadIoctl.IOCTL_TAD_UNLOCK, input);
@@ -93,7 +93,7 @@ public sealed class DriverBridge : IDisposable
     /// <summary>
     /// Send a heartbeat and retrieve driver status.
     /// </summary>
-    public TadHeartbeatOutput? Heartbeat()
+    public virtual TadHeartbeatOutput? Heartbeat()
     {
         return ReadIoctl<TadHeartbeatOutput>(TadIoctl.IOCTL_TAD_HEARTBEAT);
     }
@@ -101,7 +101,7 @@ public sealed class DriverBridge : IDisposable
     /// <summary>
     /// Push the resolved AD user role to the kernel driver.
     /// </summary>
-    public void SetUserRole(TadUserRole role, uint sessionId, string userSid)
+    public virtual void SetUserRole(TadUserRole role, uint sessionId, string userSid)
     {
         var input = new TadSetUserRoleInput
         {
@@ -116,7 +116,7 @@ public sealed class DriverBridge : IDisposable
     /// <summary>
     /// Push the resolved policy to the driver.
     /// </summary>
-    public void SetPolicy(TadPolicyBuffer policy)
+    public virtual void SetPolicy(TadPolicyBuffer policy)
     {
         SendIoctl(TadIoctl.IOCTL_TAD_SET_POLICY, policy);
         _log.LogInformation("Pushed policy (flags=0x{Flags:X}) to driver", policy.Flags);
@@ -125,7 +125,7 @@ public sealed class DriverBridge : IDisposable
     /// <summary>
     /// Long-poll for a driver alert (blocks until the driver completes the IRP).
     /// </summary>
-    public TadAlertOutput? ReadAlert()
+    public virtual TadAlertOutput? ReadAlert()
     {
         return ReadIoctl<TadAlertOutput>(TadIoctl.IOCTL_TAD_READ_ALERT);
     }
@@ -134,7 +134,7 @@ public sealed class DriverBridge : IDisposable
     /// Enable or disable kernel-level hard-lock (keyboard + mouse input blocked
     /// at the filter-driver level). Used by the Teacher LOCK command.
     /// </summary>
-    public void SendHardLock(bool enable)
+    public virtual void SendHardLock(bool enable)
     {
         var input = new TadHardLockInput { Enable = enable ? 1u : 0u, Flags = 0 };
         SendIoctl(TadIoctl.IOCTL_TAD_HARD_LOCK, input);
@@ -146,7 +146,7 @@ public sealed class DriverBridge : IDisposable
     /// Task Manager, Alt+F4, or process termination APIs. Uses ObRegisterCallbacks
     /// in the kernel driver to strip PROCESS_TERMINATE rights.
     /// </summary>
-    public void ProtectUiProcess(uint pid, bool protect = true)
+    public virtual void ProtectUiProcess(uint pid, bool protect = true)
     {
         var input = new TadProtectUiInput { TargetPid = pid, Protect = protect ? 1u : 0u };
         SendIoctl(TadIoctl.IOCTL_TAD_PROTECT_UI, input);
@@ -158,7 +158,7 @@ public sealed class DriverBridge : IDisposable
     /// "Screen Recording" border and hide DXGI duplication from DWM queries.
     /// Should be called when the capture engine starts.
     /// </summary>
-    public void SetStealth(bool enable, TadStealthFlags flags = TadStealthFlags.All)
+    public virtual void SetStealth(bool enable, TadStealthFlags flags = TadStealthFlags.All)
     {
         var input = new TadStealthInput
         {
@@ -263,7 +263,7 @@ public sealed class DriverBridge : IDisposable
             Connect();
     }
 
-    public void Dispose()
+    public virtual void Dispose()
     {
         Disconnect();
     }

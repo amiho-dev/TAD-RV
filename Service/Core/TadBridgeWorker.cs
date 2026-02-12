@@ -26,6 +26,9 @@ public sealed class TadBridgeWorker : BackgroundService
     private readonly ProvisioningManager      _provisioning;
     private readonly AdGroupWatcher           _adWatcher;
 
+    private TadUserRole _lastPushedRole = TadUserRole.Unknown;
+    private string      _lastPushedSid  = string.Empty;
+
     public TadBridgeWorker(
         ILogger<TadBridgeWorker> logger,
         DriverBridge             driver,
@@ -87,9 +90,11 @@ public sealed class TadBridgeWorker : BackgroundService
             {
                 var (role, sessionId, sid) = _adWatcher.ResolveCurrentUser();
 
-                if (role != TadUserRole.Unknown)
+                if (role != TadUserRole.Unknown && (role != _lastPushedRole || sid != _lastPushedSid))
                 {
                     _driver.SetUserRole(role, sessionId, sid);
+                    _lastPushedRole = role;
+                    _lastPushedSid  = sid;
                 }
             }
             catch (Exception ex)
@@ -98,7 +103,8 @@ public sealed class TadBridgeWorker : BackgroundService
             }
 
             // Poll every 10 seconds for session changes
-            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+            try { await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken); }
+            catch (OperationCanceledException) { break; }
         }
 
         _log.LogInformation("TadBridgeWorker stopped");
