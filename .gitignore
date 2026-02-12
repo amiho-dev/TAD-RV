@@ -1,0 +1,42 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# Publish / Results
+publish/
+results/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Rider / ReSharper
+.idea/
+_ReSharper*/
+*.DotSettings.user
+
+# Windows
+*.exe
+*.dll
+*.pdb
+*.cache
+*.log
