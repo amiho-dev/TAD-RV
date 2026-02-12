@@ -35,6 +35,15 @@
     <div class="dashboard-content">
         <!-- Header Stats Bar -->
         <div class="stats-bar">
+            <!-- Room Switcher -->
+            <div class="room-switcher">
+                <button class="room-sw-btn" onclick="switchRoomPrev()" title="Previous Room">&#xE76B;</button>
+                <div class="room-sw-label" id="roomSwLabel" onclick="toggleRoomDropdown()">No Room</div>
+                <button class="room-sw-btn" onclick="switchRoomNext()" title="Next Room">&#xE76C;</button>
+            </div>
+
+            <div class="stats-sep"></div>
+
             <div class="stat">
                 <span class="stat-value" id="statOnline">0</span>
                 <span class="stat-label">Online</span>
@@ -56,6 +65,14 @@
                 <span class="stat-label">Offline</span>
             </div>
             <div class="stats-spacer"></div>
+
+            <!-- Show Offline Toggle -->
+            <label class="stats-toggle" title="Show or hide offline computers in the grid">
+                <input type="checkbox" id="toggleShowOffline" onchange="onToggleShowOffline()" checked />
+                <span class="stats-toggle-slider"></span>
+                <span class="stats-toggle-text">Show Offline</span>
+            </label>
+
             <button class="stats-action-btn freeze" onclick="openFreezeModal()" title="Custom Action — Freeze Timer">
                 &#xE768; Freeze Timer
             </button>

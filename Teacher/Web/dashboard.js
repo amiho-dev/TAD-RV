@@ -17,6 +17,7 @@ let activeRvIp = null;                // Currently viewed remote view IP
 let rvDecoder = null;                 // WebCodecs VideoDecoder for fullscreen RV
 let teacherRooms = [];                // Rooms loaded from Console's TAD_Classrooms.json
 let selectedRoomId = null;            // Currently selected room ID
+let showOffline = true;               // Show offline tiles in the grid
 
 // ── Message Bridge (C# → JS) ────────────────────────────────────────
 
@@ -326,6 +327,9 @@ function updateStats() {
     document.getElementById('statStreaming').textContent = streaming;
     document.getElementById('statFrozen').textContent = frozen;
     document.getElementById('statOffline').textContent = offline;
+
+    // Apply offline visibility filter
+    applyOfflineVisibility();
 }
 
 // Refresh stats every 5 seconds
@@ -356,6 +360,7 @@ function onRoomsLoaded(data) {
         teacherRooms = [];
     }
     renderRoomDropdown();
+    updateRoomSwitcherLabel();
 
     // Auto-select the previously selected room if still present
     if (selectedRoomId) {
@@ -369,6 +374,7 @@ function onRoomsLoaded(data) {
     if (!selectedRoomId && teacherRooms.length === 1) {
         selectTeacherRoom(teacherRooms[0].id);
     }
+    updateRoomSwitcherLabel();
 }
 
 function renderRoomDropdown() {
@@ -399,6 +405,7 @@ function selectTeacherRoom(roomId) {
     const room = teacherRooms.find(r => r.id === roomId);
     if (room) {
         document.getElementById('currentRoomLabel').textContent = room.name;
+        updateRoomSwitcherLabel();
     }
     renderRoomDropdown();
     closeRoomDropdown();
@@ -534,4 +541,57 @@ function cancelActiveFreeze() {
 function freezeSingleStudent(ip) {
     const secs = 300; // Default 5 min from tile
     sendToHost({ action: 'freeze_student', target: ip, data: String(secs), extra: 'Your screen has been frozen by the teacher.' });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ══ ROOM SWITCHER (prev / next arrows in stats bar) ═════════════════
+// ══════════════════════════════════════════════════════════════════════
+
+function updateRoomSwitcherLabel() {
+    const el = document.getElementById('roomSwLabel');
+    if (!el) return;
+    const room = teacherRooms.find(r => r.id === selectedRoomId);
+    el.textContent = room ? room.name : 'No Room';
+}
+
+function switchRoomPrev() {
+    if (teacherRooms.length === 0) return;
+    const idx = teacherRooms.findIndex(r => r.id === selectedRoomId);
+    const prev = idx <= 0 ? teacherRooms.length - 1 : idx - 1;
+    selectTeacherRoom(teacherRooms[prev].id);
+}
+
+function switchRoomNext() {
+    if (teacherRooms.length === 0) return;
+    const idx = teacherRooms.findIndex(r => r.id === selectedRoomId);
+    const next = idx < 0 || idx >= teacherRooms.length - 1 ? 0 : idx + 1;
+    selectTeacherRoom(teacherRooms[next].id);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ══ SHOW/HIDE OFFLINE COMPUTERS ═════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+
+function onToggleShowOffline() {
+    showOffline = document.getElementById('toggleShowOffline').checked;
+    applyOfflineVisibility();
+}
+
+function applyOfflineVisibility() {
+    const now = Date.now();
+    students.forEach(s => {
+        if (!s.tileEl) return;
+        const isOnline = s.status && (now - s.lastSeen < 10000);
+        if (!isOnline) {
+            s.tileEl.style.display = showOffline ? '' : 'none';
+        }
+    });
+
+    // Show empty state if no visible tiles
+    const grid = document.getElementById('studentGrid');
+    const empty = document.getElementById('emptyState');
+    const visibleTiles = grid.querySelectorAll('.student-tile:not([style*="display: none"])');
+    if (empty) {
+        empty.style.display = visibleTiles.length === 0 ? '' : 'none';
+    }
 }
