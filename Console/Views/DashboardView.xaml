@@ -57,6 +57,21 @@
                 </Border>
             </UniformGrid>
 
+            <!-- Release Details (Visible only when update is available) -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,24"
+                    Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="Release Notes" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" />
+                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding ReleaseNotes}" 
+                                   FontSize="13" FontFamily="Consolas, Monospace" 
+                                   Foreground="{StaticResource TextSecondaryBrush}" 
+                                   TextWrapping="Wrap" />
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+
             <!-- Alerts Summary -->
             <Border Style="{StaticResource Card}">
                 <StackPanel>

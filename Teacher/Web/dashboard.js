@@ -995,6 +995,51 @@ function showUpdateBanner(version, releaseNotes, htmlUrl) {
     let existing = document.getElementById('updateBanner');
     if (existing) existing.remove();
 
+    // Remove existing modal if any
+    let existingModal = document.getElementById('updateModal');
+    if (existingModal) existingModal.remove();
+
+    // Create Modal for full notes
+    const modal = document.createElement('div');
+    modal.id = 'updateModal';
+    modal.style.cssText = `
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 20000;
+        align-items: center; justify-content: center;
+        backdrop-filter: blur(2px);
+    `;
+    
+    // Modal Content
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white; padding: 24px; border-radius: 8px; 
+        width: 600px; max-width: 90%; max-height: 80vh;
+        display: flex; flex-direction: column;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    `;
+    
+    modalContent.innerHTML = `
+        <h3 style="margin: 0 0 16px 0; font-family: 'Segoe UI', sans-serif;">Release Notes: v${version}</h3>
+        <div style="flex: 1; overflow-y: auto; background: #f8f9fa; border: 1px solid #e1e4e8; padding: 12px; border-radius: 4px; font-family: Consolas, monospace; white-space: pre-wrap; margin-bottom: 16px; font-size: 13px; color: #24292e;">${releaseNotes || 'No details provided.'}</div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button id="closeUpdateModal" style="padding: 8px 16px; background: #e1e4e8; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Close</button>
+            ${htmlUrl ? `<a href="${htmlUrl}" target="_blank" style="padding: 8px 16px; background: #0366d6; color: white; text-decoration: none; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center;">View on GitHub</a>` : ''}
+        </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    modal.querySelector('#closeUpdateModal').onclick = () => {
+        modal.style.display = 'none';
+    };
+
+    // Close on background click
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+    };
+
+    // Create Banner
     const banner = document.createElement('div');
     banner.id = 'updateBanner';
     banner.style.cssText = `
@@ -1008,9 +1053,10 @@ function showUpdateBanner(version, releaseNotes, htmlUrl) {
 
     const text = document.createElement('span');
     text.innerHTML = `<strong>Update available:</strong> v${version}`;
+    
+    // Add "What's New" link if we have notes
     if (releaseNotes) {
-        const preview = releaseNotes.split('\n')[0].substring(0, 80);
-        text.innerHTML += ` — ${preview}`;
+        text.innerHTML += ` — <a href="#" id="viewNotesLink" style="color: #fff; text-decoration: underline; font-weight: 600;">What's New?</a>`;
     }
 
     const actions = document.createElement('div');
@@ -1042,6 +1088,17 @@ function showUpdateBanner(version, releaseNotes, htmlUrl) {
     banner.appendChild(text);
     banner.appendChild(actions);
     document.body.prepend(banner);
+
+    // Hook up "What's New" link
+    if (releaseNotes) {
+        const link = document.getElementById('viewNotesLink');
+        if (link) {
+            link.onclick = (e) => {
+                e.preventDefault();
+                document.getElementById('updateModal').style.display = 'flex';
+            };
+        }
+    }
 
     // Auto-dismiss after 30 seconds
     setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);

@@ -16,6 +16,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private int    _alertCount;
     private string _updateStatus  = "";
     private bool   _updateAvailable;
+    private string _releaseNotes  = "";
 
     private readonly UpdateManager _updater = new("console");
 
@@ -60,6 +61,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         set { _updateAvailable = value; OnPropertyChanged(); }
     }
 
+    public string ReleaseNotes
+    {
+        get => _releaseNotes;
+        set { _releaseNotes = value; OnPropertyChanged(); }
+    }
+
     private async Task CheckForUpdatesAsync()
     {
         try
@@ -70,11 +77,13 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             if (update != null)
             {
                 UpdateStatus = $"Update available: v{update.Version} — {update.Title}";
+                ReleaseNotes = update.ReleaseNotes;
                 UpdateAvailable = true;
             }
             else
             {
                 UpdateStatus = $"Up to date (v{_updater.CurrentVersion})";
+                ReleaseNotes = "";
                 UpdateAvailable = false;
             }
         }
