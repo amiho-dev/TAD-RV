@@ -1,0 +1,15 @@
+{
+  "Version": 1,
+  "HeartbeatIntervalMs": 2000,
+  "HeartbeatTimeoutMs": 6000,
+  "AllowedUnloadRoles": 4,
+  "GroupRoleMappings": {
+    "Domain Students": 0,
+    "Domain Teachers": 1,
+    "Domain Admins":   2,
+    "TAD-Administrators": 2
+  },
+  "BlockedApplications": [
+    "taskmgr.exe", "cmd.exe", "powershell.exe", "regedit.exe"
+  ]
+}

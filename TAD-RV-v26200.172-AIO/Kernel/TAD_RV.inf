@@ -1,0 +1,78 @@
+;
+; TAD_RV.inf — Installation INF for the TAD.RV endpoint monitoring driver.
+;
+; Installs the kernel driver (TAD.RV.sys) as a boot-start or demand-start
+; service and registers the minifilter with the filter manager.
+;
+; Usage:
+;   Right-click -> "Install"
+;   -or-
+;   pnputil /add-driver TAD_RV.inf /install
+;   -or-
+;   sc create TAD.RV type=kernel binPath=<path>\TAD.RV.sys start=auto
+;     (manual, without minifilter registration — not recommended)
+;
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = "ActivityMonitor"
+ClassGuid   = {b86dff51-a31e-4bac-b3cf-e8cfe75c9fc2}
+Provider    = %ManufacturerName%
+CatalogFile = TAD_RV.cat
+DriverVer   = 02/18/2026,26200.172.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir     = 12
+TadRv.DriverFiles  = 12
+
+[Manufacturer]
+%ManufacturerName% = TadRvModels,NTamd64
+
+[TadRvModels.NTamd64]
+%TadRvDesc% = TadRv.Install, Root\TadRvDevice
+
+[TadRv.Install]
+CopyFiles = TadRv.DriverFiles
+
+[TadRv.DriverFiles]
+TAD.RV.sys
+
+[TadRv.Install.Services]
+AddService = TadRv,,TadRv.Service
+
+[TadRv.Service]
+DisplayName    = %ServiceName%
+Description    = %ServiceDesc%
+ServiceBinary  = %12%\TAD.RV.sys
+ServiceType    = 2
+StartType      = 0
+ErrorControl   = 1
+LoadOrderGroup = "FSFilter Activity Monitor"
+AddReg         = TadRv.ServiceReg
+
+[TadRv.ServiceReg]
+HKR,"Instances","DefaultInstance",0,%DefaultInstance%
+HKR,"Instances\"%DefaultInstance%,"Altitude",0,%Altitude%
+HKR,"Instances\"%DefaultInstance%,"Flags",0x00010001,0
+
+[TadRv.Install.HW]
+AddReg = TadRv.HW.Reg
+
+[TadRv.HW.Reg]
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GA;;;BA)"
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+TAD.RV.sys = 1,,
+
+[Strings]
+ManufacturerName = "TAD Europe (https://tad-it.eu)"
+TadRvDesc        = "TAD.RV Endpoint Monitoring Driver"
+ServiceName      = "TAD.RV"
+ServiceDesc      = "TAD.RV school endpoint monitoring and process protection driver. (C) 2026 TAD Europe."
+DiskName         = "TAD.RV Installation Disk"
+DefaultInstance  = "TadRv Default Instance"
+Altitude         = "328471"
