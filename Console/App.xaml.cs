@@ -1,7 +1,9 @@
 // ───────────────────────────────────────────────────────────────────────────
-// App.xaml.cs — Application entry point
+// App.xaml.cs — Application startup with elevation check
 // ───────────────────────────────────────────────────────────────────────────
 
+using System.Diagnostics;
+using System.Security.Principal;
 using System.Windows;
 
 namespace TadConsole;
@@ -12,23 +14,40 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Global unhandled exception handler
-        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
-        {
-            if (args.ExceptionObject is Exception ex)
-            {
-                MessageBox.Show(
-                    $"Unhandled error:\n\n{ex.Message}\n\n{ex.StackTrace}",
-                    "TAD.RV — Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        };
+        // Check if running with administrator privileges
+        var identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
 
-        DispatcherUnhandledException += (_, args) =>
+        if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
         {
-            MessageBox.Show(
-                $"UI error:\n\n{args.Exception.Message}",
-                "TAD.RV — Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            args.Handled = true;
-        };
+            var result = MessageBox.Show(
+                "TAD.RV Management Console requires Administrator privileges.\n\n" +
+                "Click OK to restart elevated, or Cancel to exit.",
+                "TAD.RV — Elevation Required",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.OK)
+            {
+                // Relaunch with elevation
+                var proc = new ProcessStartInfo
+                {
+                    UseShellExecute = true,
+                    FileName        = Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "TadConsole.exe",
+                    Verb            = "runas"
+                };
+
+                try
+                {
+                    Process.Start(proc);
+                }
+                catch
+                {
+                    // User declined UAC
+                }
+            }
+
+            Shutdown();
+        }
     }
 }

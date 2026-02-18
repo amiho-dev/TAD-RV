@@ -12,25 +12,29 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>TadTeacher</RootNamespace>
     <AssemblyName>TadTeacher</AssemblyName>
-    <Product>TAD.RV Teacher Controller</Product>
-    <Description>Teacher dashboard for real-time monitoring and control of student endpoints.</Description>
-
-    <!-- Single-file publish: produces one .exe you can just copy -->
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <Company>TAD Europe</Company>
+    <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
+    <Product>TAD.RV Teacher Controller — The Greater Brother of te.comp NET.FX</Product>
+    <Description>Teacher dashboard for real-time monitoring and control of student endpoints. Next-generation classroom management built on TAD.RV technology.</Description>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- WinForms for NotifyIcon (system tray) -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
   </ItemGroup>
 
   <!-- Shared protocol types -->
   <ItemGroup>
     <Compile Include="..\Shared\TadSharedInterop.cs" Link="Shared\TadSharedInterop.cs" />
     <Compile Include="..\Shared\TadProtocol.cs" Link="Shared\TadProtocol.cs" />
+    <Compile Include="..\Shared\UpdateManager.cs" Link="Shared\UpdateManager.cs" />
   </ItemGroup>
 
   <!-- Embedded WebView2 dashboard -->
@@ -38,6 +42,11 @@
     <EmbeddedResource Include="Web\dashboard.html" />
     <EmbeddedResource Include="Web\dashboard.js" />
     <EmbeddedResource Include="Web\dashboard.css" />
+  </ItemGroup>
+
+  <!-- Embedded branding assets -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\Shared\logo32.b64" Link="Assets\logo32.b64" />
   </ItemGroup>
 
 </Project>

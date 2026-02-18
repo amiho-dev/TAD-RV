@@ -102,48 +102,6 @@ public sealed class TcpClientManager : IDisposable
     }
     public void PingAll() => BroadcastCommand(TadCommand.Ping);
 
-    /// <summary>Freeze a single student's keyboard+mouse with a timed lock screen.</summary>
-    public void FreezeStudent(string ip, int durationSeconds, string message = "Your screen has been frozen by the teacher.")
-    {
-        var request = new FreezeTimerRequest
-        {
-            DurationSeconds = durationSeconds,
-            Message = message,
-            ShowCountdown = true
-        };
-        var frame = TadFrameCodec.EncodeJson(TadCommand.FreezeTimer, request);
-        SendRaw(ip, frame);
-    }
-
-    /// <summary>Freeze all connected students with a timed lock screen.</summary>
-    public void BroadcastFreeze(int durationSeconds, string message = "Your screen has been frozen by the teacher.")
-    {
-        var request = new FreezeTimerRequest
-        {
-            DurationSeconds = durationSeconds,
-            Message = message,
-            ShowCountdown = true
-        };
-        var frame = TadFrameCodec.EncodeJson(TadCommand.FreezeTimer, request);
-        BroadcastRaw(frame);
-    }
-
-    /// <summary>Cancel an active freeze on a single student (send 0-second freeze).</summary>
-    public void UnfreezeStudent(string ip)
-    {
-        var request = new FreezeTimerRequest { DurationSeconds = 0 };
-        var frame = TadFrameCodec.EncodeJson(TadCommand.FreezeTimer, request);
-        SendRaw(ip, frame);
-    }
-
-    /// <summary>Cancel active freezes on all students.</summary>
-    public void BroadcastUnfreeze()
-    {
-        var request = new FreezeTimerRequest { DurationSeconds = 0 };
-        var frame = TadFrameCodec.EncodeJson(TadCommand.FreezeTimer, request);
-        BroadcastRaw(frame);
-    }
-
     // ─── Networking Core ──────────────────────────────────────────────
 
     private async Task ConnectLoopAsync(StudentConnection conn, CancellationToken ct)
@@ -273,19 +231,6 @@ public sealed class TcpClientManager : IDisposable
         try
         {
             var frame = TadFrameCodec.Encode(cmd, payload);
-            conn.Client?.GetStream().Write(frame);
-        }
-        catch
-        {
-            conn.IsConnected = false;
-        }
-    }
-
-    private void SendRaw(string ip, byte[] frame)
-    {
-        if (!_connections.TryGetValue(ip, out var conn) || !conn.IsConnected) return;
-        try
-        {
             conn.Client?.GetStream().Write(frame);
         }
         catch

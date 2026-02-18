@@ -387,9 +387,11 @@ public sealed class ScreenCaptureEngine : IDisposable
     /// <summary>Deactivate the main-stream. Sub-stream keeps running.</summary>
     public void StopMainStream()
     {
+        var task = _mainStreamTask;
         _mainEncoder?.Dispose();
         _mainEncoder = null;
         _mainStreamTask = null;
+        task?.Wait(TimeSpan.FromSeconds(2));
         _log.LogInformation("Main-stream stopped");
     }
 

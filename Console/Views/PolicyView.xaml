@@ -1,0 +1,49 @@
+<!-- PolicyView.xaml — Policy editor view -->
+<UserControl x:Class="TadConsole.Views.PolicyView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource PrimaryBrush}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,28">
+        <StackPanel MaxWidth="900">
+
+            <TextBlock Text="Policy Editor" Style="{StaticResource SectionHeader}" />
+
+            <!-- Toggles -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Global Settings" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,12" />
+
+                    <CheckBox Content="Enable Lockdown Mode"
+                              IsChecked="{Binding LockdownEnabled}"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              FontSize="13" Margin="0,0,0,8" />
+
+                    <CheckBox Content="Enable Stealth Mode"
+                              IsChecked="{Binding StealthEnabled}"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              FontSize="13" />
+                </StackPanel>
+            </Border>
+
+            <!-- Allowed Processes -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Allowed Processes" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                    <ListBox ItemsSource="{Binding AllowedProcesses}"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource TextSecondaryBrush}"
+                             FontFamily="Consolas" FontSize="12"
+                             MaxHeight="200" />
+                </StackPanel>
+            </Border>
+
+            <Button Content="Save Policy"
+                    Style="{StaticResource AccentButton}"
+                    Command="{Binding SaveCommand}"
+                    HorizontalAlignment="Left" />
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,126 @@
+<!-- ═══════════════════════════════════════════════════════════════════════
+     Styles.xaml — TAD.RV Management Console dark theme resources
+     GitHub-style dark palette with accent highlights
+     ═══════════════════════════════════════════════════════════════════════ -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══ Color Palette ═════════════════════════════════════════════ -->
+    <SolidColorBrush x:Key="PrimaryBrush"       Color="#0D1117" />
+    <SolidColorBrush x:Key="SidebarBrush"        Color="#161B22" />
+    <SolidColorBrush x:Key="BorderBrush"         Color="#30363D" />
+    <SolidColorBrush x:Key="HighlightBrush"      Color="#58A6FF" />
+    <SolidColorBrush x:Key="TextPrimaryBrush"    Color="#C9D1D9" />
+    <SolidColorBrush x:Key="TextSecondaryBrush"  Color="#8B949E" />
+    <SolidColorBrush x:Key="SuccessBrush"        Color="#3FB950" />
+    <SolidColorBrush x:Key="WarningBrush"        Color="#D29922" />
+    <SolidColorBrush x:Key="DangerBrush"         Color="#F85149" />
+    <SolidColorBrush x:Key="CardBrush"           Color="#161B22" />
+    <SolidColorBrush x:Key="HoverBrush"          Color="#1F2937" />
+
+    <!-- ═══ NavButton — Sidebar navigation RadioButton style ═════════ -->
+    <Style x:Key="NavButton" TargetType="RadioButton">
+        <Setter Property="Height"            Value="42" />
+        <Setter Property="Padding"           Value="20,0,16,0" />
+        <Setter Property="Cursor"            Value="Hand" />
+        <Setter Property="Foreground"        Value="{StaticResource TextSecondaryBrush}" />
+        <Setter Property="Background"        Value="Transparent" />
+        <Setter Property="BorderThickness"   Value="3,0,0,0" />
+        <Setter Property="BorderBrush"       Value="Transparent" />
+        <Setter Property="GroupName"          Value="NavGroup" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock x:Name="Icon"
+                                       Text="{TemplateBinding Tag}"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="16"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       VerticalAlignment="Center"
+                                       Width="24" />
+                            <TextBlock x:Name="Label"
+                                       Text="{TemplateBinding Content}"
+                                       FontSize="13"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       VerticalAlignment="Center"
+                                       Margin="12,0,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd"    Property="Background"  Value="{StaticResource HoverBrush}" />
+                            <Setter TargetName="Label"  Property="Foreground"  Value="{StaticResource TextPrimaryBrush}" />
+                            <Setter TargetName="Icon"   Property="Foreground"  Value="{StaticResource TextPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd"    Property="Background"   Value="{StaticResource HoverBrush}" />
+                            <Setter TargetName="Bd"    Property="BorderBrush"  Value="{StaticResource HighlightBrush}" />
+                            <Setter TargetName="Label"  Property="Foreground"  Value="{StaticResource TextPrimaryBrush}" />
+                            <Setter TargetName="Label"  Property="FontWeight"  Value="SemiBold" />
+                            <Setter TargetName="Icon"   Property="Foreground"  Value="{StaticResource HighlightBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ═══ Card Panel Style ═════════════════════════════════════════ -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background"      Value="{StaticResource CardBrush}" />
+        <Setter Property="BorderBrush"      Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderThickness"  Value="1" />
+        <Setter Property="CornerRadius"     Value="8" />
+        <Setter Property="Padding"          Value="20" />
+        <Setter Property="Margin"           Value="0,0,0,16" />
+    </Style>
+
+    <!-- ═══ Section Header ═══════════════════════════════════════════ -->
+    <Style x:Key="SectionHeader" TargetType="TextBlock">
+        <Setter Property="FontSize"     Value="18" />
+        <Setter Property="FontWeight"   Value="SemiBold" />
+        <Setter Property="Foreground"   Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Margin"       Value="0,0,0,16" />
+    </Style>
+
+    <!-- ═══ Accent Button ════════════════════════════════════════════ -->
+    <Style x:Key="AccentButton" TargetType="Button">
+        <Setter Property="Height"           Value="34" />
+        <Setter Property="Padding"          Value="16,0" />
+        <Setter Property="FontSize"         Value="13" />
+        <Setter Property="FontWeight"       Value="SemiBold" />
+        <Setter Property="Foreground"       Value="White" />
+        <Setter Property="Background"       Value="{StaticResource HighlightBrush}" />
+        <Setter Property="BorderThickness"  Value="0" />
+        <Setter Property="Cursor"           Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

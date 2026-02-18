@@ -257,7 +257,7 @@ NTSTATUS TadSetDeviceDacl(_In_ PDEVICE_OBJECT DeviceObject)
              + RtlLengthSid(systemSid) + RtlLengthSid(adminsSid)
              - 2 * sizeof(ULONG);
 
-    dacl = (PACL)ExAllocatePoolWithTag(PagedPool, daclSize, TAD_POOL_TAG);
+    dacl = (PACL)ExAllocatePool2(POOL_FLAG_PAGED, daclSize, TAD_POOL_TAG);
     if (!dacl) { status = STATUS_INSUFFICIENT_RESOURCES; goto Cleanup; }
 
     status = RtlCreateAcl(dacl, daclSize, ACL_REVISION);
@@ -503,7 +503,9 @@ NTSTATUS TadDispatchDeviceControl(
             LONG a = InterlockedIncrement(&g_Tad.FailedUnlockAttempts);
             if (a >= TAD_MAX_UNLOCK_ATTEMPTS) {
                 KeQuerySystemTime(&g_Tad.LockoutUntil);
-                g_Tad.LockoutUntil.QuadPart -= TAD_LOCKOUT_DURATION;
+                /* TAD_LOCKOUT_DURATION is negative (relative time), so add it
+                 * to move LockoutUntil into the future. */
+                g_Tad.LockoutUntil.QuadPart += (-TAD_LOCKOUT_DURATION);
             }
             status = STATUS_ACCESS_DENIED;
         }
@@ -813,12 +815,29 @@ TadObThreadPreCallback(
 
     pPid = (HANDLE)InterlockedCompareExchangePointer(
         (PVOID volatile *)&g_Tad.ProtectedPid, NULL, NULL);
-    if (!pPid) return OB_PREOP_SUCCESS;
+    if (!pPid) {
+        /* Also check UI overlay PID for thread protection */
+        pPid = (HANDLE)InterlockedCompareExchangePointer(
+            (PVOID volatile *)&g_Tad.ProtectedUiPid, NULL, NULL);
+        if (!pPid) return OB_PREOP_SUCCESS;
+    }
     if (OpInfo->ObjectType != *PsThreadType) return OB_PREOP_SUCCESS;
 
     oPid = PsGetProcessId(IoThreadToProcess((PETHREAD)OpInfo->Object));
     cPid = PsGetCurrentProcessId();
-    if (oPid != pPid || cPid == pPid) return OB_PREOP_SUCCESS;
+
+    /* Protect threads of both the service PID and UI overlay PID */
+    {
+        HANDLE svcPid = (HANDLE)InterlockedCompareExchangePointer(
+            (PVOID volatile *)&g_Tad.ProtectedPid, NULL, NULL);
+        HANDLE uiPid  = (HANDLE)InterlockedCompareExchangePointer(
+            (PVOID volatile *)&g_Tad.ProtectedUiPid, NULL, NULL);
+
+        if (oPid != svcPid && oPid != uiPid)
+            return OB_PREOP_SUCCESS;
+        if (cPid == svcPid || cPid == uiPid)
+            return OB_PREOP_SUCCESS;
+    }
 
     if (OpInfo->Operation == OB_OPERATION_HANDLE_CREATE)
         OpInfo->Parameters->CreateHandleInformation.DesiredAccess &= ~TAD_STRIPPED_THREAD_RIGHTS;

@@ -4,9 +4,13 @@
 [Dd]ebug/
 [Rr]elease/
 
-# Publish / Results
+# Publish / Results / Demo compiled
 publish/
 results/
+release-client/
+release-teacher/
+release-addc/
+demo_compiled/
 
 # NuGet
 *.nupkg

@@ -17,24 +17,24 @@
       <div class="nav-section">
         <button class="nav-btn active" data-page="dashboard" title="Dashboard">
           <span class="nav-icon">&#xE80F;</span>
-          <span class="nav-label">Dashboard</span>
+          <span class="nav-label" data-i18n="nav.dashboard">Dashboard</span>
         </button>
         <button class="nav-btn" data-page="deploy" title="Deploy">
           <span class="nav-icon">&#xE896;</span>
-          <span class="nav-label">Deploy</span>
+          <span class="nav-label" data-i18n="nav.deploy">Deploy</span>
         </button>
         <button class="nav-btn" data-page="policy" title="Policy">
           <span class="nav-icon">&#xE8D7;</span>
-          <span class="nav-label">Policy</span>
+          <span class="nav-label" data-i18n="nav.policy">Policy</span>
         </button>
         <button class="nav-btn" data-page="alerts" title="Alerts">
           <span class="nav-icon">&#xE783;</span>
-          <span class="nav-label">Alerts</span>
+          <span class="nav-label" data-i18n="nav.alerts">Alerts</span>
           <span class="nav-badge" id="alertBadge" style="display:none">0</span>
         </button>
         <button class="nav-btn" data-page="classrooms" title="Classrooms">
           <span class="nav-icon">&#xE912;</span>
-          <span class="nav-label">Classrooms</span>
+          <span class="nav-label" data-i18n="nav.classrooms">Classrooms</span>
         </button>
       </div>
       <div class="sidebar-footer">
@@ -51,6 +51,21 @@
           <h1 class="page-title" id="pageTitle">Dashboard</h1>
         </div>
         <div class="topbar-right">
+          <div class="language-selector">
+            <button class="lang-btn" id="langBtn" title="Language">
+              <span class="lang-icon">&#xE774;</span>
+              <span class="lang-code" id="langCode">EN</span>
+            </button>
+            <div class="lang-dropdown" id="langDropdown">
+              <button class="lang-option" data-lang="en">English</button>
+              <button class="lang-option" data-lang="de">Deutsch</button>
+              <button class="lang-option" data-lang="fr">Français</button>
+              <button class="lang-option" data-lang="nl">Nederlands</button>
+              <button class="lang-option" data-lang="es">Español</button>
+              <button class="lang-option" data-lang="it">Italiano</button>
+              <button class="lang-option" data-lang="pl">Polski</button>
+            </div>
+          </div>
           <span class="admin-badge" id="adminBadge" style="display:none">
             <span class="admin-icon">&#xE7EF;</span> Admin
           </span>
@@ -67,33 +82,33 @@
             <div class="status-card" id="driverCard">
               <div class="card-header">
                 <span class="card-icon">&#xE964;</span>
-                <span class="card-title">Kernel Driver</span>
+                <span class="card-title" data-i18n="dashboard.kernelDriver">Kernel Driver</span>
               </div>
               <div class="card-status" id="driverStatus">
                 <span class="status-dot unknown"></span>
-                <span class="status-text">Checking…</span>
+                <span class="status-text" data-i18n="common.checking">Checking…</span>
               </div>
               <div class="card-detail" id="driverDetail">TAD.RV</div>
             </div>
             <div class="status-card" id="bridgeCard">
               <div class="card-header">
                 <span class="card-icon">&#xE968;</span>
-                <span class="card-title">Bridge Service</span>
+                <span class="card-title" data-i18n="dashboard.bridgeService">Bridge Service</span>
               </div>
               <div class="card-status" id="bridgeStatus">
                 <span class="status-dot unknown"></span>
-                <span class="status-text">Checking…</span>
+                <span class="status-text" data-i18n="common.checking">Checking…</span>
               </div>
               <div class="card-detail" id="bridgeDetail">TadBridgeService</div>
             </div>
             <div class="status-card" id="systemCard">
               <div class="card-header">
                 <span class="card-icon">&#xE7F4;</span>
-                <span class="card-title">System</span>
+                <span class="card-title" data-i18n="dashboard.system">System</span>
               </div>
               <div class="card-status" id="systemStatus">
                 <span class="status-dot unknown"></span>
-                <span class="status-text">Loading…</span>
+                <span class="status-text" data-i18n="common.loading">Loading…</span>
               </div>
               <div class="card-detail" id="systemDetail"></div>
             </div>
@@ -103,8 +118,8 @@
           <div class="section">
             <div class="section-header">
               <span class="section-icon">&#xE8CB;</span>
-              <h2>Health Checks</h2>
-              <button class="btn-ghost" onclick="refreshDashboard()"><span>&#xE72C;</span> Refresh</button>
+              <h2 data-i18n="dashboard.healthChecks">Health Checks</h2>
+              <button class="btn-ghost" onclick="refreshDashboard()">&#xE72C; <span data-i18n="common.refresh">Refresh</span></button>
             </div>
             <div class="health-grid" id="healthGrid">
               <!-- Populated by JS -->
@@ -116,7 +131,7 @@
             <div class="section">
               <div class="section-header">
                 <span class="section-icon">&#xE770;</span>
-                <h2>System Information</h2>
+                <h2 data-i18n="dashboard.systemInformation">System Information</h2>
               </div>
               <div class="info-table" id="sysInfoTable">
                 <!-- Populated by JS -->
@@ -125,7 +140,7 @@
             <div class="section">
               <div class="section-header">
                 <span class="section-icon">&#xE74C;</span>
-                <h2>Registry Configuration</h2>
+                <h2 data-i18n="dashboard.registryConfiguration">Registry Configuration</h2>
               </div>
               <div class="info-table" id="regInfoTable">
                 <!-- Populated by JS -->
@@ -139,41 +154,41 @@
           <div class="section">
             <div class="section-header">
               <span class="section-icon">&#xE896;</span>
-              <h2>Deployment Configuration</h2>
+              <h2 data-i18n="deploy.title">Deployment Configuration</h2>
             </div>
             <div class="form-grid">
               <div class="form-group">
-                <label>Driver Binary (TAD.RV.sys)</label>
+                <label data-i18n="deploy.driverBinary">Driver Binary (TAD.RV.sys)</label>
                 <div class="input-row">
-                  <input type="text" id="deployDriverPath" class="input" placeholder="Path to TAD.RV.sys" />
-                  <button class="btn-ghost" onclick="browseFile('deployDriverPath')">Browse</button>
+                  <input type="text" id="deployDriverPath" class="input" data-i18n-placeholder="deploy.driverPlaceholder" placeholder="Path to TAD.RV.sys" />
+                  <button class="btn-ghost" onclick="browseFile('deployDriverPath')" data-i18n="common.browse">Browse</button>
                 </div>
               </div>
               <div class="form-group">
-                <label>Service Publish Folder</label>
+                <label data-i18n="deploy.serviceFolder">Service Publish Folder</label>
                 <div class="input-row">
-                  <input type="text" id="deployServicePath" class="input" placeholder="Path to TadBridgeService publish output" />
-                  <button class="btn-ghost" onclick="browseFolder('deployServicePath')">Browse</button>
+                  <input type="text" id="deployServicePath" class="input" data-i18n-placeholder="deploy.servicePlaceholder" placeholder="Path to TadBridgeService publish output" />
+                  <button class="btn-ghost" onclick="browseFolder('deployServicePath')" data-i18n="common.browse">Browse</button>
                 </div>
               </div>
               <div class="form-group">
-                <label>Target Install Directory</label>
+                <label data-i18n="deploy.targetDir">Target Install Directory</label>
                 <input type="text" id="deployTargetDir" class="input" value="C:\Program Files\TAD_RV" />
               </div>
               <div class="form-group">
-                <label>Domain Controller</label>
+                <label data-i18n="deploy.domainController">Domain Controller</label>
                 <input type="text" id="deployDC" class="input" value="dc01.school.local" />
               </div>
               <div class="form-row">
                 <label class="toggle">
                   <input type="checkbox" id="deployInstallDriver" checked />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Install Kernel Driver</span>
+                  <span class="toggle-label" data-i18n="deploy.installDriver">Install Kernel Driver</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" id="deployInstallService" checked />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Install Bridge Service</span>
+                  <span class="toggle-label" data-i18n="deploy.installService">Install Bridge Service</span>
                 </label>
               </div>
             </div>
@@ -182,7 +197,7 @@
           <!-- Deploy Actions -->
           <div class="action-bar">
             <button class="btn btn-primary" id="btnDeploy" onclick="startDeploy()">
-              <span>&#xE896;</span> Begin Deployment
+              <span>&#xE896;</span> <span data-i18n="deploy.beginDeployment">Begin Deployment</span>
             </button>
             <button class="btn btn-danger" id="btnCancelDeploy" onclick="cancelDeploy()" style="display:none">
               <span>&#xE711;</span> Cancel
@@ -193,7 +208,7 @@
           <div class="section" id="deployProgress" style="display:none">
             <div class="section-header">
               <span class="section-icon">&#xE895;</span>
-              <h2>Deployment Progress</h2>
+              <h2 data-i18n="deploy.progress">Deployment Progress</h2>
               <span class="progress-pct" id="deployPct">0%</span>
             </div>
             <div class="progress-bar">
@@ -208,7 +223,7 @@
           <div class="section" id="deployLogSection" style="display:none">
             <div class="section-header">
               <span class="section-icon">&#xE756;</span>
-              <h2>Deployment Log</h2>
+              <h2 data-i18n="deploy.log">Deployment Log</h2>
             </div>
             <pre class="log-output" id="deployLog"></pre>
           </div>
@@ -220,78 +235,78 @@
             <div class="section">
               <div class="section-header">
                 <span class="section-icon">&#xE8D7;</span>
-                <h2>Policy Flags</h2>
+              <h2 data-i18n="policy.flags">Policy Flags</h2>
               </div>
               <div class="policy-flags" id="policyFlags">
                 <label class="toggle">
                   <input type="checkbox" data-flag="ScreenCapture" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Screen Capture</span>
-                  <span class="toggle-desc">Capture student screens at configured interval</span>
+                  <span class="toggle-label" data-i18n="policy.flag.ScreenCapture">Screen Capture</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.ScreenCapture.desc">Capture student screens at configured interval</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" data-flag="WebFilter" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Web Filtering</span>
-                  <span class="toggle-desc">Block access to restricted websites</span>
+                  <span class="toggle-label" data-i18n="policy.flag.WebFilter">Web Filtering</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.WebFilter.desc">Block access to restricted websites</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" data-flag="AppBlock" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Application Blocking</span>
-                  <span class="toggle-desc">Prevent launch of blacklisted executables</span>
+                  <span class="toggle-label" data-i18n="policy.flag.AppBlock">Application Blocking</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.AppBlock.desc">Prevent launch of blacklisted executables</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" data-flag="UsbBlock" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">USB Storage Block</span>
-                  <span class="toggle-desc">Block removable USB storage devices</span>
+                  <span class="toggle-label" data-i18n="policy.flag.UsbBlock">USB Storage Block</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.UsbBlock.desc">Block removable USB storage devices</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" data-flag="PrintBlock" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Print Blocking</span>
-                  <span class="toggle-desc">Disable print spooler during class hours</span>
+                  <span class="toggle-label" data-i18n="policy.flag.PrintBlock">Print Blocking</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.PrintBlock.desc">Disable print spooler during class hours</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" data-flag="NetworkAudit" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Network Audit</span>
-                  <span class="toggle-desc">Log all network connections made by endpoints</span>
+                  <span class="toggle-label" data-i18n="policy.flag.NetworkAudit">Network Audit</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.NetworkAudit.desc">Log all network connections made by endpoints</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" data-flag="Heartbeat" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Heartbeat</span>
-                  <span class="toggle-desc">Send periodic health heartbeats to management</span>
+                  <span class="toggle-label" data-i18n="policy.flag.Heartbeat">Heartbeat</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.Heartbeat.desc">Send periodic health heartbeats to management</span>
                 </label>
                 <label class="toggle">
                   <input type="checkbox" data-flag="Stealth" onchange="onPolicyChange()" />
                   <span class="toggle-slider"></span>
-                  <span class="toggle-label">Stealth Mode</span>
-                  <span class="toggle-desc">Hide TAD.RV tray icon from end users</span>
+                  <span class="toggle-label" data-i18n="policy.flag.Stealth">Stealth Mode</span>
+                  <span class="toggle-desc" data-i18n="policy.flag.Stealth.desc">Hide TAD.RV tray icon from end users</span>
                 </label>
               </div>
             </div>
             <div class="section">
               <div class="section-header">
                 <span class="section-icon">&#xE943;</span>
-                <h2>Policy JSON Preview</h2>
+              <h2 data-i18n="policy.jsonPreview">Policy JSON Preview</h2>
                 <span class="policy-version" id="policyVersion">v0</span>
               </div>
               <pre class="json-preview" id="policyPreview">{}</pre>
               <div class="action-bar" style="margin-top:12px">
                 <button class="btn btn-primary" onclick="savePolicy()">
-                  <span>&#xE74E;</span> Save Policy
+                  <span>&#xE74E;</span> <span data-i18n="policy.savePolicy">Save Policy</span>
                 </button>
                 <button class="btn btn-ghost" onclick="importPolicy()">
-                  <span>&#xE8E5;</span> Import
+                  <span>&#xE8E5;</span> <span data-i18n="common.import">Import</span>
                 </button>
                 <button class="btn btn-ghost" onclick="exportPolicy()">
-                  <span>&#xE78C;</span> Export
+                  <span>&#xE78C;</span> <span data-i18n="common.export">Export</span>
                 </button>
                 <button class="btn btn-danger" onclick="resetProvisioning()" style="margin-left:auto">
-                  <span>&#xE72C;</span> Reset Provisioning
+                  <span>&#xE72C;</span> <span data-i18n="policy.resetProvisioning">Reset Provisioning</span>
                 </button>
               </div>
             </div>
@@ -303,31 +318,31 @@
           <div class="section">
             <div class="section-header">
               <span class="section-icon">&#xE783;</span>
-              <h2>Event Log</h2>
+              <h2 data-i18n="alerts.eventLog">Event Log</h2>
               <div class="filter-bar">
-                <input type="text" id="alertSearch" class="input input-sm" placeholder="Search events…" oninput="filterAlerts()" />
+                <input type="text" id="alertSearch" class="input input-sm" data-i18n-placeholder="alerts.searchPlaceholder" placeholder="Search events…" oninput="filterAlerts()" />
                 <div class="filter-pills">
-                  <button class="pill active" data-filter="all" onclick="setAlertFilter('all')">All</button>
-                  <button class="pill" data-filter="error" onclick="setAlertFilter('error')">Error</button>
-                  <button class="pill" data-filter="warning" onclick="setAlertFilter('warning')">Warning</button>
-                  <button class="pill" data-filter="info" onclick="setAlertFilter('info')">Info</button>
+                  <button class="pill active" data-filter="all" onclick="setAlertFilter('all')" data-i18n="alerts.all">All</button>
+                  <button class="pill" data-filter="error" onclick="setAlertFilter('error')" data-i18n="alerts.error">Error</button>
+                  <button class="pill" data-filter="warning" onclick="setAlertFilter('warning')" data-i18n="alerts.warning">Warning</button>
+                  <button class="pill" data-filter="info" onclick="setAlertFilter('info')" data-i18n="alerts.info">Info</button>
                 </div>
-                <button class="btn-ghost" onclick="refreshAlerts()"><span>&#xE72C;</span> Refresh</button>
+                <button class="btn-ghost" onclick="refreshAlerts()">&#xE72C; <span data-i18n="common.refresh">Refresh</span></button>
               </div>
             </div>
             <div class="alerts-table-wrap">
               <table class="alerts-table" id="alertsTable">
                 <thead>
                   <tr>
-                    <th style="width:60px">Level</th>
-                    <th style="width:170px">Timestamp</th>
-                    <th style="width:60px">ID</th>
-                    <th style="width:130px">Source</th>
-                    <th>Message</th>
+                    <th style="width:60px" data-i18n="alerts.level">Level</th>
+                    <th style="width:170px" data-i18n="alerts.timestamp">Timestamp</th>
+                    <th style="width:60px" data-i18n="alerts.id">ID</th>
+                    <th style="width:130px" data-i18n="alerts.source">Source</th>
+                    <th data-i18n="alerts.message">Message</th>
                   </tr>
                 </thead>
                 <tbody id="alertsBody">
-                  <tr class="empty-row"><td colspan="5">Loading events…</td></tr>
+                  <tr class="empty-row"><td colspan="5" data-i18n="alerts.loadingEvents">Loading events…</td></tr>
                 </tbody>
               </table>
             </div>
@@ -337,8 +352,8 @@
           <div class="section" id="alertDetail" style="display:none">
             <div class="section-header">
               <span class="section-icon">&#xE8FD;</span>
-              <h2>Event Detail</h2>
-              <button class="btn-ghost" onclick="closeAlertDetail()"><span>&#xE711;</span> Close</button>
+              <h2 data-i18n="alerts.eventDetail">Event Detail</h2>
+              <button class="btn-ghost" onclick="closeAlertDetail()">&#xE711; <span data-i18n="common.close">Close</span></button>
             </div>
             <pre class="log-output" id="alertDetailText"></pre>
           </div>
@@ -350,15 +365,15 @@
             <!-- Sidebar: Room List -->
             <div class="admin-sidebar">
               <div class="admin-sidebar-header">
-                <h3>Classrooms</h3>
+                <h3 data-i18n="classrooms.title">Classrooms</h3>
                 <button class="admin-btn-sm" onclick="createRoom()" title="New Room">&#xE710;</button>
               </div>
               <div class="room-list" id="roomList">
                 <!-- Populated by JS -->
               </div>
               <div class="admin-sidebar-footer">
-                <button class="admin-btn full" onclick="importLayout()"><span>&#xE8E5;</span> Import</button>
-                <button class="admin-btn full" onclick="exportAllLayouts()"><span>&#xE78C;</span> Export All</button>
+                <button class="admin-btn full" onclick="importLayout()">&#xE8E5; <span data-i18n="common.import">Import</span></button>
+                <button class="admin-btn full" onclick="exportAllLayouts()">&#xE78C; <span data-i18n="classrooms.exportAll">Export All</span></button>
               </div>
             </div>
 
@@ -399,10 +414,10 @@
                 </div>
                 <div class="toolbar-right">
                   <button class="admin-btn accent" onclick="saveActiveRoom()" id="btnSaveRoom" style="display:none">
-                    <span>&#xE74E;</span> Save
+                    &#xE74E; Save
                   </button>
                   <button class="admin-btn danger" onclick="deleteActiveRoom()" id="btnDeleteRoom" style="display:none">
-                    <span>&#xE74D;</span> Delete
+                    &#xE74D; Delete
                   </button>
                 </div>
               </div>
@@ -411,8 +426,8 @@
               <div class="designer-canvas-wrap" id="designerCanvasWrap">
                 <div class="designer-empty" id="designerEmpty">
                   <div class="empty-icon">&#xE912;</div>
-                  <h2>Classroom Designer</h2>
-                  <p>Select a room from the sidebar or create a new one to start designing.</p>
+                  <h2 data-i18n="classrooms.classroomDesigner">Classroom Designer</h2>
+                  <p data-i18n="classrooms.designerEmpty">Select a room from the sidebar or create a new one to start designing.</p>
                 </div>
                 <canvas id="designerCanvas" width="1200" height="800" style="display:none"></canvas>
               </div>
@@ -420,14 +435,14 @@
               <!-- Properties Panel (right) -->
               <div class="props-panel" id="propsPanel" style="display:none">
                 <div class="props-header">
-                  <h4>Properties</h4>
+                  <h4 data-i18n="classrooms.properties">Properties</h4>
                   <button class="admin-btn-sm" onclick="closePropsPanel()">&#xE711;</button>
                 </div>
                 <div class="props-body" id="propsBody">
                   <!-- Dynamic properties form -->
                 </div>
                 <div class="props-footer">
-                  <button class="admin-btn danger full" onclick="deleteSelected()">&#xE74D; Delete Object</button>
+                  <button class="admin-btn danger full" onclick="deleteSelected()">&#xE74D; <span data-i18n="common.delete">Delete Object</span></button>
                 </div>
               </div>
             </div>

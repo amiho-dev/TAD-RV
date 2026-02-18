@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\version-client.props" />
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -14,6 +12,9 @@
     <AssemblyName>TadBootstrap</AssemblyName>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
+    <Version>26200.172</Version>
+    <Company>TAD Europe</Company>
+    <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
     <Product>TAD.RV Bootstrap Loader</Product>
     <Description>Zero-install bootstrap: copies binaries from UNC share, registers a SYSTEM service with recovery, and starts it. Designed for GPO startup script execution.</Description>
   </PropertyGroup>

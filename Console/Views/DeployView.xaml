@@ -1,0 +1,49 @@
+<!-- DeployView.xaml — Deployment management view -->
+<UserControl x:Class="TadConsole.Views.DeployView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource PrimaryBrush}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,28">
+        <StackPanel MaxWidth="900">
+
+            <TextBlock Text="Deployment" Style="{StaticResource SectionHeader}" />
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Target Path" FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                    <TextBox Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="13" Padding="8,6"
+                             Background="#0D1117"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             BorderBrush="{StaticResource BorderBrush}" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                        <Button Content="Deploy Now"
+                                Style="{StaticResource AccentButton}"
+                                Command="{Binding DeployCommand}" />
+                        <Button Content="Rollback"
+                                Style="{StaticResource AccentButton}"
+                                Command="{Binding RollbackCommand}"
+                                Background="{StaticResource DangerBrush}"
+                                Margin="12,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Log Output -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Deployment Log" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                    <ListBox ItemsSource="{Binding LogMessages}"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{StaticResource TextSecondaryBrush}"
+                             FontFamily="Consolas" FontSize="12"
+                             MaxHeight="300" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -9,6 +9,67 @@ let currentFilter = 'all';
 let policyVersion = 0;
 let deploying = false;
 
+// ── Internationalization ───────────────────────────────────────────────────
+const translationPacks = {
+  en: TAD_LANG_EN,
+  de: TAD_LANG_DE,
+  fr: TAD_LANG_FR,
+  nl: TAD_LANG_NL,
+  es: TAD_LANG_ES,
+  it: TAD_LANG_IT,
+  pl: TAD_LANG_PL
+};
+
+// Initialize i18n on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const currentLang = TAD_I18N.init(translationPacks);
+  updateLanguageIndicator(currentLang);
+  setupLanguageSelector();
+});
+
+function updateLanguageIndicator(lang) {
+  const langCode = document.getElementById('langCode');
+  if (langCode) {
+    langCode.textContent = lang.toUpperCase();
+  }
+  
+  // Update active state in dropdown
+  document.querySelectorAll('.lang-option').forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.lang === lang);
+  });
+}
+
+function setupLanguageSelector() {
+  const langBtn = document.getElementById('langBtn');
+  const langDropdown = document.getElementById('langDropdown');
+  
+  // Toggle dropdown
+  langBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    langDropdown?.classList.toggle('active');
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', () => {
+    langDropdown?.classList.remove('active');
+  });
+  
+  // Handle language selection
+  document.querySelectorAll('.lang-option').forEach(opt => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newLang = opt.dataset.lang;
+      TAD_I18N.setLanguage(newLang, translationPacks);
+      updateLanguageIndicator(newLang);
+      langDropdown?.classList.remove('active');
+      
+      // Re-render dynamic content with new language
+      const activePage = document.querySelector('.page.active')?.id;
+      if (activePage === 'page-dashboard') refreshDashboard();
+    });
+  });
+}
+
 // ── Bridge Helpers ─────────────────────────────────────────────────────────
 function send(action, data) {
   if (window.chrome && window.chrome.webview) {
@@ -73,8 +134,9 @@ function navigate(page) {
   document.querySelectorAll('.page').forEach(p => {
     p.classList.toggle('active', p.id === 'page-' + page);
   });
-  // Title
-  document.getElementById('pageTitle').textContent = titles[page] || page;
+  // Title (i18n)
+  const titleKey = 'nav.' + page;
+  document.getElementById('pageTitle').textContent = t(titleKey);
 
   // Lazy load data
   if (page === 'dashboard') refreshDashboard();
@@ -159,14 +221,14 @@ function renderSystemInfo(data) {
   detailEl.textContent = data.osVersion || '';
 
   const rows = [
-    ['Hostname', data.hostname],
-    ['OS Version', data.osVersion],
-    ['Domain', data.userDomain],
-    ['Current User', data.currentUser],
-    ['.NET Runtime', data.dotNetVersion],
-    ['Processors', data.processorCount],
-    ['System Uptime', data.systemUptime],
-    ['Memory (Console)', data.memoryUsage],
+    [t('sysinfo.hostname'), data.hostname],
+    [t('sysinfo.osVersion'), data.osVersion],
+    [t('sysinfo.domain'), data.userDomain],
+    [t('sysinfo.currentUser'), data.currentUser],
+    [t('sysinfo.dotNet'), data.dotNetVersion],
+    [t('sysinfo.processors'), data.processorCount],
+    [t('sysinfo.uptime'), data.systemUptime],
+    [t('sysinfo.memory'), data.memoryUsage],
   ];
 
   el.innerHTML = rows.map(([k, v]) =>
@@ -182,18 +244,18 @@ function renderRegistryConfig(data) {
   if (!data) return;
 
   if (!data.keyExists) {
-    el.innerHTML = `<div class="info-row"><span class="info-key" style="color:var(--warning)">Registry key HKLM\\SOFTWARE\\TAD_RV not found</span></div>`;
+    el.innerHTML = `<div class="info-row"><span class="info-key" style="color:var(--warning)">${t('registry.keyNotFound')}</span></div>`;
     return;
   }
 
   const rows = [
-    ['Install Directory', data.installDir],
-    ['Domain Controller', data.domainController],
-    ['Deployed At', data.deployedAt],
-    ['Provisioned', data.provisioned ? '✓ Yes' : '✗ No'],
-    ['Machine DN', data.machineDN],
-    ['Organizational Unit', data.organizationalUnit],
-    ['Policy Version', 'v' + (data.policyVersion || 0)],
+    [t('registry.installDir'), data.installDir],
+    [t('registry.domainController'), data.domainController],
+    [t('registry.deployedAt'), data.deployedAt],
+    [t('registry.provisioned'), data.provisioned ? '✓ ' + t('common.yes') : '✗ ' + t('common.no')],
+    [t('registry.machineDN'), data.machineDN],
+    [t('registry.ou'), data.organizationalUnit],
+    [t('registry.policyVersion'), 'v' + (data.policyVersion || 0)],
   ];
 
   el.innerHTML = rows.map(([k, v]) =>
@@ -207,7 +269,7 @@ function renderRegistryConfig(data) {
 function renderHealthChecks(data) {
   const el = document.getElementById('healthGrid');
   if (!data || !data.length) {
-    el.innerHTML = '<div style="color:var(--text-muted);padding:20px">No health checks available</div>';
+    el.innerHTML = `<div style="color:var(--text-muted);padding:20px">${t('dashboard.noHealthChecks')}</div>`;
     return;
   }
 
@@ -294,9 +356,9 @@ function onDeployComplete(data) {
   document.getElementById('btnCancelDeploy').style.display = 'none';
 
   if (data.success) {
-    showToast('success', 'Deployment completed successfully');
+    showToast('success', t('deploy.completedSuccess'));
   } else {
-    showToast('error', 'Deployment completed with errors');
+    showToast('error', t('deploy.completedErrors'));
   }
 }
 
@@ -365,7 +427,7 @@ function savePolicy() {
   send('savePolicy', { json: JSON.stringify(policy, null, 2), version: policy.version });
   policyVersion = policy.version;
   document.getElementById('policyVersion').textContent = 'v' + policyVersion;
-  showToast('success', 'Policy saved to registry');
+  showToast('success', t('policy.savedToRegistry'));
 }
 
 function importPolicy() {
@@ -378,9 +440,9 @@ function exportPolicy() {
 }
 
 function resetProvisioning() {
-  if (confirm('Reset provisioning flag? The service will re-provision on next start.')) {
+  if (confirm(t('policy.resetConfirm'))) {
     send('resetProvisioning');
-    showToast('warning', 'Provisioning flag reset');
+    showToast('warning', t('policy.provisioningReset'));
   }
 }
 
@@ -438,7 +500,7 @@ function renderAlerts() {
   }
 
   if (filtered.length === 0) {
-    body.innerHTML = '<tr class="empty-row"><td colspan="5">No events found</td></tr>';
+    body.innerHTML = `<tr class="empty-row"><td colspan="5">${t('alerts.noEvents')}</td></tr>`;
     return;
   }
 
@@ -462,26 +524,14 @@ function renderAlerts() {
 }
 
 function showAlertDetail(idx) {
-  const search = (document.getElementById('alertSearch').value || '').toLowerCase();
-  let events = allEvents;
-
-  if (currentFilter !== 'all') {
-    events = events.filter(e => {
-      const lvl = (e.level || '').toLowerCase();
-      if (currentFilter === 'error') return lvl === 'error';
-      if (currentFilter === 'warning') return lvl === 'warning';
-      if (currentFilter === 'info') return lvl === 'information' || lvl === 'info';
-      return true;
-    });
-  }
-
-  if (search) {
-    events = events.filter(e =>
-      (e.message || '').toLowerCase().includes(search) ||
-      (e.source || '').toLowerCase().includes(search)
-    );
-  }
-
+  const events = allEvents.filter(e => {
+    if (currentFilter === 'all') return true;
+    const lvl = (e.level || '').toLowerCase();
+    if (currentFilter === 'error') return lvl === 'error';
+    if (currentFilter === 'warning') return lvl === 'warning';
+    if (currentFilter === 'info') return lvl === 'information' || lvl === 'info';
+    return true;
+  });
   const ev = events[idx];
   if (!ev) return;
 
@@ -640,7 +690,7 @@ function deleteActiveRoom() {
     if (!activeRoomId) return;
     const room = rooms.find(r => r.id === activeRoomId);
     if (!room) return;
-    if (!confirm(`Delete "${room.name}"? This cannot be undone.`)) return;
+    if (!confirm(t('classrooms.deleteConfirm', { name: room.name }))) return;
 
     rooms = rooms.filter(r => r.id !== activeRoomId);
     activeRoomId = null;
@@ -664,7 +714,7 @@ function saveActiveRoom() {
 
     room.objects = JSON.parse(JSON.stringify(canvasObjects));
     saveRoomsToHost();
-    showToast('success', `Room "${room.name}" saved`);
+    showToast('success', t('classrooms.roomSaved', { name: room.name }));
 }
 
 function renderRoomList() {

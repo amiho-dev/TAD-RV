@@ -1,303 +1,361 @@
-# TAD.RV — School Endpoint Monitoring Platform
-# THIS PROJECT IS CONFIDENTIAL AND SHOULD NOT BE PUBLISHED!!!
+<p align="center">
+  <img src="Shared/logo32.png" alt="TAD.RV Logo">
+</p>
 
-Complete kernel + service solution for protecting and managing the TAD.RV monitoring agent on school-managed Windows workstations.
+<p align="center">
+  <img src="https://img.shields.io/badge/version-26200.172-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/.NET-8.0-purple?style=flat-square&logo=dotnet" alt=".NET 8">
+  <img src="https://img.shields.io/badge/WDK-Windows%20Kernel-orange?style=flat-square&logo=windows" alt="WDK">
+  <img src="https://img.shields.io/badge/platform-win--x64-lightgrey?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/license-proprietary-red?style=flat-square" alt="License">
+</p>
+
+# TAD.RV
+
+**Classroom endpoint monitoring and protection platform for Windows school labs.**
+
+TAD.RV combines a Windows kernel driver with user-mode services and teacher/admin tooling to deliver tamper-proof student oversight across 50+ seat school labs — with zero-config networking, GPU-accelerated screen capture, and full Active Directory integration.
+
+---
+
+## Overview
+
+| Component | Technology | Purpose |
+|:--|:--|:--|
+| **Kernel Driver** | C / WDK / Minifilter | Process protection, file tamper prevention, heartbeat watchdog |
+| **Bridge Service** | .NET 8 Worker Service | AD integration, driver communication, screen capture, TCP listener |
+| **Teacher App** | .NET 8 / WPF + WebView2 | Real-time student grid, remote view, lock/freeze/blank controls |
+| **Admin Console** | .NET 8 / WPF | Deployment wizard, policy editor, service management, alert viewer |
+| **Bootstrap** | .NET 8 Console | Zero-install GPO loader for domain-joined labs |
+
+---
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Active Directory          \\DC01\NETLOGON\TAD\Policy.json       │
-│  ─────────────────         (Group → Role mappings, flags)        │
-└──────────┬───────────────────────────────┬───────────────────────┘
-           │ LDAP / GroupPolicy             │ SMB
-           ▼                                ▼
-┌────────────────────────────────────────────────────────────────┐
-│  TadBridgeService.exe        (.NET 8 Worker Service / SYSTEM)  │
-│  ┌──────────────┐ ┌───────────────┐ ┌──────────────────────┐   │
-│  │ Provisioning  │ │ AdGroupWatch  │ │ OfflineCache (DPAPI) │  │
-│  └──────┬───────┘ └───────┬───────┘ └──────────┬───────────┘   │
-│         │                 │                     │              │
-│  ┌──────▼─────────────────▼─────────────────────▼───────────┐  │
-│  │              DriverBridge (P/Invoke)                      │ │
-│  │  PROTECT_PID · UNLOCK · HEARTBEAT · SET_ROLE · SET_POLICY │ │
-│  │  READ_ALERT                                               │ │
-│  └──────────────────────────┬────────────────────────────────┘ │
-└─────────────────────────────┼──────────────────────────────────┘
-                              │ DeviceIoControl  (\\.\TadRvLink)
-┌─────────────────────────────┼──────────────────────────────────┐
-│  TAD.RV.sys                 │      (Ring 0  —  WDM + Minifilter)│
-│  ┌──────────────────────────▼────────────────────────────────┐  │
-│  │ ObRegisterCallbacks   (process + thread protection)        │  │
-│  │ FltRegisterFilter     (anti-delete, anti-rename)           │  │
-│  │ Heartbeat DPC timer   (service liveness watchdog)          │  │
-│  │ DACL-hardened device  (SYSTEM + Admins only)               │  │
-│  │ 256-bit XOR auth key  (constant-time + rate-limiting)      │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
+                        ┌──────────────────────────┐
+                        │   Active Directory / GPO  │
+                        │   Policy.json on NETLOGON │
+                        └────────────┬─────────────┘
+                                     │ LDAP / SMB
+┌─────────────────┐     ┌───────────▼───────────────────────────────┐
+│  TadTeacher.exe │────▶│  TadBridgeService.exe   (SYSTEM service)  │
+│  (Teacher PC)   │ TCP │  ┌─────────────┬──────────┬────────────┐  │
+│  WebView2 UI    │17420│  │ Provisioning│ AD Watch │ Offline $  │  │
+└─────────────────┘     │  └──────┬──────┴────┬─────┴─────┬──────┘  │
+                        │  ┌──────▼───────────▼───────────▼──────┐  │
+       UDP 239.1.1.1    │  │          DriverBridge (IOCTL)       │  │
+     ◄──────────────────│  └──────────────────┬──────────────────┘  │
+       :17421 Discovery │                     │ DeviceIoControl     │
+                        └─────────────────────┼─────────────────────┘
+                                              │ \\.\TadRvLink
+                        ┌─────────────────────▼─────────────────────┐
+                        │  TAD_RV.sys              (Ring 0 Driver)   │
+                        │  ● ObRegisterCallbacks — process/thread   │
+                        │  ● FltRegisterFilter   — anti-delete      │
+                        │  ● Heartbeat DPC       — liveness guard   │
+                        │  ● DACL + 256-bit auth — anti-tamper      │
+                        └───────────────────────────────────────────┘
 ```
 
-## Repository Layout
+---
+
+## Key Features
+
+### Kernel Driver (`TAD_RV.sys`)
+
+- **Process & thread protection** via `ObRegisterCallbacks` — blocks terminate, suspend, VM-write, context-set
+- **File system minifilter** — prevents deletion and renaming of protected binaries
+- **Heartbeat DPC watchdog** — if the service dies, the driver auto-engages a network killswitch within 6 seconds
+- **Authenticated unload** — 256-bit XOR-obfuscated pre-shared key with constant-time comparison and brute-force lockout
+- **DACL-hardened device object** — only SYSTEM and Administrators can open the control channel
+- **Spectre V1 mitigation** — `_mm_lfence()` barriers on all IOCTL input validation paths
+
+### Bridge Service (`TadBridgeService.exe`)
+
+- **Active Directory provisioning** — auto-reads machine OU, fetches `Policy.json` from NETLOGON share
+- **AD group → role mapping** — resolves logged-on user to Student / Teacher / Admin every 10 s
+- **Dual-stream screen capture** — DXGI Desktop Duplication + Intel QuickSync H.264 (sub: 1 fps 480p / main: 30 fps 720p)
+- **Privacy redaction** — UIAutomation detects password fields and blacks them out in GPU memory pre-encode
+- **UDP multicast discovery** — zero-config `239.1.1.1:17421` for DC-less environments
+- **TCP command listener** — port 17420, binary-framed protocol for teacher commands
+- **DPAPI-encrypted offline cache** — 7-day TTL for AD role data when DC is unreachable
+- **Auto-update** — periodic GitHub Release checks with download + apply + restart
+
+### Teacher Dashboard (`TadTeacher.exe`)
+
+- **50-student real-time grid** — live thumbnails via H.264 sub-stream decoding
+- **Focused remote view** — click a tile for 30 fps 720p full-resolution view
+- **Classroom controls** — lock, freeze, blank screen, push message, collect files
+- **Auto-discovery** — finds students via multicast without configuration
+- **System tray** — minimize to tray, always accessible
+- **Demo mode** — `--demo` flag generates synthetic students (no network needed)
+- **Update notifications** — banner in dashboard when new versions are available
+
+### Admin Console (`TadConsole.exe`)
+
+- **Dashboard** — real-time driver/service status, registry overview, update checker
+- **Deployment wizard** — point-and-click deployment replacing PowerShell scripts
+- **Policy editor** — visual flag toggles, group → role mappings, blocked app list, live JSON preview
+- **Alert viewer** — Windows Event Log integration with filtering and detail pane
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+| Requirement | Version |
+|:--|:--|
+| .NET SDK | 8.0+ |
+| Windows | 10 1903+ / 11 |
+| Visual Studio (optional) | 2022 17.4+ |
+| WDK (kernel only) | 10.0.22621+ |
+
+### Build
+
+```bash
+# Full solution build
+dotnet build TAD-RV.sln -c Release
+
+# Or use the build script (includes publish + demo packaging)
+chmod +x build.sh && ./build.sh
+```
+
+### Run in Demo Mode (no driver, no AD)
+
+```bash
+# Teacher — standalone with synthetic students
+TadTeacher.exe --demo
+
+# Service — emulated driver + AD
+TadBridgeService.exe --emulate
+```
+
+### Deploy to Production
+
+See [Docs/Deployment-Guide.md](Docs/Deployment-Guide.md) for full instructions, or use the Console's **Deploy** tab.
+
+```powershell
+# Quick: PowerShell one-liner
+.\Scripts\Deploy-TadRV.ps1 -DriverPath .\Kernel\TAD_RV.sys `
+  -ServicePath .\Service\bin\Release\net8.0-windows\win-x64\publish
+```
+
+---
+
+## Repository Structure
 
 ```
 TAD-RV/
-├── Kernel/                     Ring 0 driver
-│   ├── TAD_RV.h                Driver header (includes ../Shared/TadShared.h)
-│   ├── TAD_RV.c                Full driver implementation
-│   ├── TAD_RV.inf              Installation INF (minifilter)
-│   ├── TAD_RV.rc               Version resource
-│   ├── SOURCES                 WDK build file
-│   └── makefile                WDK makefile
+├── Kernel/                 Ring 0 WDM + minifilter driver
+│   ├── TAD_RV.c/.h            Core implementation (~900 lines)
+│   ├── TAD_RV.inf             Installation INF (altitude 371100)
+│   ├── TAD_RV.rc              Version resource
+│   └── SOURCES / makefile      WDK build system
 │
-├── Shared/                     Single-source-of-truth for IOCTLs
-│   ├── TadShared.h             C header  — IOCTL codes, structs, enums
-│   └── TadSharedInterop.cs     C# mirror — linked into Service.csproj
+├── Service/                .NET 8 Worker Service (SYSTEM)
+│   ├── Core/                   TadBridgeWorker, HeartbeatWorker, AlertReader, UpdateWorker
+│   ├── Driver/                 DriverBridge, DriverInstaller, EmulatedDriverBridge
+│   ├── Networking/             TadTcpListener, MulticastDiscovery
+│   ├── Capture/                ScreenCaptureEngine (DXGI+QSV), PrivacyRedactor
+│   ├── ActiveDirectory/        AdGroupWatcher, EmulatedAdGroupWatcher
+│   ├── Provisioning/           ProvisioningManager, EmulatedProvisioningManager
+│   ├── Cache/                  OfflineCacheManager (DPAPI)
+│   └── Tray/                   TrayIconManager
 │
-├── Service/                    Ring 3 management service (.NET 8)
-│   ├── TadBridgeService.csproj
-│   ├── Program.cs              DI host / service registration
-│   ├── Driver/
-│   │   └── DriverBridge.cs     P/Invoke wrapper for all 6 IOCTLs
-│   ├── Core/
-│   │   ├── TadBridgeWorker.cs  Primary startup orchestrator
-│   │   ├── HeartbeatWorker.cs  2-second heartbeat loop
-│   │   └── AlertReaderWorker.cs Kernel → service alert reader
-│   ├── Provisioning/
-│   │   └── ProvisioningManager.cs  First-boot AD/OU provisioning
-│   ├── ActiveDirectory/
-│   │   └── AdGroupWatcher.cs   Group → USER_ROLE resolver
-│   └── Cache/
-│       └── OfflineCacheManager.cs  DPAPI-encrypted offline cache
+├── Teacher/                .NET 8 WPF + WebView2 dashboard
+│   ├── Networking/             TcpClientManager, DiscoveryListener, DemoTcpClientManager
+│   └── Web/                    dashboard.html/.css/.js (embedded SPA)
 │
-├── Console/                    GUI management console (.NET 8 / WPF)
-│   ├── TadConsole.csproj
-│   ├── App.xaml                Application entry + elevation check
-│   ├── Resources/
-│   │   └── Styles.xaml         Dark theme, custom controls
-│   ├── Helpers/
-│   │   └── RelayCommand.cs     ICommand / async ICommand for MVVM
-│   ├── Services/
-│   │   ├── DeploymentService.cs    Full deployment pipeline (replaces PS script)
-│   │   ├── TadServiceController.cs Service start/stop/restart via sc.exe
-│   │   ├── RegistryService.cs      HKLM\SOFTWARE\TAD_RV read/write
-│   │   └── EventLogService.cs      Windows Event Log reader
-│   ├── ViewModels/
-│   │   ├── ViewModelBase.cs        INPC base class
-│   │   ├── MainViewModel.cs        Sidebar navigation
-│   │   ├── DashboardViewModel.cs   Live driver/service status
-│   │   ├── DeployViewModel.cs      Deployment wizard
-│   │   ├── PolicyViewModel.cs      Policy editor + JSON preview
-│   │   └── AlertsViewModel.cs      Event log viewer
-│   └── Views/
-│       ├── MainWindow.xaml         Sidebar + content shell
-│       ├── DashboardView.xaml      Status cards, service controls
-│       ├── DeployView.xaml         File pickers, progress bar, log
-│       ├── PolicyView.xaml         Checkbox flags, role mappings, JSON
-│       └── AlertsView.xaml         DataGrid + detail pane
+├── Console/                .NET 8 WPF admin console
+│   ├── Services/               Deployment, ServiceControl, Registry, EventLog
+│   ├── ViewModels/             MVVM: Dashboard, Deploy, Policy, Alerts
+│   └── Views/                  WPF views + dark theme
 │
-├── Scripts/
-│   └── Deploy-TadRV.ps1        Legacy deployment script (CLI)
-│
-└── Readme.md
+├── Bootstrap/              Zero-install GPO bootstrap loader
+├── Shared/                 Cross-project: IOCTL defs, protocol codec, i18n, UpdateManager
+├── Scripts/                PowerShell: Deploy, Install-Driver, Sign, Start-Emulated
+└── Docs/                   Architecture, Build, Deploy, Kernel, Console, Teacher, Signing, i18n
 ```
 
-## Kernel Driver — Capabilities
-
-| Feature | Implementation |
-|---|---|
-| **Process protection** | `ObRegisterCallbacks` strips `PROCESS_TERMINATE`, `PROCESS_VM_WRITE`, `PROCESS_VM_OPERATION`, `PROCESS_CREATE_THREAD`, `PROCESS_SUSPEND_RESUME` |
-| **Thread protection** | Same mechanism for `THREAD_TERMINATE`, `THREAD_SUSPEND_RESUME`, `THREAD_SET_CONTEXT` |
-| **Anti-deletion** | Minifilter blocks `FileDispositionInformation(Ex)` on protected filenames |
-| **Anti-rename** | Minifilter blocks `FileRenameInformation(Ex)` to close rename-then-delete bypass |
-| **Authenticated unload** | 256-bit XOR-obfuscated pre-shared key via `IOCTL_TAD_UNLOCK` |
-| **Rate limiting** | 5 consecutive bad unlock attempts → 30-second lockout |
-| **DACL hardening** | Device object restricted to SYSTEM and Administrators |
-| **Spectre V1 mitigation** | `_mm_lfence()` barriers on all IOCTL input paths |
-| **Caller validation** | Only registered agent PID may send privileged IOCTLs |
-| **Heartbeat watchdog** | Kernel DPC timer detects service death (6-second timeout) |
-| **Policy enforcement** | Receives policy flags from service (USB block, print block, screenshot logging) |
+---
 
 ## IOCTL Interface
 
-All IOCTLs use `METHOD_BUFFERED` on device type `0x8000`, defined in `Shared/TadShared.h`.
+All IOCTLs use `METHOD_BUFFERED` on device type `0x8000`. Defined in [Shared/TadShared.h](Shared/TadShared.h) (C) and [Shared/TadSharedInterop.cs](Shared/TadSharedInterop.cs) (C#).
 
-| Code | Name | Direction | Payload | Purpose |
-|---|---|---|---|---|
-| 0x800 | `IOCTL_TAD_PROTECT_PID` | Service → Driver | `TAD_PROTECT_PID_INPUT` | Register service PID for protection |
-| 0x801 | `IOCTL_TAD_UNLOCK` | Service → Driver | `TAD_UNLOCK_INPUT` (32 bytes) | Present auth key to permit unload |
-| 0x802 | `IOCTL_TAD_HEARTBEAT` | Service → Driver | — / `TAD_HEARTBEAT_OUTPUT` | Heartbeat + status polling |
-| 0x803 | `IOCTL_TAD_SET_USER_ROLE` | Service → Driver | `TAD_SET_USER_ROLE_INPUT` | Push current user role |
-| 0x804 | `IOCTL_TAD_SET_POLICY` | Service → Driver | `TAD_POLICY_BUFFER` | Push policy flags |
-| 0x805 | `IOCTL_TAD_READ_ALERT` | Driver → Service | `TAD_ALERT_OUTPUT` | Read driver alerts |
+| Code | Name | Direction | Purpose |
+|:--:|:--|:--:|:--|
+| `0x800` | `IOCTL_TAD_PROTECT_PID` | Svc → Drv | Register/unregister PID for kernel protection |
+| `0x801` | `IOCTL_TAD_UNLOCK` | Svc → Drv | Present 256-bit auth key to permit unload |
+| `0x802` | `IOCTL_TAD_HEARTBEAT` | Svc ↔ Drv | Heartbeat ping + driver status response |
+| `0x803` | `IOCTL_TAD_SET_USER_ROLE` | Svc → Drv | Push current user role (Student / Teacher / Admin) |
+| `0x804` | `IOCTL_TAD_SET_POLICY` | Svc → Drv | Push policy flags + configuration blob |
+| `0x805` | `IOCTL_TAD_READ_ALERT` | Drv → Svc | Long-poll for security alerts |
 
-## Service — TadBridgeService
+---
 
-.NET 8 Worker Service running as `LocalSystem`. Manages the full lifecycle:
+## TCP Protocol
 
-1. **Provisioning** — First-boot: Reads machine OU from AD, fetches `Policy.json` from NETLOGON share, stores config in `HKLM\SOFTWARE\TAD_RV`.
-2. **AD Group Watching** — Polls the logged-on user's AD groups every 10 seconds, resolves `TAD_USER_ROLE` from policy mappings.
-3. **Heartbeat** — Sends `IOCTL_TAD_HEARTBEAT` every 2 seconds. Kernel DPC fires if no heartbeat within 6 seconds.
-4. **Alert Reading** — Long-polls `IOCTL_TAD_READ_ALERT`, writes critical alerts to Windows Event Log (source `TadBridgeService`, event ID 9001).
-5. **Offline Cache** — DPAPI-encrypted fallback for AD role information when domain controller is unreachable. 7-day TTL.
+Binary framing: `[4-byte LE length][1-byte command][payload]`
 
-## Building
+Port **17420** — full command list in [Shared/TadProtocol.cs](Shared/TadProtocol.cs).
 
-### Kernel Driver
+| Range | Direction | Commands |
+|:--|:--|:--|
+| `0x01` | Teacher → Student | Ping |
+| `0x10–0x15` | Teacher → Student | Lock, Unlock, Freeze, Unfreeze, Blank, Unblank |
+| `0x20–0x23` | Teacher → Student | RvStart, RvStop, RvFocusStart, RvFocusStop |
+| `0x30` | Teacher → Student | CollectFiles |
+| `0x40–0x43` | Teacher → Student | PushMessage, Chat, LaunchApp, LaunchUrl |
+| `0x81–0x85` | Student → Teacher | Pong, Status, HandRaise, HandLower, ChatReply |
+| `0xA0–0xA3` | Student → Teacher | VideoFrame, VideoKeyFrame, MainFrame, MainKeyFrame |
+| `0xB0–0xB1` | Student → Teacher | FileChunk, FileComplete |
 
-Requires the **Windows Driver Kit (WDK)** matching your target OS version.
+---
 
-```batch
-cd Kernel
-build -ceZ
-```
+## Policy Configuration
 
-Or open in Visual Studio with the WDK extension — `SOURCES` will be detected automatically.
-
-### Service
-
-Requires **.NET 8 SDK** (Windows).
-
-```bash
-cd Service
-dotnet build -c Release
-dotnet publish -c Release -r win-x64 --self-contained
-```
-
-### Management Console (GUI)
-
-Requires **.NET 8 SDK** (Windows) with WPF workload.
-
-```bash
-cd Console
-dotnet build -c Release
-dotnet publish -c Release -r win-x64 --self-contained
-```
-
-The console is a standalone WPF application with a dark-themed UI.  It provides:
-
-| View | Description |
-|---|---|
-| **Dashboard** | Real-time status of both the kernel driver and bridge service, registry configuration overview, start/stop/restart controls with auto-refresh every 5 seconds |
-| **Deployment** | Full wizard replacing `Deploy-TadRV.ps1` — file pickers, progress bar, step-by-step results, and a live deployment log |
-| **Policy Editor** | Visual policy flag toggles, AD group→role mappings, blocked app list, heartbeat settings, with a live JSON preview pane. Import/export JSON, save to registry |
-| **Alerts & Logs** | DataGrid view of TAD.RV events from the Windows Event Log with a detail pane |
-
-The console auto-requests elevation (UAC) on startup since it needs admin access to manage services and registry.
-
-## Deployment
-
-### GUI (Recommended)
-
-Run `TadConsole.exe` and use the **Deployment** tab.  Fill in the paths and click **Deploy Now**.
-
-### PowerShell (Legacy)
-
-The original script is still available:
-
-```powershell
-.\Scripts\Deploy-TadRV.ps1 -DriverPath .\Kernel\TAD.RV.sys -ServicePath .\Service\bin\Release\net8.0-windows\win-x64\publish
-```
-
-### Manual Installation
-
-```batch
-:: 1. Install the kernel driver
-pnputil /add-driver Kernel\TAD_RV.inf /install
-:: -or-
-sc create TAD.RV type=kernel binPath=%SystemRoot%\system32\drivers\TAD.RV.sys start=auto
-sc start TAD.RV
-
-:: 2. Install the service
-sc create TadBridgeService binPath="C:\Program Files\TAD_RV\TadBridgeService.exe" start=auto obj=LocalSystem
-sc start TadBridgeService
-```
-
-> **Note:** `ObRegisterCallbacks` requires the driver to be **signed** (EV Authenticode or WHQL). For development, enable test-signing: `bcdedit /set testsigning on`.
-
-## AD Policy Configuration
-
-Create `Policy.json` on the NETLOGON share:
-
-```
-\\dc01.school.local\NETLOGON\TAD\Policy.json
-```
+Place `Policy.json` on the NETLOGON share (`\\dc01\NETLOGON\TAD\Policy.json`):
 
 ```json
 {
+  "Version": 1,
+  "HeartbeatIntervalMs": 2000,
+  "HeartbeatTimeoutMs": 6000,
+  "AllowedUnloadRoles": 4,
   "GroupRoleMappings": {
-    "TAD-Admins":   3,
-    "TAD-Teachers": 2,
-    "TAD-Students": 1,
-    "Domain Users": 0
+    "Domain Students": 0,
+    "Domain Teachers": 1,
+    "Domain Admins":   2,
+    "TAD-Administrators": 2
   },
-  "PolicyFlags": 31,
   "BlockedApplications": [
-    "taskmgr.exe",
-    "regedit.exe",
-    "cmd.exe",
-    "powershell.exe"
+    "taskmgr.exe", "cmd.exe", "powershell.exe", "regedit.exe"
   ]
 }
 ```
 
-**Role values:** 0 = Unknown, 1 = Student, 2 = Teacher, 3 = Admin
+**Policy flags** (bitmask):
 
-**PolicyFlags bitmask:**
 | Bit | Value | Flag |
-|-----|-------|------|
-| 0 | 0x01 | `BLOCK_USB` |
-| 1 | 0x02 | `BLOCK_PRINTING` |
-| 2 | 0x04 | `LOG_SCREENSHOTS` |
-| 3 | 0x08 | `BLOCK_TASK_MANAGER` |
-| 4 | 0x10 | `ENFORCE_WEB_FILTER` |
+|:--:|:--:|:--|
+| 0 | `0x01` | `BLOCK_USB` |
+| 1 | `0x02` | `BLOCK_PRINTING` |
+| 2 | `0x04` | `LOG_SCREENSHOTS` |
+| 3 | `0x08` | `BLOCK_TASK_MANAGER` |
+| 4 | `0x10` | `ENFORCE_WEB_FILTER` |
 
-## Self-Signed Development Setup
+---
 
-For local development and testing (single machine or internal lab):
+## Signing & Security
 
-```batch
-REM 1. Generate self-signed certificate
-makecert -r -pe -a sha256 -ss my -n "CN=TAD-RV-Dev" -sy 24 -len 2048 -m 120 TAD-RV-Dev.cer
+| Environment | Method | Notes |
+|:--|:--|:--|
+| **Development** | Self-signed + `bcdedit /set testsigning on` | Free, shows desktop watermark |
+| **Production** | EV certificate + WHQL attestation | ~€40–150/yr, no watermark, Windows-trusted |
 
-REM 2. Sign the driver
-signtool sign /f TAD-RV-Dev.pfx /fd sha256 /v Kernel\TAD.RV.sys
+The 256-bit driver auth key is XOR-obfuscated (mask `0xA7`) in [Kernel/TAD_RV.h](Kernel/TAD_RV.h) and [Shared/TadSharedInterop.cs](Shared/TadSharedInterop.cs). See [Docs/Signing-Handbook.md](Docs/Signing-Handbook.md) for rotation procedure.
 
-REM 3. Enable test-signing mode (requires reboot)
-bcdedit /set testsigning on
-shutdown /r /t 0
+---
 
-REM 4. After reboot, install certificate to trusted root
-certutil -addstore Root TAD-RV-Dev.cer
+## Software Updates
 
-REM 5. Deploy as normal (driver will be accepted now)
-.\Scripts\Deploy-TadRV.ps1 -DriverPath .\Kernel\TAD.RV.sys -ServicePath .\Service\bin\Release\net8.0-windows\win-x64\publish
+All components include a built-in update system based on **GitHub Releases**:
 
-REM To disable test-signing later:
-REM bcdedit /set testsigning off
-```
+| Component | Behavior |
+|:--|:--|
+| **Service** | `UpdateWorker` checks every 6 hours, auto-downloads and applies, restarts via service recovery |
+| **Teacher** | Checks on startup, shows banner in dashboard with release link |
+| **Console** | Checks on startup, shows status in Dashboard view |
+| **Bootstrap** | Compares cached version on each GPO run, overwrites if newer |
 
-**This is free and legal** for development/lab environments. The "Test Mode" watermark will appear on boot (indicating non-production state).
+Configure the repo via registry (`HKLM\SOFTWARE\TAD_RV\UpdateRepo`) or environment variable (`TAD_UPDATE_REPO`).
+Default: `tad-europe/TAD-RV`.
 
-## Signing for Production
+---
 
-1. Obtain an **EV code-signing certificate** from a CA (Sectigo, DigiCert, GlobalSign, etc.)
-   - Budget: ~$40-150/year (Sectigo offers educational discounts)
-   - Check with your school IT for Microsoft Education Partner benefits (often free)
-2. Submit the driver to the **Windows Hardware Dev Center** for WHQL attestation signing
-3. The resulting `.cat` file is referenced in `TAD_RV.inf` → `CatalogFile = TAD.RV.cat`
+## Documentation
 
-## Key Rotation
+| Guide | Description |
+|:--|:--|
+| [Architecture](Docs/Architecture.md) | System design, data flow, threat model |
+| [Build Guide](Docs/Build-Guide.md) | Step-by-step build instructions for all components |
+| [Deployment Guide](Docs/Deployment-Guide.md) | Production deployment (GPO, manual, Console wizard) |
+| [Kernel Install Guide](Docs/Kernel-Install-Guide.md) | Driver build, signing, installation, troubleshooting |
+| [Console Guide](Docs/Console-Guide.md) | Admin console features and usage |
+| [Teacher Guide](Docs/Teacher-Guide.md) | Teacher dashboard walkthrough |
+| [Emulation Guide](Docs/Emulation-Guide.md) | Demo / emulation mode setup |
+| [Signing Handbook](Docs/Signing-Handbook.md) | Certificate workflow, key rotation |
+| [Internationalization](Docs/Internationalization.md) | i18n system (8 languages) |
 
-The 256-bit authentication key is embedded XOR-obfuscated in both `Kernel/TAD_RV.h` and `Shared/TadSharedInterop.cs`. To rotate:
+---
 
-1. Generate 32 random bytes (the new raw key)
-2. XOR each byte with `TAD_KEY_XOR_MASK` (currently `0xA7`)
-3. Replace `TadObfuscatedKey[]` in `Kernel/TAD_RV.h`
-4. Replace `RawAuthKey` in `Shared/TadSharedInterop.cs`
-5. Rebuild and re-sign both the driver and service
+## Release Log
+
+### v26200.172 — 2026-02-18
+
+**Kernel Driver**
+- Fixed lockout timer calculation (double-negative caused lockout to expire immediately)
+- Added thread protection for UI overlay PID in `TadObThreadPreCallback`
+- Migrated from deprecated `ExAllocatePoolWithTag` → `ExAllocatePool2`
+- Fixed INF catalog name mismatch (`TAD.RV.cat` → `TAD_RV.cat`)
+- Synchronized version to `26200.172.0.0` across INF, RC, and `TadShared.h`
+
+**Bridge Service**
+- Fixed `RamUsedMb` reporting available memory instead of working set
+- Fixed `StopMainStream` race condition (encoder disposed before task completed)
+- Added `UnprotectPid` to clean up stale PID protection after lock overlay exit
+- Fixed `ProcessFrames` unnecessary allocation (`ToArray()` → `GetBuffer()`)
+- Fixed emulated driver alert timestamps (Unix → FILETIME format)
+- Added `UpdateWorker` — automatic update checks every 6 hours via GitHub Releases
+
+**Teacher App**
+- Added WebView2 error handling with retry and fallback
+- Added system tray icon with minimize / restore
+- Added backpressure throttle for demo video frames
+- Added changelog modal accessible via About dialog
+- Added update notification banner in dashboard
+- Fixed WebMessage case sensitivity (`Action` → `action`)
+- Fixed double-encoding of JSON status payloads
+
+**Admin Console**
+- Added update checker in Dashboard view
+
+**Bootstrap**
+- Synchronized version to `26200.172`
+
+**Shared**
+- New `UpdateManager.cs` — GitHub Release-based update system for all components
+- New `TadProtocol.cs` — binary framing codec with full command set
+
+**Documentation**
+- New: Kernel Install Guide (build, signing, 5 installation methods, troubleshooting)
+- Updated README with modern layout, full architecture diagram, release log
+
+**Infrastructure**
+- Cleaned stale `Demo/` folder (~328 MB), `release-addc/` artifacts
+- Updated `.gitignore` for all publish output directories
+
+---
+
+### v26200.171 — 2026-02-17
+
+**Initial Release**
+- Kernel driver: ObCallbacks, minifilter, heartbeat DPC, authenticated unload
+- Bridge service: AD provisioning, heartbeat, alert reader, DXGI+QSV capture, privacy redaction
+- Teacher dashboard: WebView2 SPA, 50-student grid, remote view, lock / freeze / blank controls
+- Admin console: deployment wizard, policy editor, alert viewer
+- Bootstrap: zero-install GPO loader
+- UDP multicast auto-discovery (239.1.1.1:17421)
+- Full emulation mode (`--emulate` / `--demo`) for all components
+- 8-language internationalization (EN, DE, FR, ES, IT, NL, PL)
+
+---
 
 ## License
 
-(C) 2026 TAD Europe — [https://tad-it.eu](https://tad-it.eu)
+**(C) 2026 TAD Europe** — [tad-it.eu](https://tad-it.eu)
 
-Proprietary — all rights reserved.
+Proprietary. All rights reserved. Unauthorized distribution prohibited.

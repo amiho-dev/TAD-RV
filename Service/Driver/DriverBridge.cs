@@ -82,6 +82,17 @@ public class DriverBridge : IDisposable
     }
 
     /// <summary>
+    /// Remove kernel-level process protection for a PID.
+    /// Called when the lock overlay is killed to avoid stale PID protection.
+    /// </summary>
+    public virtual void UnprotectPid(uint pid)
+    {
+        var input = new TadProtectPidInput { TargetPid = pid, Flags = 1 }; // Flags=1 → remove
+        TrySendIoctl(TadIoctl.IOCTL_TAD_PROTECT_PID, input);
+        _log.LogDebug("Unprotected PID {Pid}", pid);
+    }
+
+    /// <summary>
     /// Present the 256-bit auth key to unlock the driver for unloading.
     /// </summary>
     public virtual bool Unlock()

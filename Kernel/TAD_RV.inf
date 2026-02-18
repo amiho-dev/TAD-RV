@@ -18,8 +18,8 @@ Signature   = "$Windows NT$"
 Class       = "ActivityMonitor"
 ClassGuid   = {b86dff51-a31e-4bac-b3cf-e8cfe75c9fc2}
 Provider    = %ManufacturerName%
-CatalogFile = TAD.RV.cat
-DriverVer   = 02/10/2026,1.0.0.1
+CatalogFile = TAD_RV.cat
+DriverVer   = 02/18/2026,26200.172.0.0
 PnpLockdown = 1
 
 [DestinationDirs]

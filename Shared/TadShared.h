@@ -40,10 +40,10 @@ Environment:
  * Version
  * ═══════════════════════════════════════════════════════════════════════ */
 
-#define TAD_VERSION_MAJOR       1
-#define TAD_VERSION_MINOR       0
+#define TAD_VERSION_MAJOR       26200
+#define TAD_VERSION_MINOR       172
 #define TAD_VERSION_BUILD       0
-#define TAD_VERSION_REVISION    1
+#define TAD_VERSION_REVISION    0
 
 /* ═══════════════════════════════════════════════════════════════════════
  * Device & IOCTL Definitions

@@ -22,7 +22,7 @@ namespace TadBridge.Provisioning;
 /// <summary>
 /// Manages first-boot AD provisioning and policy retrieval.
 /// </summary>
-public sealed class ProvisioningManager
+public class ProvisioningManager
 {
     private const string RegistryKeyPath     = @"SOFTWARE\TAD_RV";
     private const string ProvisionedValue    = "Provisioned";
@@ -44,7 +44,7 @@ public sealed class ProvisioningManager
     /// <summary>
     /// Ensures the machine is provisioned.  Returns the active policy.
     /// </summary>
-    public async Task<TadPolicyBuffer?> EnsureProvisionedAsync(CancellationToken ct)
+    public virtual async Task<TadPolicyBuffer?> EnsureProvisionedAsync(CancellationToken ct)
     {
         bool provisioned = IsProvisioned();
 

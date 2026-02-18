@@ -55,36 +55,7 @@ public sealed class TadTcpListener : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         _listener = new TcpListener(IPAddress.Any, ListenPort);
-
-        // Retry binding — the port may be held by a previous instance
-        const int maxRetries = 5;
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                _listener.Start();
-                break; // success
-            }
-            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
-            {
-                if (attempt == maxRetries)
-                {
-                    _log.LogWarning(
-                        "Port {Port} is still in use after {Attempts} attempts — " +
-                        "TCP listener disabled (another instance may be running)",
-                        ListenPort, maxRetries);
-                    return; // exit gracefully instead of crashing the host
-                }
-
-                _log.LogWarning(
-                    "Port {Port} in use — retry {Attempt}/{Max} in 3s",
-                    ListenPort, attempt, maxRetries);
-
-                try { await Task.Delay(3000, ct); }
-                catch (OperationCanceledException) { return; }
-            }
-        }
-
+        _listener.Start();
         _log.LogInformation("TCP listener started on port {Port}", ListenPort);
 
         // Periodic status beacon
@@ -151,12 +122,13 @@ public sealed class TadTcpListener : BackgroundService
 
     private void ProcessFrames(MemoryStream accumulator, CancellationToken ct)
     {
-        var data = accumulator.ToArray();
+        var data = accumulator.GetBuffer();
+        int length = (int)accumulator.Length;
         int offset = 0;
 
-        while (offset < data.Length)
+        while (offset < length)
         {
-            if (!TadFrameCodec.TryDecode(data.AsSpan(offset), out var cmd, out var payload, out int consumed))
+            if (!TadFrameCodec.TryDecode(data.AsSpan(offset, length - offset), out var cmd, out var payload, out int consumed))
                 break;
 
             offset += consumed;
@@ -290,14 +262,20 @@ public sealed class TadTcpListener : BackgroundService
             _log.LogWarning(ex, "Failed to release kernel hard-lock");
         }
 
-        // 2. Kill lock overlay
+        // 2. Kill lock overlay and release PID protection
         try
         {
             if (_lockOverlayProcess is { HasExited: false })
             {
+                uint overlayPid = (uint)_lockOverlayProcess.Id;
                 _lockOverlayProcess.Kill();
+                _lockOverlayProcess.WaitForExit(3000);
                 _lockOverlayProcess.Dispose();
                 _lockOverlayProcess = null;
+
+                // Unprotect the stale PID so the driver doesn't block reuse
+                try { _driver.UnprotectPid(overlayPid); }
+                catch { /* Best effort — PID already gone */ }
             }
         }
         catch (Exception ex)
@@ -424,7 +402,7 @@ public sealed class TadTcpListener : BackgroundService
                     IsStreaming = _isStreaming,
                     ActiveWindow = GetForegroundWindowTitle(),
                     CpuUsage = 0,   // Populated by perf counter in production
-                    RamUsedMb = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024 * 1024),
+                    RamUsedMb = Environment.WorkingSet / (1024 * 1024),
                     Timestamp = DateTime.UtcNow
                 };
 

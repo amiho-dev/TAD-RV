@@ -23,17 +23,26 @@ public enum TadCommand : byte
     Ping            = 0x01,
     Lock            = 0x10,
     Unlock          = 0x11,
+    Freeze          = 0x12,     // Freeze screen with message overlay
+    Unfreeze        = 0x13,     // Remove freeze overlay
+    BlankScreen     = 0x14,     // Black screen with "Eyes on Teacher"
+    UnblankScreen   = 0x15,     // Restore screen
     RvStart         = 0x20,     // Start remote view streaming (sub-stream)
     RvStop          = 0x21,     // Stop remote view streaming
     RvFocusStart    = 0x22,     // Start main-stream (30fps 720p) for focused view
     RvFocusStop     = 0x23,     // Stop main-stream (keep sub-stream running)
     CollectFiles    = 0x30,     // Request file collection from student
     PushMessage     = 0x40,     // Display a message on student screen
-    FreezeTimer     = 0x50,     // Freeze keyboard+mouse+lock screen for N seconds
+    ChatMessage     = 0x41,     // Teacher → Student chat message
+    LaunchApp       = 0x42,     // Launch application on student
+    LaunchUrl       = 0x43,     // Open URL on student browser
 
     // Student → Teacher
     Pong            = 0x81,
     Status          = 0x82,     // JSON status payload
+    HandRaise       = 0x83,     // Student requests help
+    HandLower       = 0x84,     // Student cancels help request
+    ChatReply       = 0x85,     // Student → Teacher chat reply
     VideoFrame      = 0xA0,     // H.264 sub-stream frame (1fps 480p)
     VideoKeyFrame   = 0xA1,     // H.264 sub-stream IDR
     MainFrame       = 0xA2,     // H.264 main-stream frame (30fps 720p)
@@ -55,22 +64,15 @@ public sealed class StudentStatus
     public bool DriverLoaded { get; set; }
     public bool IsLocked { get; set; }
     public bool IsStreaming { get; set; }
+    public bool IsFrozen { get; set; }
+    public int FreezeSecondsRemaining { get; set; }
+    public bool IsHandRaised { get; set; }
+    public bool IsBlankScreen { get; set; }
     public string ActiveWindow { get; set; } = "";
     public double CpuUsage { get; set; }
     public long RamUsedMb { get; set; }
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-
-    /// <summary>AD role resolved by AdGroupWatcher: Student, Teacher, Admin, Unknown.</summary>
     public string Role { get; set; } = "Student";
-
-    /// <summary>AD group memberships (display names).</summary>
-    public List<string> AdGroups { get; set; } = new();
-
-    /// <summary>True if a FreezeTimer is currently active on this endpoint.</summary>
-    public bool IsFrozen { get; set; }
-
-    /// <summary>Seconds remaining on the active freeze timer (0 if not frozen).</summary>
-    public int FreezeSecondsRemaining { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -166,23 +168,6 @@ public static class TadFrameCodec
 // ═══════════════════════════════════════════════════════════════════════════
 // Privacy Redaction Rectangle
 // ═══════════════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Freeze Timer Request (Teacher → Student)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// <summary>
-/// Payload for TadCommand.FreezeTimer.
-/// Locks keyboard + mouse and shows a fullscreen lock overlay with countdown.
-/// The student endpoint auto-unlocks when the timer reaches zero.
-/// Set DurationSeconds = 0 to cancel an active freeze.
-/// </summary>
-public sealed class FreezeTimerRequest
-{
-    public int DurationSeconds { get; set; } = 300; // 5 minutes default
-    public string Message { get; set; } = "Your screen has been frozen by the teacher.";
-    public bool ShowCountdown { get; set; } = true;
-}
 
 /// <summary>
 /// Coordinates of a password field to black out before streaming.

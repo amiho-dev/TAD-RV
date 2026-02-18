@@ -27,6 +27,7 @@ public sealed class EmulatedDriverBridge : DriverBridge
     private TadPolicyFlags _policyFlags;
     private bool _hardLocked;
     private bool _stealthActive;
+    private int _alertCounter;
 
     public EmulatedDriverBridge(ILogger<DriverBridge> logger) : base(logger)
     {
@@ -51,6 +52,12 @@ public sealed class EmulatedDriverBridge : DriverBridge
     {
         _protectedPid = pid;
         _log.LogInformation("[EMULATED] Registered PID {Pid} for protection", pid);
+    }
+
+    public override void UnprotectPid(uint pid)
+    {
+        if (_protectedPid == pid) _protectedPid = 0;
+        _log.LogDebug("[EMULATED] Unprotected PID {Pid}", pid);
     }
 
     public override bool Unlock()
@@ -92,9 +99,24 @@ public sealed class EmulatedDriverBridge : DriverBridge
 
     public override TadAlertOutput? ReadAlert()
     {
-        // Simulate a long-poll: block for 30 seconds then return null
-        // (no alerts in emulated mode unless something triggers one)
-        Thread.Sleep(30000);
+        // Simulate a long-poll: block for 15-45 seconds, then occasionally generate a demo alert
+        Thread.Sleep(15000 + Random.Shared.Next(30000));
+        _alertCounter++;
+
+        // Generate a demo alert every 3rd cycle
+        if (_alertCounter % 3 == 0)
+        {
+            _log.LogInformation("[EMULATED] Generating demo alert #{Counter}", _alertCounter);
+            return new TadAlertOutput
+            {
+                AlertType = (uint)TadAlertType.ServiceTamper,
+                // Use Windows FILETIME format to match KeQuerySystemTime in the real driver
+                Timestamp = DateTime.UtcNow.ToFileTimeUtc(),
+                SourcePid = (uint)Random.Shared.Next(1000, 65000),
+                Reserved = 0
+            };
+        }
+
         return null;
     }
 

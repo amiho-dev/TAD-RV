@@ -7,43 +7,16 @@
     <!-- INLINE_CSS -->
 </head>
 <body>
-    <!-- ── Top Navigation ─────────────────────────────────────────── -->
-    <div class="top-nav">
-        <div class="top-nav-left">
-            <span class="top-nav-brand">&#xE8D8;</span>
-            <span class="top-nav-title">TAD.RV Teacher</span>
-        </div>
-        <div class="top-nav-right">
-            <div class="room-selector" id="roomSelector">
-                <button class="room-selector-btn" id="roomSelectorBtn" onclick="toggleRoomDropdown()">
-                    <span class="room-selector-icon">&#xE80F;</span>
-                    <span class="room-selector-text" id="currentRoomLabel">No Room Selected</span>
-                    <span class="room-selector-arrow">&#xE70D;</span>
-                </button>
-                <div class="room-dropdown" id="roomDropdown">
-                    <div class="room-dropdown-header">Select Classroom</div>
-                    <div class="room-dropdown-list" id="roomDropdownList">
-                        <div class="room-dropdown-empty">No classrooms configured.<br>Create rooms in the Console app.</div>
-                    </div>
-                    <button class="room-dropdown-refresh" onclick="loadRoomsFromHost()">&#xE72C; Refresh</button>
-                </div>
-            </div>
-        </div>
+    <!-- Announcement Banner (hidden by default) -->
+    <div class="announcement-bar" id="announcementBar" style="display:none">
+        <span class="announcement-icon">&#xE7AD;</span>
+        <span id="announcementText">All screens frozen — Eyes on the teacher!</span>
+        <button class="announcement-dismiss" onclick="dismissAnnouncement()">&#xE711;</button>
     </div>
 
-    <!-- ═══ Dashboard ═══════════════════════════════════════════ -->
-    <div class="dashboard-content">
-        <!-- Header Stats Bar -->
-        <div class="stats-bar">
-            <!-- Room Switcher -->
-            <div class="room-switcher">
-                <button class="room-sw-btn" onclick="switchRoomPrev()" title="Previous Room">&#xE76B;</button>
-                <div class="room-sw-label" id="roomSwLabel" onclick="toggleRoomDropdown()">No Room</div>
-                <button class="room-sw-btn" onclick="switchRoomNext()" title="Next Room">&#xE76C;</button>
-            </div>
-
-            <div class="stats-sep"></div>
-
+    <!-- Header Stats Bar -->
+    <div class="stats-bar">
+        <div class="stats-left">
             <div class="stat">
                 <span class="stat-value" id="statOnline">0</span>
                 <span class="stat-label">Online</span>
@@ -53,98 +26,38 @@
                 <span class="stat-label">Locked</span>
             </div>
             <div class="stat">
+                <span class="stat-value stat-frozen" id="statFrozen">0</span>
+                <span class="stat-label">Frozen</span>
+            </div>
+            <div class="stat">
                 <span class="stat-value stat-streaming" id="statStreaming">0</span>
                 <span class="stat-label">Streaming</span>
             </div>
             <div class="stat">
-                <span class="stat-value stat-frozen" id="statFrozen">0</span>
-                <span class="stat-label">Frozen</span>
+                <span class="stat-value stat-hand" id="statHandRaised">0</span>
+                <span class="stat-label">Hand Raised</span>
             </div>
             <div class="stat">
                 <span class="stat-value stat-offline" id="statOffline">0</span>
                 <span class="stat-label">Offline</span>
             </div>
-            <div class="stats-spacer"></div>
-
-            <!-- Show Offline Toggle -->
-            <label class="stats-toggle" title="Show or hide offline computers in the grid">
-                <input type="checkbox" id="toggleShowOffline" onchange="onToggleShowOffline()" checked />
-                <span class="stats-toggle-slider"></span>
-                <span class="stats-toggle-text">Show Offline</span>
-            </label>
-
-            <button class="stats-action-btn freeze" onclick="openFreezeModal()" title="Custom Action — Freeze Timer">
-                &#xE768; Freeze Timer
-            </button>
         </div>
-
-        <!-- Student Grid -->
-        <div class="student-grid" id="studentGrid">
-            <div class="empty-state" id="emptyState">
-                <div class="empty-icon">&#xE7EF;</div>
-                <h2>No Students Connected</h2>
-                <p>Waiting for student endpoints to come online...</p>
+        <div class="stats-right">
+            <div class="search-box">
+                <span class="search-icon">&#xE721;</span>
+                <input type="text" id="searchInput" placeholder="Search students..."
+                       oninput="filterStudents(this.value)" />
             </div>
         </div>
     </div>
 
-    <!-- ═══ Custom Action: Freeze Timer Modal ═══════════════════════ -->
-    <div class="modal-overlay" id="freezeModal" style="display:none">
-        <div class="modal-content freeze-modal">
-            <div class="modal-header">
-                <span>&#xE768; Custom Action — Freeze Timer</span>
-                <button class="modal-btn" onclick="closeFreezeModal()">&#xE711;</button>
-            </div>
-            <div class="freeze-body">
-                <div class="freeze-desc">
-                    Lock keyboard &amp; mouse and display a fullscreen overlay with countdown.
-                    Endpoints automatically unlock when the timer expires.
-                </div>
-
-                <div class="freeze-field">
-                    <label class="freeze-label">Duration</label>
-                    <div class="freeze-presets" id="freezePresets">
-                        <button class="freeze-chip" data-secs="60" onclick="setFreezeDuration(60)">1 min</button>
-                        <button class="freeze-chip" data-secs="120" onclick="setFreezeDuration(120)">2 min</button>
-                        <button class="freeze-chip active" data-secs="300" onclick="setFreezeDuration(300)">5 min</button>
-                        <button class="freeze-chip" data-secs="600" onclick="setFreezeDuration(600)">10 min</button>
-                        <button class="freeze-chip" data-secs="900" onclick="setFreezeDuration(900)">15 min</button>
-                        <button class="freeze-chip" data-secs="1800" onclick="setFreezeDuration(1800)">30 min</button>
-                    </div>
-                    <div class="freeze-custom-row">
-                        <input type="number" class="freeze-input" id="freezeSeconds" value="300" min="10" max="7200" />
-                        <span class="freeze-unit">seconds</span>
-                    </div>
-                </div>
-
-                <div class="freeze-field">
-                    <label class="freeze-label">Message (shown on student screen)</label>
-                    <input type="text" class="freeze-input full" id="freezeMessage"
-                           value="Your screen has been frozen by the teacher."
-                           placeholder="Custom message..." />
-                </div>
-
-                <div class="freeze-field">
-                    <label class="freeze-label">Target</label>
-                    <div class="freeze-target-row">
-                        <label class="freeze-radio">
-                            <input type="radio" name="freezeTarget" value="all" checked /> All Students
-                        </label>
-                        <label class="freeze-radio">
-                            <input type="radio" name="freezeTarget" value="selected" /> Selected Only
-                        </label>
-                    </div>
-                    <div class="freeze-selected-list" id="freezeSelectedList" style="display:none">
-                        <!-- Populated by JS when "Selected Only" is chosen -->
-                    </div>
-                </div>
-
-                <div class="freeze-actions">
-                    <button class="freeze-btn cancel" onclick="closeFreezeModal()">Cancel</button>
-                    <button class="freeze-btn danger" onclick="cancelActiveFreeze()">&#xE711; Cancel Active Freeze</button>
-                    <button class="freeze-btn primary" onclick="executeFreeze()">&#xE768; Start Freeze</button>
-                </div>
-            </div>
+    <!-- Student Grid -->
+    <div class="student-grid" id="studentGrid">
+        <div class="empty-state" id="emptyState">
+            <div class="empty-icon">&#xE7EF;</div>
+            <h2>No Students Connected</h2>
+            <p>Waiting for student endpoints to come online...</p>
+            <p class="empty-hint" id="emptyHint"></p>
         </div>
     </div>
 
@@ -157,6 +70,9 @@
                     <button class="modal-btn" onclick="toggleRvCensored()" title="Toggle Privacy Mode">
                         &#xE890;
                     </button>
+                    <button class="modal-btn" onclick="freezeFromRv()" title="Freeze This Student">
+                        &#xE7AD;
+                    </button>
                     <button class="modal-btn danger" onclick="lockFromRv()" title="Lock This Student">
                         &#xE72E;
                     </button>
@@ -165,6 +81,127 @@
             </div>
             <div class="modal-body">
                 <canvas id="rvCanvas" width="1920" height="1080"></canvas>
+            </div>
+            <div class="modal-footer">
+                <span id="rvStudentInfo"></span>
+                <span id="rvStreamInfo">Sub-stream 480p</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Broadcast Dialog -->
+    <div class="modal-overlay" id="messageModal" style="display:none">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <span>&#xE8BD; Broadcast Message</span>
+                <button class="modal-btn" onclick="closeMessageDialog()">&#xE711;</button>
+            </div>
+            <div class="modal-body-form">
+                <textarea id="messageText" placeholder="Type a message to send to all students..."
+                          rows="4" maxlength="500"></textarea>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="sendBroadcastMessage()">
+                        &#xE724; Send to All
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeMessageDialog()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal-overlay" id="aboutModal" style="display:none" onclick="closeAbout(event)">
+        <div class="modal-content modal-about">
+            <div class="about-body">
+                <div class="about-logo">&#xE71E;</div>
+                <h1 class="about-title">TAD.RV</h1>
+                <p class="about-subtitle">Teacher Controller</p>
+                <p class="about-version" id="aboutVersion">v26200.172</p>
+                <p class="about-branding">The Greater Brother of the mighty te.comp NET.FX</p>
+                <div class="about-divider"></div>
+                <p class="about-desc">Next-generation classroom management.<br/>
+                   Real-time monitoring, screen capture, remote view,<br/>
+                   and endpoint control for up to 50 students.</p>
+                <div class="about-divider"></div>
+                <p class="about-copyright">(C) 2026 TAD Europe — https://tad-it.eu</p>
+                <div class="about-buttons">
+                    <button class="btn btn-primary" onclick="showChangelog()">What's New</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('aboutModal').style.display='none'">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Changelog Modal -->
+    <div class="modal-overlay" id="changelogModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+        <div class="modal-content modal-changelog">
+            <div class="modal-header">
+                <span>&#xE7C3; Update Log — TAD.RV</span>
+                <button class="modal-btn" onclick="document.getElementById('changelogModal').style.display='none'">&#xE711;</button>
+            </div>
+            <div class="changelog-body">
+                <div class="changelog-version">
+                    <div class="changelog-badge current">v26200.172</div>
+                    <span class="changelog-date">February 17, 2026 — First Release</span>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title fix">Bug Fixes</h3>
+                    <ul class="changelog-list">
+                        <li>Fixed WebView2 crash on startup — proper readiness gating before posting messages</li>
+                        <li>Fixed WebMessage JSON case mismatch (JS camelCase → C# PascalCase deserialization)</li>
+                        <li>Fixed double-encoding on postMessage → WebMessageAsJson path causing parse failures</li>
+                        <li>Fixed demo frame overflow — added backpressure to prevent Dispatcher queue flooding</li>
+                        <li>Fixed WebView2 user data folder permission errors on restricted machines</li>
+                        <li>Fixed freeze/unfreeze command routing in production mode</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title feature">New Features</h3>
+                    <ul class="changelog-list">
+                        <li>System tray icon — minimize to tray with quick-access context menu (Lock All, Unlock All, Exit)</li>
+                        <li>Auto-discovery — Teacher finds student clients automatically via UDP multicast (239.1.1.1:17421)</li>
+                        <li>Synthetic demo desktops — 8 app-specific content renderers (Word, Code, Browser, Excel, PowerPoint, Paint, YouTube, Explorer)</li>
+                        <li>Remote View modal with 1920×1080 canvas rendering</li>
+                        <li>Broadcast messaging with in-dashboard dialog</li>
+                        <li>Hand raise detection and visual indicator with pulse animation</li>
+                        <li>Real-time search/filter across hostname, username, IP, and active window</li>
+                        <li>Keyboard shortcuts: Esc to close modals, Ctrl+F to focus search</li>
+                        <li>Version config pushed from C# to JS for About dialog</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title design">Design</h3>
+                    <ul class="changelog-list">
+                        <li>GitHub-dark inspired theme (#0D1117 / #161B22 / #58A6FF)</li>
+                        <li>Smooth tile hover animations with elevation shadow</li>
+                        <li>Per-student tile actions (RV, Lock, Unlock, Freeze) on hover</li>
+                        <li>Status badges: Online, Locked, Frozen, Blank, Streaming, Hand Raised</li>
+                        <li>Frozen overlay with blur backdrop on thumbnails</li>
+                        <li>Privacy mode toggle (blur filter) in Remote View</li>
+                        <li>Responsive grid layout with auto-fill columns</li>
+                        <li>Branded splash screen with logo, version, and build date</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title infra">Infrastructure</h3>
+                    <ul class="changelog-list">
+                        <li>Self-contained demo builds — no .NET runtime required on target machines</li>
+                        <li>Emulation mode — full stack without kernel driver or Active Directory</li>
+                        <li>Separate client/teacher deployment folders for multi-machine demo</li>
+                        <li>Linux cross-compilation support via EnableWindowsTargeting</li>
+                        <li>Kernel driver: process protection, hard lock, UI protection, stealth mode IOCTLs</li>
+                        <li>Binary wire protocol with length-prefixed framing (TadFrameCodec)</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-footer">
+                    <p>(C) 2026 TAD Europe — https://tad-it.eu</p>
+                    <p>TAD.RV — The Greater Brother of the mighty te.comp NET.FX</p>
+                </div>
             </div>
         </div>
     </div>

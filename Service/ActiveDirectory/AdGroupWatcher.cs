@@ -25,7 +25,7 @@ namespace TadBridge.ActiveDirectory;
 /// <summary>
 /// Resolves the interactive user's AD groups and maps them to a TAD role.
 /// </summary>
-public sealed class AdGroupWatcher
+public class AdGroupWatcher
 {
     private readonly ILogger<AdGroupWatcher>  _log;
     private readonly OfflineCacheManager      _cache;
@@ -47,7 +47,7 @@ public sealed class AdGroupWatcher
     /// Resolves the current interactive user's role from AD groups.
     /// Returns (role, sessionId, userSid).
     /// </summary>
-    public (TadUserRole Role, uint SessionId, string Sid) ResolveCurrentUser()
+    public virtual (TadUserRole Role, uint SessionId, string Sid) ResolveCurrentUser()
     {
         // Find the active console session
         uint sessionId = NativeSession.WTSGetActiveConsoleSessionId();
