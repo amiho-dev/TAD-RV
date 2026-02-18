@@ -215,3 +215,4 @@ reg delete "HKLM\SOFTWARE\TAD_RV" /f
 ---
 
 *See also: [Signing-Handbook.md](Signing-Handbook.md) · [Architecture.md](Architecture.md) · [Teacher-Guide.md](Teacher-Guide.md)*
+\n## Auto-Update Configuration\n\nTAD.RV components include a built-in auto-updater that checks GitHub Releases.\n\n### Repository Configuration\nBy default, updates are fetched from `amiho-dev/TAD-RV`.\nTo use a custom repository (e.g., for internal mirrors or forks), set:\n\n- **Registry**: `HKLM\SOFTWARE\TAD_RV\UpdateRepo` (String) = `owner/repo`\n- **Environment**: `TAD_UPDATE_REPO` = `owner/repo`\n\n### Behavior\n- **Service**: Checks every 6 hours. Automatically downloads, applies, and restarts.\n- **Teacher**: Checks on startup. Displays a banner if a new version is available.\n- **Console**: Checks on startup. Displays status on the dashboard.

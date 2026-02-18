@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-26200.172-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-26500.181-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/.NET-8.0-purple?style=flat-square&logo=dotnet" alt=".NET 8">
   <img src="https://img.shields.io/badge/WDK-Windows%20Kernel-orange?style=flat-square&logo=windows" alt="WDK">
   <img src="https://img.shields.io/badge/platform-win--x64-lightgrey?style=flat-square" alt="Platform">
@@ -293,6 +293,21 @@ Default: `tad-europe/TAD-RV`.
 ---
 
 ## Release Log
+
+### v26500.181 — 2026-02-18
+
+**General**
+- Updated version numbering to `26500.181` across all components.
+- Fixed `UpdateManager.cs` to default to `amiho-dev/TAD-RV` repository.
+- Moved update packaging logic to create `.zip` artifacts correctly.
+
+**Admin Console**
+- Added software update status card to the Dashboard view.
+- Improved visibility of service and driver status.
+
+**Documentation**
+- Added Auto-Update Configuration section to [Docs/Deployment-Guide.md](Docs/Deployment-Guide.md).
+- Updated repository visibility and branding.
 
 ### v26200.172 — 2026-02-18
 

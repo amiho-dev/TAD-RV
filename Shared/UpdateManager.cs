@@ -134,7 +134,7 @@ public sealed class UpdateManager : IDisposable
 {
     // ── Configuration ────────────────────────────────────────────────
 
-    private const string DefaultRepo = "tad-europe/TAD-RV";
+    private const string DefaultRepo = "amiho-dev/TAD-RV";
     private const string GitHubApiBase = "https://api.github.com";
     private const string UserAgent = "TAD-RV-UpdateCheck/1.0";
     private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);

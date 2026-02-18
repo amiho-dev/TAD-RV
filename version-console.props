@@ -5,9 +5,9 @@
     Bump this independently when the Console component changes.
   -->
   <PropertyGroup>
-    <Version>26200.172</Version>
-    <FileVersion>26200.172.0.0</FileVersion>
-    <InformationalVersion>26200.172-console</InformationalVersion>
+    <Version>26500.181</Version>
+    <FileVersion>26500.181.0.0</FileVersion>
+    <InformationalVersion>26500.181-console</InformationalVersion>
   </PropertyGroup>
 
 </Project>

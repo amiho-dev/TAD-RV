@@ -199,11 +199,11 @@ public partial class MainWindow : Window
                 _webViewReady = args.IsSuccess;
                 if (_webViewReady && _isDemoMode)
                 {
-                    PostJsonMessage(new { type = "config", demoMode = true, version = "26200.172" });
+                    PostJsonMessage(new { type = "config", demoMode = true, version = "26500.181" });
                 }
                 else if (_webViewReady)
                 {
-                    PostJsonMessage(new { type = "config", demoMode = false, version = "26200.172" });
+                    PostJsonMessage(new { type = "config", demoMode = false, version = "26500.181" });
                 }
             };
 

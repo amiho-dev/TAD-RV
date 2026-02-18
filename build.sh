@@ -82,7 +82,22 @@ dotnet publish Service/TadBridgeService.csproj -c Release -r win-x64 --self-cont
 dotnet publish Teacher/TadTeacher.csproj       -c Release -r win-x64 --self-contained true -o demo_compiled/teacher/
 echo ""
 
+# ── Package for GitHub Release (Updater requires .zip) ────────────────
+echo "[+] Packaging release artifacts (ZIP)..."
+VERSION="26500.181"
+
+# Console
+cd release-client && zip -r ../TadConsole-$VERSION-win-x64.zip . && cd ..
+# Teacher
+cd release-teacher && zip -r ../TadTeacher-$VERSION-win-x64.zip . && cd ..
+# Service
+cd release-addc && zip -r ../TadBridgeService-$VERSION-win-x64.zip . && cd ..
+
 echo "=== Build Complete ==="
+echo "Artifacts ready for release:"
+echo "  TadConsole-$VERSION-win-x64.zip"
+echo "  TadTeacher-$VERSION-win-x64.zip"
+echo "  TadBridgeService-$VERSION-win-x64.zip"
 echo "Combined output:         results/"
 echo "Console (Admin):         release-client/"
 echo "Teacher (Classroom):     release-teacher/"

@@ -36,6 +36,27 @@
                 </Border>
             </UniformGrid>
 
+            <!-- Status Cards Row 2 (Updates & License) -->
+            <UniformGrid Columns="2" Margin="0,24,0,24">
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="Software Update" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="{Binding UpdateStatus}" FontSize="14" TextWrapping="Wrap"
+                                   Foreground="{Binding UpdateAvailable, Converter={StaticResource BoolToColorConverter}}" 
+                                   Margin="0,8,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="12,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="License Status" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock Text="Active (TAD.RV Enterprise)" FontSize="14"
+                                   Foreground="{StaticResource SuccessBrush}" Margin="0,8,0,0" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
             <!-- Alerts Summary -->
             <Border Style="{StaticResource Card}">
                 <StackPanel>
