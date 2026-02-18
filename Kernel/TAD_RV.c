@@ -47,6 +47,9 @@ Environment:
 #pragma alloc_text(PAGE,  TadUnregisterProcessProtection)
 #pragma alloc_text(PAGE,  TadSetDeviceDacl)
 #pragma alloc_text(PAGE,  TadVerifyAuthKey)
+#pragma alloc_text(PAGE,  TadProcessNotifyCallback)
+#pragma alloc_text(PAGE,  TadRegisterProcessNotify)
+#pragma alloc_text(PAGE,  TadUnregisterProcessNotify)
 #endif
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -97,6 +100,7 @@ DriverEntry(
     InterlockedExchange(&g_Tad.HeartbeatAlive, 0);
     InterlockedExchange(&g_Tad.PolicyValid, 0);
     InterlockedExchange(&g_Tad.CurrentUserRole, (LONG)TadRoleUnknown);
+    ExInitializeFastMutex(&g_Tad.BannedAppsLock);
 
     DriverObject->MajorFunction[IRP_MJ_CREATE]         = TadDispatchCreateClose;
     DriverObject->MajorFunction[IRP_MJ_CLOSE]          = TadDispatchCreateClose;
@@ -122,6 +126,12 @@ DriverEntry(
                    "[TAD.RV] ObCallbacks failed: 0x%08X\n", status));
     }
 
+    status = TadRegisterProcessNotify();
+    if (!NT_SUCCESS(status)) {
+        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_WARNING_LEVEL,
+                   "[TAD.RV] PsProcessNotify registration failed: 0x%08X\n", status));
+    }
+
     status = FltRegisterFilter(DriverObject, &g_TadFilterRegistration, &g_Tad.FilterHandle);
     if (NT_SUCCESS(status)) {
         status = FltStartFiltering(g_Tad.FilterHandle);
@@ -137,9 +147,10 @@ DriverEntry(
     TadInitHeartbeatWatchdog();
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
-               "[TAD.RV] Loaded (ObCB=%s, Flt=%s)\n",
-               g_Tad.ObCallbackHandle ? "YES" : "NO",
-               g_Tad.FilterHandle     ? "YES" : "NO"));
+               "[TAD.RV] Loaded (ObCB=%s, PsNotify=%s, Flt=%s)\n",
+               g_Tad.ObCallbackHandle         ? "YES" : "NO",
+               g_Tad.ProcessNotifyRegistered  ? "YES" : "NO",
+               g_Tad.FilterHandle             ? "YES" : "NO"));
 
     return STATUS_SUCCESS;
 }
@@ -166,6 +177,7 @@ TadDriverUnload(
         g_Tad.FilterHandle = NULL;
     }
 
+    TadUnregisterProcessNotify();
     TadUnregisterProcessProtection();
 
     if (g_Tad.AgentProcess) {
@@ -745,6 +757,64 @@ NTSTATUS TadDispatchDeviceControl(
         break;
     }
 
+    /* ── IOCTL_TAD_SET_BANNED_APPS ──────────────────────────────────────── */
+    case IOCTL_TAD_SET_BANNED_APPS:
+    {
+        PTAD_BANNED_APPS_INPUT p;
+        ULONG i;
+
+        if (inLen < sizeof(TAD_BANNED_APPS_INPUT)) { status = STATUS_BUFFER_TOO_SMALL; break; }
+        if (!TadIsCallerProtectedAgent())           { status = STATUS_ACCESS_DENIED;    break; }
+
+#if defined(_AMD64_) || defined(_X86_)
+        _mm_lfence();
+#endif
+
+        p = (PTAD_BANNED_APPS_INPUT)buf;
+        if (p->Count > TAD_MAX_BANNED_APPS) { status = STATUS_INVALID_PARAMETER; break; }
+
+        ExAcquireFastMutex(&g_Tad.BannedAppsLock);
+
+        /* Clear the previous list */
+        RtlZeroMemory(g_Tad.BannedAppStorage, sizeof(g_Tad.BannedAppStorage));
+        RtlZeroMemory(g_Tad.BannedApps,       sizeof(g_Tad.BannedApps));
+        g_Tad.BannedAppCount = 0;
+
+        for (i = 0; i < p->Count; i++)
+        {
+            /*
+             * Validate that the caller-supplied string is NUL-terminated
+             * within the fixed-size field and not empty.
+             */
+            SIZE_T srcLen = 0;
+            SIZE_T j;
+
+            for (j = 0; j < TAD_MAX_IMAGE_NAME_LEN; j++) {
+                if (p->ImageNames[i][j] == L'\0') break;
+                srcLen++;
+            }
+
+            if (srcLen == 0 || srcLen >= TAD_MAX_IMAGE_NAME_LEN) continue;
+
+            RtlCopyMemory(g_Tad.BannedAppStorage[i],
+                          p->ImageNames[i],
+                          srcLen * sizeof(WCHAR));
+
+            g_Tad.BannedApps[i].Buffer        = g_Tad.BannedAppStorage[i];
+            g_Tad.BannedApps[i].Length        = (USHORT)(srcLen * sizeof(WCHAR));
+            g_Tad.BannedApps[i].MaximumLength = (USHORT)(TAD_MAX_IMAGE_NAME_LEN * sizeof(WCHAR));
+            g_Tad.BannedAppCount++;
+        }
+
+        ExReleaseFastMutex(&g_Tad.BannedAppsLock);
+
+        KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
+                   "[TAD.RV] Banned-app list updated: %lu entr%s\n",
+                   g_Tad.BannedAppCount,
+                   g_Tad.BannedAppCount == 1 ? "y" : "ies"));
+        break;
+    }
+
     default:
         status = STATUS_INVALID_DEVICE_REQUEST;
         break;
@@ -961,4 +1031,130 @@ NTSTATUS FLTAPI TadFilterUnloadCallback(_In_ FLT_FILTER_UNLOAD_FLAGS Flags)
     return (InterlockedCompareExchange(&g_Tad.AllowUnload, 0, 0) == 0)
         ? STATUS_FLT_DO_NOT_DETACH
         : STATUS_SUCCESS;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 10. PROCESS CREATION MONITOR — PsSetCreateProcessNotifyRoutineEx
+ *
+ * TadProcessNotifyCallback fires at PASSIVE_LEVEL for every process
+ * creation and termination system-wide.
+ *
+ * On creation (CreateInfo != NULL):
+ *   1. Extract the final path component (filename) of ImageFileName.
+ *   2. Acquire BannedAppsLock and compare against BannedApps[].
+ *   3. If matched AND TAD_POLICY_FLAG_BLOCK_APPS is set in the current
+ *      policy, set CreateInfo->CreationStatus = STATUS_ACCESS_DENIED.
+ *   4. Queue a TadAlertProcessBlocked alert for the next ReadAlert IRP.
+ *
+ * On termination (CreateInfo == NULL):  no-op.
+ *
+ * The callback is registered with /INTEGRITYCHECK in the PE header
+ * (see SOURCES). Without that flag PsSetCreateProcessNotifyRoutineEx
+ * returns STATUS_ACCESS_DENIED.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+_Use_decl_annotations_
+VOID
+TadProcessNotifyCallback(
+    _Inout_  PEPROCESS               Process,
+    _In_     HANDLE                   ProcessId,
+    _In_opt_ PPS_CREATE_NOTIFY_INFO   CreateInfo
+    )
+{
+    ULONG          i;
+    UNICODE_STRING component;
+    USHORT         lastSep;
+    USHORT         k;
+
+    PAGED_CODE();
+    UNREFERENCED_PARAMETER(Process);
+
+    /* Only interested in creations, not terminations */
+    if (!CreateInfo)                   return;
+    if (!CreateInfo->ImageFileName)    return;
+    if (!CreateInfo->ImageFileName->Buffer  ||
+         CreateInfo->ImageFileName->Length == 0) return;
+
+    /*
+     * Only enforce the list when the policy has BlockApps set.
+     * The driver accepts the list update regardless so that the list
+     * is ready the moment the policy flag is toggled on.
+     */
+    if (!(g_Tad.CurrentPolicy.Flags & TAD_POLICY_FLAG_BLOCK_APPS)) return;
+
+    /*
+     * Find the last '\\' in the full NT image path
+     * (e.g. "\\Device\\HarddiskVolume3\\Windows\\notepad.exe"
+     *  → component starts after the last '\\').
+     */
+    lastSep = 0;
+    for (k = 0; k < CreateInfo->ImageFileName->Length / sizeof(WCHAR); k++) {
+        if (CreateInfo->ImageFileName->Buffer[k] == L'\\') {
+            lastSep = k + 1;
+        }
+    }
+
+    component.Buffer        = CreateInfo->ImageFileName->Buffer + lastSep;
+    component.Length        = CreateInfo->ImageFileName->Length
+                            - (lastSep * sizeof(WCHAR));
+    component.MaximumLength = component.Length;
+
+    if (component.Length == 0) return;
+
+    ExAcquireFastMutex(&g_Tad.BannedAppsLock);
+
+    for (i = 0; i < g_Tad.BannedAppCount; i++)
+    {
+        if (RtlEqualUnicodeString(&component, &g_Tad.BannedApps[i], TRUE /*case-insensitive*/))
+        {
+            KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_WARNING_LEVEL,
+                       "[TAD.RV] BLOCKED process: %wZ (PID %lu)\n",
+                       &component, HandleToULong(ProcessId)));
+
+            CreateInfo->CreationStatus = STATUS_ACCESS_DENIED;
+
+            /*
+             * TODO: complete alert-queue integration.
+             * When the pended-IRP alert queue is implemented, enqueue a
+             * TadAlertProcessBlocked event here so TadBridgeService can
+             * display a real-time notification in the Console dashboard.
+             */
+            break;
+        }
+    }
+
+    ExReleaseFastMutex(&g_Tad.BannedAppsLock);
+}
+
+NTSTATUS TadRegisterProcessNotify(VOID)
+{
+    NTSTATUS status;
+    PAGED_CODE();
+
+    if (g_Tad.ProcessNotifyRegistered) return STATUS_ALREADY_REGISTERED;
+
+    /*
+     * PsSetCreateProcessNotifyRoutineEx requires the driver image to have
+     * IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY set (/INTEGRITYCHECK linker
+     * flag).  Without it this call returns STATUS_ACCESS_DENIED.
+     */
+    status = PsSetCreateProcessNotifyRoutineEx(TadProcessNotifyCallback, FALSE);
+    if (NT_SUCCESS(status)) {
+        g_Tad.ProcessNotifyRegistered = TRUE;
+    }
+    return status;
+}
+
+VOID TadUnregisterProcessNotify(VOID)
+{
+    PAGED_CODE();
+    if (!g_Tad.ProcessNotifyRegistered) return;
+
+    /*
+     * Pass Remove=TRUE to deregister.  Must be called before DriverUnload
+     * returns to prevent a bugcheck if the callback fires after the driver
+     * image is unmapped.
+     */
+    PsSetCreateProcessNotifyRoutineEx(TadProcessNotifyCallback, TRUE);
+    g_Tad.ProcessNotifyRegistered = FALSE;
 }

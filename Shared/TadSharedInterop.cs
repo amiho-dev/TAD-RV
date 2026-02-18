@@ -44,6 +44,7 @@ public static class TadIoctl
     public static readonly uint IOCTL_TAD_HARD_LOCK     = CtlCode(0x806, METHOD_BUFFERED, FILE_WRITE_ACCESS);
     public static readonly uint IOCTL_TAD_PROTECT_UI    = CtlCode(0x807, METHOD_BUFFERED, FILE_WRITE_ACCESS);
     public static readonly uint IOCTL_TAD_STEALTH       = CtlCode(0x808, METHOD_BUFFERED, FILE_WRITE_ACCESS);
+    public static readonly uint IOCTL_TAD_SET_BANNED_APPS = CtlCode(0x809, METHOD_BUFFERED, FILE_WRITE_ACCESS);
 
     // Pre-shared key (raw, before XOR on the driver side)
     public static readonly byte[] AuthKey =
@@ -74,6 +75,7 @@ public enum TadAlertType : uint
     HeartbeatLost    = 2,
     UnlockBruteForce = 3,
     FileTamper       = 4,
+    ProcessBlocked   = 5,   // PsNotify callback denied a banned application
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -196,4 +198,53 @@ public struct TadAlertOutput
 
     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
     public string Detail;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Banned-App List  (must match TAD_BANNED_APPS_INPUT in TadShared.h)
+// TAD_MAX_BANNED_APPS = 32, TAD_MAX_IMAGE_NAME_LEN = 64
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Sent via IOCTL_TAD_SET_BANNED_APPS.
+/// Set Count = 0 and leave ImageNames empty to clear all blocked apps.
+/// ImageNames entries are bare filenames only (e.g. "notepad.exe"),
+/// not full paths.  Matching in the callback is case-insensitive.
+/// </summary>
+[StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Unicode)]
+public struct TadBannedAppsInput
+{
+    public const int MaxEntries       = 32;
+    public const int MaxImageNameLen  = 64;   // WCHARs including NUL
+
+    public uint Count;
+
+    // Fixed-size 2D array: 32 entries × 64 WCHARs = 4096 WCHARs = 8192 bytes.
+    // Declared as a flat byte array so Marshal can handle it; callers use
+    // TadBannedAppsInput.Encode() to fill it.
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = MaxEntries * MaxImageNameLen)]
+    public char[] RawNames;  // layout: Names[i] starts at [i * MaxImageNameLen]
+
+    /// <summary>
+    /// Build a <see cref="TadBannedAppsInput"/> from a list of bare image names.
+    /// Names are silently truncated to <see cref="MaxImageNameLen"/>-1 characters.
+    /// </summary>
+    public static TadBannedAppsInput Encode(IEnumerable<string> imageNames)
+    {
+        var names = imageNames.Take(MaxEntries).ToArray();
+        var raw   = new char[MaxEntries * MaxImageNameLen];
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            var src = names[i].AsSpan(0, Math.Min(names[i].Length, MaxImageNameLen - 1));
+            src.CopyTo(raw.AsSpan(i * MaxImageNameLen, MaxImageNameLen));
+            // Remaining chars are already \0 (array default)
+        }
+
+        return new TadBannedAppsInput
+        {
+            Count    = (uint)names.Length,
+            RawNames = raw
+        };
+    }
 }

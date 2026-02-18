@@ -139,6 +139,15 @@ public sealed class EmulatedDriverBridge : DriverBridge
             enable ? "ACTIVE" : "DISABLED", (uint)flags);
     }
 
+    public override void SetBannedApps(IEnumerable<string>? imageNames)
+    {
+        var list = imageNames?.ToList() ?? [];
+        if (list.Count == 0)
+            _log.LogInformation("[EMULATED] Banned-app list cleared");
+        else
+            _log.LogInformation("[EMULATED] Banned apps: {Names}", string.Join(", ", list));
+    }
+
     public override void Dispose()
     {
         _connected = false;

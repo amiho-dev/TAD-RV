@@ -80,6 +80,11 @@ Environment:
  *         Uses undocumented SetWindowDisplayAffinity bypass via kernel callback. */
 #define IOCTL_TAD_STEALTH       CTL_CODE(TAD_DEVICE_TYPE, 0x808, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 
+/* 0x809 — Push a list of banned application image names to the driver.
+ *         The process-creation callback denies any image whose filename
+ *         (final path component) matches an entry in this list.          */
+#define IOCTL_TAD_SET_BANNED_APPS CTL_CODE(TAD_DEVICE_TYPE, 0x809, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+
 /* ═══════════════════════════════════════════════════════════════════════
  * Enumerations
  * ═══════════════════════════════════════════════════════════════════════ */
@@ -97,6 +102,7 @@ typedef enum _TAD_ALERT_TYPE {
     TadAlertHeartbeatLost     = 2,   /* Heartbeat timeout — network kill       */
     TadAlertUnlockBruteForce  = 3,   /* Unlock lockout triggered               */
     TadAlertFileTamper        = 4,   /* Minifilter blocked deletion/rename     */
+    TadAlertProcessBlocked    = 5,   /* PsNotify blocked a banned application  */
 } TAD_ALERT_TYPE;
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -111,6 +117,10 @@ typedef enum _TAD_ALERT_TYPE {
 #define TAD_MAX_SID_LENGTH      68      /* bytes — covers S-1-5-21-...-RID */
 #define TAD_MAX_GROUP_NAME      64      /* WCHAR count */
 #define TAD_MAX_GROUPS          16
+
+/* Banned-app list limits */
+#define TAD_MAX_BANNED_APPS     32      /* Max entries per IOCTL_TAD_SET_BANNED_APPS call */
+#define TAD_MAX_IMAGE_NAME_LEN  64      /* WCHAR count per entry, including NUL */
 
 #pragma pack(push, 8)
 
@@ -191,6 +201,19 @@ typedef struct _TAD_POLICY_BUFFER {
     ULONG   AllowedRoles;                       /* Mask: which roles may unload */
     ULONG   Reserved[8];
 } TAD_POLICY_BUFFER, *PTAD_POLICY_BUFFER;
+
+/* ── IOCTL_TAD_SET_BANNED_APPS ──────────────────────────────────────── */
+
+/*
+ * Send a new banned-app list to the driver.  Set Count==0 to clear all entries.
+ * ImageNames contains the bare filename only (e.g. L"notepad.exe", not a full
+ * path).  Matching in the callback is case-insensitive against the final path
+ * component of CreateInfo->ImageFileName.
+ */
+typedef struct _TAD_BANNED_APPS_INPUT {
+    ULONG   Count;                                                  /* 0 = clear list */
+    WCHAR   ImageNames[TAD_MAX_BANNED_APPS][TAD_MAX_IMAGE_NAME_LEN];
+} TAD_BANNED_APPS_INPUT, *PTAD_BANNED_APPS_INPUT;
 
 /* ── IOCTL_TAD_READ_ALERT ────────────────────────────────────────────── */
 

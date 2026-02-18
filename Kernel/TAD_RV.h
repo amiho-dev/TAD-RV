@@ -148,6 +148,24 @@ typedef struct _TAD_DRIVER_GLOBALS {
     /* Current user role pushed by service */
     volatile LONG   CurrentUserRole;    /* TAD_USER_ROLE enum */
 
+    /* ── PsSetCreateProcessNotifyRoutineEx ───────────────────────────── */
+
+    /* TRUE if PsSetCreateProcessNotifyRoutineEx has been registered */
+    BOOLEAN             ProcessNotifyRegistered;
+
+    /* FAST_MUTEX protects the BannedApps array during IOCTL updates */
+    FAST_MUTEX          BannedAppsLock;
+
+    /* Number of active entries in BannedApps[] */
+    ULONG               BannedAppCount;
+
+    /*
+     * Each UNICODE_STRING in BannedApps[] points into the corresponding row
+     * of BannedAppStorage[][] so no additional heap allocation is needed.
+     */
+    UNICODE_STRING      BannedApps[TAD_MAX_BANNED_APPS];
+    WCHAR               BannedAppStorage[TAD_MAX_BANNED_APPS][TAD_MAX_IMAGE_NAME_LEN];
+
 } TAD_DRIVER_GLOBALS, *PTAD_DRIVER_GLOBALS;
 
 extern TAD_DRIVER_GLOBALS g_Tad;
@@ -182,6 +200,24 @@ TadObThreadPreCallback(
 
 NTSTATUS TadRegisterProcessProtection(VOID);
 VOID     TadUnregisterProcessProtection(VOID);
+
+/* ── PsSetCreateProcessNotifyRoutineEx ───────────────────────────── */
+
+/*
+ * Callback registered with PsSetCreateProcessNotifyRoutineEx.
+ * Checks CreateInfo->ImageFileName against g_Tad.BannedApps[] and
+ * sets CreateInfo->CreationStatus = STATUS_ACCESS_DENIED on a match.
+ * On termination (CreateInfo == NULL) the callback does nothing.
+ */
+VOID
+TadProcessNotifyCallback(
+    _Inout_  PEPROCESS               Process,
+    _In_     HANDLE                   ProcessId,
+    _In_opt_ PPS_CREATE_NOTIFY_INFO   CreateInfo
+    );
+
+NTSTATUS TadRegisterProcessNotify(VOID);
+VOID     TadUnregisterProcessNotify(VOID);
 
 /* ── Minifilter ──────────────────────────────────────────────────────── */
 

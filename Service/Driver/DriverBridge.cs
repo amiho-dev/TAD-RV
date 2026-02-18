@@ -181,6 +181,32 @@ public class DriverBridge : IDisposable
             enable ? "ACTIVE" : "DISABLED", (uint)flags);
     }
 
+    /// <summary>
+    /// Push a list of application image names to the kernel driver.
+    /// Any new process whose filename (case-insensitive, final path component)
+    /// matches an entry in <paramref name="imageNames"/> will be denied at
+    /// creation time via <c>PsSetCreateProcessNotifyRoutineEx</c>.<br/>
+    /// The driver enforces the list only when the current policy has
+    /// <see cref="TadPolicyFlags.BlockApps"/> set.<br/>
+    /// Pass an empty or null collection to clear all blocked applications.
+    /// </summary>
+    /// <param name="imageNames">
+    /// Bare filenames only — e.g. <c>"notepad.exe"</c>, not full paths.
+    /// At most 32 entries. Names longer than 63 characters are silently truncated.
+    /// </param>
+    public virtual void SetBannedApps(IEnumerable<string>? imageNames)
+    {
+        var list  = imageNames?.ToList() ?? [];
+        var input = TadBannedAppsInput.Encode(list);
+        SendIoctl(TadIoctl.IOCTL_TAD_SET_BANNED_APPS, input);
+
+        if (list.Count == 0)
+            _log.LogInformation("Cleared banned-app list in driver");
+        else
+            _log.LogInformation("Pushed {Count} banned app(s) to driver: {Names}",
+                list.Count, string.Join(", ", list));
+    }
+
     // ─── Generic IOCTL Helpers ───────────────────────────────────────
 
     private void SendIoctl<TInput>(uint ioctlCode, TInput input) where TInput : struct
