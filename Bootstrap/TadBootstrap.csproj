@@ -17,6 +17,7 @@
     <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
     <Product>TAD.RV Bootstrap Loader</Product>
     <Description>Zero-install bootstrap: copies binaries from UNC share, registers a SYSTEM service with recovery, and starts it. Designed for GPO startup script execution.</Description>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

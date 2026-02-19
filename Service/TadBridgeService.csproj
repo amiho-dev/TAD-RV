@@ -17,6 +17,7 @@
     <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
     <Product>TAD.RV Bridge Service</Product>
     <Description>User-mode management service for the TAD.RV kernel driver. Handles AD integration, policy provisioning, and heartbeat watchdog.</Description>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

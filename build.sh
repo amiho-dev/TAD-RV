@@ -6,6 +6,8 @@ echo ""
 
 # ── Clean old artifacts ────────────────────────────────────────────────
 echo "[0/5] Cleaning old build artifacts..."
+# Remove previous publish dirs
+rm -rf Bootstrap/bin/Release/net8.0-windows/win-x64/publish Service/bin/Release/net8.0-windows/win-x64/publish Console/bin/Release/net8.0-windows/win-x64/publish Teacher/bin/Release/net8.0-windows/win-x64/publish
 for proj in Bootstrap Service Console Teacher; do
   rm -rf "$proj/bin" "$proj/obj" || true
 done
@@ -25,88 +27,87 @@ echo ""
 
 # Restore all packages
 echo "[1/5] Restoring NuGet packages..."
-dotnet restore TAD-RV.sln
+dotnet restore TAD-RV.sln -r win-x64
 echo ""
 
 # Build Bootstrap
-echo "[2/5] Building TadBootstrap..."
-dotnet build Bootstrap/TadBootstrap.csproj -c Release --no-restore
+echo "[2/5] Publishing TadBootstrap (Single File Exe)..."
+dotnet publish Bootstrap/TadBootstrap.csproj -c Release -r win-x64 \
+  -p:PublishSingleFile=true -p:SelfContained=true -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishReadyToRun=false --no-restore
 echo ""
 
 # Build Service
-echo "[3/5] Building TadBridgeService..."
-dotnet build Service/TadBridgeService.csproj -c Release --no-restore
+echo "[3/5] Publishing TadBridgeService (Single File Exe)..."
+dotnet publish Service/TadBridgeService.csproj -c Release -r win-x64 \
+  -p:PublishSingleFile=true -p:SelfContained=true -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishReadyToRun=false --no-restore
 echo ""
 
 # Build Console (WPF)
-echo "[4/5] Building TadConsole (WPF)..."
-dotnet build Console/TadConsole.csproj -c Release --no-restore
+echo "[4/5] Publishing TadConsole (Single File Exe)..."
+dotnet publish Console/TadConsole.csproj -c Release -r win-x64 \
+  -p:PublishSingleFile=true -p:SelfContained=true -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishReadyToRun=false --no-restore
 echo ""
 
 # Build Teacher (WPF + WebView2)
-echo "[5/5] Building TadTeacher (WPF + WebView2)..."
-dotnet build Teacher/TadTeacher.csproj -c Release --no-restore
+echo "[5/5] Publishing TadTeacher (Single File Exe)..."
+dotnet publish Teacher/TadTeacher.csproj -c Release -r win-x64 \
+  -p:PublishSingleFile=true -p:SelfContained=true -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# ── Publish all projects to results/ ──────────────────────────────────
-echo "[+] Publishing Release builds to results/..."
-mkdir -p results
-
-dotnet publish Bootstrap/TadBootstrap.csproj   -c Release --no-restore --no-build -o results/
-dotnet publish Service/TadBridgeService.csproj  -c Release --no-restore --no-build -o results/
-dotnet publish Console/TadConsole.csproj        -c Release --no-restore --no-build -o results/
-dotnet publish Teacher/TadTeacher.csproj        -c Release --no-restore --no-build -o results/
+# Clean results & release folders
+rm -rf results/*.exe results/*.pdb results/*.dll results/*.xml results/*.json \
+       results/cs results/de results/es results/fr results/it results/ja \
+       results/ko results/pl results/pt-BR results/ru results/tr \
+       results/zh-Hans results/zh-Hant results/runtimes \
+       release-client/* release-teacher/* release-addc/*
+echo "   Done."
 echo ""
 
-# ── Publish to release folders ────────────────────────────────────────
+echo "[+] Publishing Release builds (Single File) to results/..."
+# Copy the single file executables
+cp Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TadBootstrap.exe results/
+cp Service/bin/Release/net8.0-windows/win-x64/publish/TadBridgeService.exe results/
+cp Console/bin/Release/net8.0-windows/win-x64/publish/TadConsole.exe results/
+cp Teacher/bin/Release/net8.0-windows/win-x64/publish/TadTeacher.exe results/
+# WebView2Loader.dll might still be needed if not fully embedded (it usually isn't for WebView2)
+# Check if it was extracted alongside
+if [ -f Teacher/bin/Release/net8.0-windows/win-x64/publish/WebView2Loader.dll ]; then
+    cp Teacher/bin/Release/net8.0-windows/win-x64/publish/WebView2Loader.dll results/
+fi
+
 echo "[+] Publishing Console → release-client/..."
-mkdir -p release-client
-dotnet publish Console/TadConsole.csproj -c Release --no-restore --no-build -o release-client/
-echo ""
+cp results/TadConsole.exe release-client/
 
 echo "[+] Publishing Teacher → release-teacher/..."
-mkdir -p release-teacher
-dotnet publish Teacher/TadTeacher.csproj -c Release --no-restore --no-build -o release-teacher/
-echo ""
+cp results/TadTeacher.exe release-teacher/
+if [ -f results/WebView2Loader.dll ]; then
+    cp results/WebView2Loader.dll release-teacher/
+fi
 
 echo "[+] Publishing Service + Bootstrap → release-addc/..."
-mkdir -p release-addc
-dotnet publish Service/TadBridgeService.csproj -c Release --no-restore --no-build -o release-addc/
-dotnet publish Bootstrap/TadBootstrap.csproj   -c Release --no-restore --no-build -o release-addc/
-echo ""
+cp results/TadBridgeService.exe release-addc/
+cp results/TadBootstrap.exe release-addc/
 
-# ── Publish self-contained demo builds ────────────────────────────────
-echo "[+] Publishing self-contained demo builds..."
-mkdir -p demo_compiled/client demo_compiled/teacher
-dotnet publish Service/TadBridgeService.csproj -c Release -r win-x64 --self-contained true -o demo_compiled/client/
-dotnet publish Teacher/TadTeacher.csproj       -c Release -r win-x64 --self-contained true -o demo_compiled/teacher/
-echo ""
+echo "[+] Creating installers (SFX)..."
+# We just ZIP the single file exe for now as requested "installer" often means "distributable file"
+# To make it truly ONE file, we should have self-contained exe. If WebView2Loader.dll is separate, we zipping it with exe is best.
 
-# ── Package for GitHub Release (Updater requires .zip) ────────────────
-echo "[+] Packaging release artifacts (ZIP)..."
+# Read Version
 VERSION=$(grep -oP '(?<=<Version>)[^<]+' version-teacher.props | head -1)
 
 # Console
-cd release-client && zip -r ../TadConsole-$VERSION-win-x64.zip . && cd ..
+cd release-client && zip -r ../TadConsole-$VERSION-win-x64.zip * && cd ..
 # Teacher
-cd release-teacher && zip -r ../TadTeacher-$VERSION-win-x64.zip . && cd ..
+cd release-teacher && zip -r ../TadTeacher-$VERSION-win-x64.zip * && cd ..
 # Service
-cd release-addc && zip -r ../TadBridgeService-$VERSION-win-x64.zip . && cd ..
+cd release-addc && zip -r ../TadBridgeService-$VERSION-win-x64.zip * && cd ..
 
 echo "=== Build Complete ==="
 echo "Artifacts ready for release:"
 echo "  TadConsole-$VERSION-win-x64.zip"
 echo "  TadTeacher-$VERSION-win-x64.zip"
 echo "  TadBridgeService-$VERSION-win-x64.zip"
-echo "Combined output:         results/"
-echo "Console (Admin):         release-client/"
-echo "Teacher (Classroom):     release-teacher/"
-echo "AD DC (Service+Boot):    release-addc/"
-echo "Demo (self-contained):   demo_compiled/client/  demo_compiled/teacher/"
-echo ""
-echo "── Demo Usage ──────────────────────────────────────────────"
-echo "  Network demo:  client/Start-Client-Demo.bat  +  teacher/Start-Teacher-Demo.bat"
-echo "  Offline demo:  teacher/Start-Offline-Demo.bat"
-echo "  (No .NET runtime, kernel driver, or domain controller required)"
-echo ""
-ls -lh results/*.exe 2>/dev/null || echo "(no .exe — cross-compiled DLLs in results/)"

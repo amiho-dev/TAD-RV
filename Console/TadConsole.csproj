@@ -10,7 +10,7 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>TadConsole</RootNamespace>
     <AssemblyName>TadConsole</AssemblyName>
-    <!-- <ApplicationIcon>Resources\shield.ico</ApplicationIcon> -->
+    <ApplicationIcon>logo.ico</ApplicationIcon>
     <Version>1.0.0.1</Version>
     <Company>TAD Europe</Company>
     <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
