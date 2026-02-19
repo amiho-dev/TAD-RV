@@ -7,7 +7,7 @@ echo ""
 # ── Clean old artifacts ────────────────────────────────────────────────
 echo "[0/5] Cleaning old build artifacts..."
 for proj in Bootstrap Service Console Teacher; do
-  rm -rf "$proj/bin" "$proj/obj"
+  rm -rf "$proj/bin" "$proj/obj" || true
 done
 
 # Clean results & release folders
