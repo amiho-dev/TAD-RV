@@ -6,6 +6,52 @@
         WindowState="Maximized"
         Background="#0D1117">
 
+    <Window.Resources>
+        <Style x:Key="ToolButton" TargetType="Button">
+            <Setter Property="Background" Value="#21262D" />
+            <Setter Property="Foreground" Value="#C9D1D9" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="#30363D" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#30363D" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="danger">
+                                <Setter Property="BorderBrush" Value="#F85149" />
+                                <Setter Property="Foreground" Value="#F85149" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="success">
+                                <Setter Property="BorderBrush" Value="#3FB950" />
+                                <Setter Property="Foreground" Value="#3FB950" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="info">
+                                <Setter Property="BorderBrush" Value="#58A6FF" />
+                                <Setter Property="Foreground" Value="#58A6FF" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="warning">
+                                <Setter Property="BorderBrush" Value="#D29922" />
+                                <Setter Property="Foreground" Value="#D29922" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />
@@ -64,50 +110,4 @@
             </DockPanel>
         </Border>
     </Grid>
-
-    <Window.Resources>
-        <Style x:Key="ToolButton" TargetType="Button">
-            <Setter Property="Background" Value="#21262D" />
-            <Setter Property="Foreground" Value="#C9D1D9" />
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#30363D" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#30363D" />
-                            </Trigger>
-                            <Trigger Property="Tag" Value="danger">
-                                <Setter Property="BorderBrush" Value="#F85149" />
-                                <Setter Property="Foreground" Value="#F85149" />
-                            </Trigger>
-                            <Trigger Property="Tag" Value="success">
-                                <Setter Property="BorderBrush" Value="#3FB950" />
-                                <Setter Property="Foreground" Value="#3FB950" />
-                            </Trigger>
-                            <Trigger Property="Tag" Value="info">
-                                <Setter Property="BorderBrush" Value="#58A6FF" />
-                                <Setter Property="Foreground" Value="#58A6FF" />
-                            </Trigger>
-                            <Trigger Property="Tag" Value="warning">
-                                <Setter Property="BorderBrush" Value="#D29922" />
-                                <Setter Property="Foreground" Value="#D29922" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
 </Window>

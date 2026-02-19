@@ -5,9 +5,9 @@
     Bump this independently when the Teacher component changes.
   -->
   <PropertyGroup>
-    <Version>26801.19-F</Version>
-    <FileVersion>26801.19.15.0</FileVersion>
-    <InformationalVersion>26801.19F-teacher</InformationalVersion>
+    <Version>26802.19-F</Version>
+    <FileVersion>26802.19.15.0</FileVersion>
+    <InformationalVersion>26802.19F-teacher</InformationalVersion>
   </PropertyGroup>
 
 </Project>
