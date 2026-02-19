@@ -10,9 +10,9 @@
         <Style x:Key="ToolButton" TargetType="Button">
             <Setter Property="Background" Value="#21262D" />
             <Setter Property="Foreground" Value="#C9D1D9" />
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="16,8" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="#30363D" />
             <Setter Property="Cursor" Value="Hand" />
@@ -28,23 +28,59 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#30363D" />
+                                <Setter TargetName="Bd" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="#000" BlurRadius="8" Opacity="0.4" ShadowDepth="2" />
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="Tag" Value="danger">
                                 <Setter Property="BorderBrush" Value="#F85149" />
                                 <Setter Property="Foreground" Value="#F85149" />
                             </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="Tag" Value="danger"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#F8514922" />
+                            </MultiTrigger>
+                            
                             <Trigger Property="Tag" Value="success">
                                 <Setter Property="BorderBrush" Value="#3FB950" />
                                 <Setter Property="Foreground" Value="#3FB950" />
                             </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="Tag" Value="success"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#3FB95022" />
+                            </MultiTrigger>
+
                             <Trigger Property="Tag" Value="info">
                                 <Setter Property="BorderBrush" Value="#58A6FF" />
                                 <Setter Property="Foreground" Value="#58A6FF" />
                             </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="Tag" Value="info"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#58A6FF22" />
+                            </MultiTrigger>
+
                             <Trigger Property="Tag" Value="warning">
                                 <Setter Property="BorderBrush" Value="#D29922" />
                                 <Setter Property="Foreground" Value="#D29922" />
                             </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="Tag" Value="warning"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="#D2992222" />
+                            </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -74,20 +110,48 @@
                            Padding="6,2" Background="#D2992233" />
 
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                    <Button x:Name="BtnLockAll" Content="&#xE72E; Lock All" Click="BtnLockAll_Click"
-                            Style="{StaticResource ToolButton}" Tag="danger" />
-                    <Button x:Name="BtnUnlockAll" Content="&#xE785; Unlock All" Click="BtnUnlockAll_Click"
-                            Style="{StaticResource ToolButton}" Tag="success" Margin="8,0,0,0" />
-                    <Button x:Name="BtnFreezeAll" Content="&#xE7AD; Freeze" Click="BtnFreezeAll_Click"
-                            Style="{StaticResource ToolButton}" Tag="warning" Margin="8,0,0,0" />
-                    <Button x:Name="BtnBlankAll" Content="&#xE7B3; Blank" Click="BtnBlankAll_Click"
-                            Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0" />
-                    <Button x:Name="BtnMessage" Content="&#xE8BD; Message" Click="BtnMessage_Click"
-                            Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0" />
-                    <Button x:Name="BtnCollect" Content="&#xE8B7; Collect" Click="BtnCollect_Click"
-                            Style="{StaticResource ToolButton}" Margin="8,0,0,0" />
-                    <Button x:Name="BtnRefresh" Content="&#xE72C; Refresh" Click="BtnRefresh_Click"
-                            Style="{StaticResource ToolButton}" Margin="8,0,0,0" />
+                    <Button x:Name="BtnLockAll" Click="BtnLockAll_Click" Style="{StaticResource ToolButton}" Tag="danger">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Lock All" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnUnlockAll" Click="BtnUnlockAll_Click" Style="{StaticResource ToolButton}" Tag="success" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Unlock All" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnFreezeAll" Click="BtnFreezeAll_Click" Style="{StaticResource ToolButton}" Tag="warning" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE7AD;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Freeze" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnBlankAll" Click="BtnBlankAll_Click" Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Blank" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnMessage" Click="BtnMessage_Click" Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Message" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnCollect" Click="BtnCollect_Click" Style="{StaticResource ToolButton}" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Collect" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnRefresh" Click="BtnRefresh_Click" Style="{StaticResource ToolButton}" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Refresh" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>

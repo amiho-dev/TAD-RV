@@ -7,9 +7,9 @@
     Bump this independently when the client components change.
   -->
   <PropertyGroup>
-    <Version>26802.19-F</Version>
-    <FileVersion>26802.19.15.0</FileVersion>
-    <InformationalVersion>26802.19F-client</InformationalVersion>
+    <Version>26900.19-R</Version>
+    <FileVersion>26900.19.15.0</FileVersion>
+    <InformationalVersion>26900.19R-client</InformationalVersion>
   </PropertyGroup>
 
 </Project>
