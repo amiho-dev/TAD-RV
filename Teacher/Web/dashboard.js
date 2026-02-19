@@ -1105,4 +1105,4 @@ function showUpdateBanner(version, releaseNotes, htmlUrl) {
 }
 });
 
-console.log('[TAD.RV] Teacher Dashboard initialized — The Greater Brother of te.comp NET.FX');
+console.log('[TAD.RV] Teacher Dashboard initialized');

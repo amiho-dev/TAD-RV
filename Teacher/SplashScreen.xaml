@@ -39,9 +39,9 @@
                        HorizontalAlignment="Center" Margin="0,4,0,0" />
 
             <!-- Branding Line -->
-            <TextBlock Grid.Row="2" Text="The Greater Brother of the mighty te.comp NET.FX"
+            <TextBlock Grid.Row="2" Text="Classroom Management System"
                        FontSize="11" Foreground="#8B949E" FontStyle="Italic"
-                       HorizontalAlignment="Center" Margin="0,12,0,0" />
+                       HorizontalAlignment="Center" Margin="0,17,0,0" />
 
             <!-- Spacer + Loading indicator -->
             <StackPanel Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center">

@@ -14,7 +14,7 @@
     <AssemblyName>TadTeacher</AssemblyName>
     <Company>TAD Europe</Company>
     <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
-    <Product>TAD.RV Teacher Controller — The Greater Brother of te.comp NET.FX</Product>
+    <Product>TAD.RV Teacher Controller</Product>
     <Description>Teacher dashboard for real-time monitoring and control of student endpoints. Next-generation classroom management built on TAD.RV technology.</Description>
     <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>

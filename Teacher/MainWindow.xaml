@@ -165,7 +165,7 @@
             <DockPanel Margin="12,0">
                 <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#8B949E"
                            FontSize="11" VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock x:Name="TxtBranding" Text="TAD.RV — The Greater Brother of te.comp NET.FX"
+                <TextBlock x:Name="TxtBranding" Text="TAD.RV"
                            Foreground="#484F58" FontSize="10" FontStyle="Italic"
                            VerticalAlignment="Center" HorizontalAlignment="Center" />
                 <TextBlock x:Name="TxtConnected" Text="0/50 connected" Foreground="#8B949E"
