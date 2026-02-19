@@ -62,7 +62,9 @@ public partial class MainWindow : Window
 
     public MainWindow(bool demoMode = false)
     {
+        TadLogger.Info($"MainWindow constructor start  demoMode={demoMode}");
         InitializeComponent();
+        TadLogger.Info("InitializeComponent() done");
 
         _isDemoMode = demoMode;
 
@@ -76,9 +78,11 @@ public partial class MainWindow : Window
             _demoManager.VideoFrameReceived += OnVideoFrameReceived;
             _demoManager.MainFrameReceived += OnMainFrameReceived;
             _demoManager.DemoFrameReady += OnDemoFrameReady;
+            TadLogger.Info("Demo managers wired up");
         }
         else
         {
+            TadLogger.Info("Production mode: creating TcpClientManager + DiscoveryListener");
             _tcpManager = new TcpClientManager();
             _tcpManager.StudentStatusUpdated += OnStudentStatusUpdated;
             _tcpManager.VideoFrameReceived += OnVideoFrameReceived;
@@ -88,13 +92,19 @@ public partial class MainWindow : Window
             _discoveryListener = new DiscoveryListener();
             _discoveryListener.OnStudentDiscovered += OnStudentDiscovered;
             _discoveryListener.Start();
+            TadLogger.Info("TcpClientManager and DiscoveryListener started");
         }
 
         // WebView2 requires the window's HWND to exist before EnsureCoreWebView2Async.
         // Calling it from the constructor crashes because the handle does not exist yet.
         // Defer to the Loaded event, which fires after the window is fully rendered.
-        Loaded += (_, _) => InitializeWebView();
+        Loaded += (_, _) =>
+        {
+            TadLogger.Info("Loaded event fired — HWND now exists, starting WebView2 init");
+            InitializeWebView();
+        };
         InitializeTrayIcon();
+        TadLogger.Info($"MainWindow constructor complete  IsVisible={IsVisible}");
 
         _statusTimer = new System.Windows.Threading.DispatcherTimer
         {
@@ -189,44 +199,74 @@ public partial class MainWindow : Window
 
     private async void InitializeWebView()
     {
+        TadLogger.Info("InitializeWebView entered");
         try
         {
-            // Use a temp folder for WebView2 user data to avoid permission issues
             var userDataFolder = Path.Combine(Path.GetTempPath(), "TadTeacher_WV2");
+            TadLogger.Info($"WebView2 user-data folder: {userDataFolder}");
+
+            TadLogger.Info("Calling CoreWebView2Environment.CreateAsync");
             var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+            TadLogger.Info("CoreWebView2Environment created");
+
+            TadLogger.Info("Calling DashboardWebView.EnsureCoreWebView2Async");
             await DashboardWebView.EnsureCoreWebView2Async(env);
+            TadLogger.Info("EnsureCoreWebView2Async completed — CoreWebView2 is ready");
 
             // Wire up readiness gate — NavigationCompleted fires after the page is fully loaded
             DashboardWebView.CoreWebView2.NavigationCompleted += (_, args) =>
             {
+                TadLogger.Info($"NavigationCompleted: IsSuccess={args.IsSuccess} HttpStatus={args.HttpStatusCode}");
                 _webViewReady = args.IsSuccess;
                 if (_webViewReady && _isDemoMode)
                 {
+                    TadLogger.Info("Posting config (demo mode)");
                     PostJsonMessage(new { type = "config", demoMode = true, version = "26700.192" });
                 }
                 else if (_webViewReady)
                 {
+                    TadLogger.Info("Posting config (production mode)");
                     PostJsonMessage(new { type = "config", demoMode = false, version = "26700.192" });
+                }
+                else
+                {
+                    TadLogger.Warn($"NavigationCompleted with failure — WebView2 page did not load (HttpStatus={args.HttpStatusCode})");
                 }
             };
 
-            DashboardWebView.CoreWebView2.NavigateToString(LoadEmbeddedHtml());
+            TadLogger.Info("Loading embedded HTML");
+            var html = LoadEmbeddedHtml();
+            TadLogger.Info($"Embedded HTML loaded: {html.Length} chars");
+
+            DashboardWebView.CoreWebView2.NavigateToString(html);
+            TadLogger.Info("NavigateToString called — waiting for NavigationCompleted");
+
             DashboardWebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+            TadLogger.Info("WebView2 init complete");
         }
         catch (Exception ex)
         {
+            TadLogger.Exception(ex, "InitializeWebView");
             TxtStatus.Text = $"WebView2 init failed: {ex.Message}";
-            // Show a helpful message if WebView2 runtime is missing
-            if (ex.Message.Contains("not found") || ex.Message.Contains("not installed") ||
-                ex is System.Runtime.InteropServices.COMException || ex is FileNotFoundException)
+
+            var isMissing =
+                ex is System.Runtime.InteropServices.COMException ||
+                ex is FileNotFoundException ||
+                ex.Message.Contains("WebView2", StringComparison.OrdinalIgnoreCase) ||
+                ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                ex.Message.Contains("not installed", StringComparison.OrdinalIgnoreCase);
+
+            if (isMissing)
             {
-                MessageBox.Show(
-                    "The Microsoft Edge WebView2 Runtime is required but was not found.\n\n" +
-                    "Please install it from:\nhttps://developer.microsoft.com/en-us/microsoft-edge/webview2/\n\n" +
-                    $"Technical details: {ex.Message}",
-                    "TAD.RV — WebView2 Required",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                App.ShowCrashDialog(
+                    "The Microsoft Edge WebView2 Runtime is required but was not found on this machine.\n\n" +
+                    "Download it from:\nhttps://developer.microsoft.com/en-us/microsoft-edge/webview2/\n\n" +
+                    $"Technical detail: {ex.Message}");
+            }
+            else
+            {
+                App.ShowCrashDialog(
+                    $"WebView2 initialisation failed unexpectedly.\n\n{ex}");
             }
         }
     }
@@ -257,19 +297,30 @@ public partial class MainWindow : Window
     private static string LoadEmbeddedHtml()
     {
         var asm = Assembly.GetExecutingAssembly();
-        var css = LoadResource(asm, "TadTeacher.Web.dashboard.css");
-        var js = LoadResource(asm, "TadTeacher.Web.dashboard.js");
+        TadLogger.Info("LoadEmbeddedHtml: loading CSS");
+        var css  = LoadResource(asm, "TadTeacher.Web.dashboard.css");
+        TadLogger.Info($"LoadEmbeddedHtml: CSS {css.Length} chars");
+        TadLogger.Info("LoadEmbeddedHtml: loading JS");
+        var js   = LoadResource(asm, "TadTeacher.Web.dashboard.js");
+        TadLogger.Info($"LoadEmbeddedHtml: JS {js.Length} chars");
+        TadLogger.Info("LoadEmbeddedHtml: loading HTML");
         var html = LoadResource(asm, "TadTeacher.Web.dashboard.html");
+        TadLogger.Info($"LoadEmbeddedHtml: HTML {html.Length} chars");
 
         html = html.Replace("<!-- INLINE_CSS -->", $"<style>{css}</style>");
-        html = html.Replace("<!-- INLINE_JS -->", $"<script>{js}</script>");
+        html = html.Replace("<!-- INLINE_JS -->",  $"<script>{js}</script>");
         return html;
     }
 
     private static string LoadResource(Assembly asm, string name)
     {
         using var stream = asm.GetManifestResourceStream(name);
-        if (stream == null) return $"/* resource {name} not found */";
+        if (stream == null)
+        {
+            TadLogger.Error($"Embedded resource NOT FOUND: {name}");
+            TadLogger.Info($"Available resources: {string.Join(", ", asm.GetManifestResourceNames())}");
+            return $"/* resource {name} not found */";
+        }
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return reader.ReadToEnd();
     }
