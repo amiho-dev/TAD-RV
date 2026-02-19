@@ -90,7 +90,10 @@ public partial class MainWindow : Window
             _discoveryListener.Start();
         }
 
-        InitializeWebView();
+        // WebView2 requires the window's HWND to exist before EnsureCoreWebView2Async.
+        // Calling it from the constructor crashes because the handle does not exist yet.
+        // Defer to the Loaded event, which fires after the window is fully rendered.
+        Loaded += (_, _) => InitializeWebView();
         InitializeTrayIcon();
 
         _statusTimer = new System.Windows.Threading.DispatcherTimer
@@ -199,11 +202,11 @@ public partial class MainWindow : Window
                 _webViewReady = args.IsSuccess;
                 if (_webViewReady && _isDemoMode)
                 {
-                    PostJsonMessage(new { type = "config", demoMode = true, version = "26500.181" });
+                    PostJsonMessage(new { type = "config", demoMode = true, version = "26700.192" });
                 }
                 else if (_webViewReady)
                 {
-                    PostJsonMessage(new { type = "config", demoMode = false, version = "26500.181" });
+                    PostJsonMessage(new { type = "config", demoMode = false, version = "26700.192" });
                 }
             };
 

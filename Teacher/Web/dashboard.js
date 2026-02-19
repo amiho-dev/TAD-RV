@@ -23,7 +23,7 @@ let rvDecoder = null;                 // WebCodecs VideoDecoder for fullscreen R
 let rvMainDecoder = null;             // Main-stream decoder (30fps 720p)
 let isDemoMode = false;               // Set by config message from C#
 let currentFilter = '';               // Search filter string
-let appVersion = '26500.181';         // Updated by config message
+let appVersion = '26700.192';         // Updated by config message
 
 // ── Message Bridge (C# → JS) ────────────────────────────────────────
 

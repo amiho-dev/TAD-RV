@@ -40,8 +40,8 @@ Environment:
  * Version
  * ═══════════════════════════════════════════════════════════════════════ */
 
-#define TAD_VERSION_MAJOR       26500
-#define TAD_VERSION_MINOR       181
+#define TAD_VERSION_MAJOR       26700
+#define TAD_VERSION_MINOR       192
 #define TAD_VERSION_BUILD       0
 #define TAD_VERSION_REVISION    0
 

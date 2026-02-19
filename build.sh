@@ -84,7 +84,7 @@ echo ""
 
 # ── Package for GitHub Release (Updater requires .zip) ────────────────
 echo "[+] Packaging release artifacts (ZIP)..."
-VERSION="26500.181"
+VERSION=$(grep -oP '(?<=<Version>)[^<]+' version-teacher.props | head -1)
 
 # Console
 cd release-client && zip -r ../TadConsole-$VERSION-win-x64.zip . && cd ..

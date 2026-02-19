@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-26500.181-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-26700.192-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/.NET-8.0-purple?style=flat-square&logo=dotnet" alt=".NET 8">
   <img src="https://img.shields.io/badge/WDK-Windows%20Kernel-orange?style=flat-square&logo=windows" alt="WDK">
   <img src="https://img.shields.io/badge/platform-win--x64-lightgrey?style=flat-square" alt="Platform">
@@ -293,6 +293,24 @@ Default: `tad-europe/TAD-RV`.
 ---
 
 ## Release Log
+
+### v26700.192 — 2026-02-19
+
+**Bug Fixes**
+- Fixed crash on startup: "Initializing WebView2" — `InitializeWebView()` was called from the `MainWindow` constructor before the window's HWND existed, causing `EnsureCoreWebView2Async` to throw. Deferred to the `Loaded` event.
+
+**Kernel**
+- Added `PsSetCreateProcessNotifyRoutineEx` subsystem for per-app process-launch blocking.
+- Added `IOCTL_TAD_SET_BANNED_APPS` (0x809) — service pushes a list of banned image names; driver denies matching process creations when `TAD_POLICY_FLAG_BLOCK_APPS` is set.
+- Added `/INTEGRITYCHECK` linker flag to `Kernel/SOURCES` (required by `PsSetCreateProcessNotifyRoutineEx`).
+
+**Service**
+- `DriverBridge.SetBannedApps(IEnumerable<string>)` — typed IOCTL wrapper.
+- `EmulatedDriverBridge` no-op override for demo/emulated mode.
+
+**Update Notifications**
+- Teacher: added "What's New?" link in update banner that opens a modal with full release notes.
+- Console: added scrollable Release Notes card that appears when an update is available.
 
 ### v26500.181 — 2026-02-18
 

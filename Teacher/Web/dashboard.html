@@ -116,7 +116,7 @@
                 <div class="about-logo">&#xE71E;</div>
                 <h1 class="about-title">TAD.RV</h1>
                 <p class="about-subtitle">Teacher Controller</p>
-                <p class="about-version" id="aboutVersion">v26500.181</p>
+                <p class="about-version" id="aboutVersion">v26700.192</p>
                 <p class="about-branding">The Greater Brother of the mighty te.comp NET.FX</p>
                 <div class="about-divider"></div>
                 <p class="about-desc">Next-generation classroom management.<br/>
@@ -141,7 +141,28 @@
             </div>
             <div class="changelog-body">
                 <div class="changelog-version">
-                    <div class="changelog-badge current">v26500.181</div>
+                    <div class="changelog-badge current">v26700.192</div>
+                    <span class="changelog-date">February 19, 2026 — Bugfix Release</span>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title fix">Bug Fixes</h3>
+                    <ul class="changelog-list">
+                        <li>Fixed crash on startup ("Initializing WebView2") — deferred WebView2 init to the <code>Loaded</code> event so the window HWND exists before <code>EnsureCoreWebView2Async</code> is called</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title feature">New Features</h3>
+                    <ul class="changelog-list">
+                        <li>Kernel: PsSetCreateProcessNotifyRoutineEx — blocked application list enforced at process creation (IOCTL_TAD_SET_BANNED_APPS)</li>
+                        <li>Teacher: "What\'s New?" link on update banner opens full release notes modal</li>
+                        <li>Console: Scrollable release notes card visible when update is available</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-version">
+                    <div class="changelog-badge">v26500.181</div>
                     <span class="changelog-date">February 18, 2026 — Update Release</span>
                 </div>
 
