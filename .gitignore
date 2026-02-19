@@ -44,3 +44,6 @@ _ReSharper*/
 *.pdb
 *.cache
 *.log
+
+# Release ZIP artifacts (uploaded to GitHub Releases, not stored in repo)
+*.zip
