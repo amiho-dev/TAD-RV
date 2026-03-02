@@ -1,2 +1,0 @@
-# Ignore heavy folders to avoid rate limits
-Always ignore: node_modules, .git, .vscode, build, dist, bin, obj
