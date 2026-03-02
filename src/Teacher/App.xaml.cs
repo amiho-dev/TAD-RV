@@ -129,7 +129,16 @@ public partial class App : Application
             if (update != null)
             {
                 TadLogger.Info($"Update available: v{update.Version}");
+
+                // Also notify the WebView2 dashboard (shows banner in the JS UI)
                 await mainWindow.NotifyUpdateAvailable(update.Version, update.ReleaseNotes, update.HtmlUrl);
+
+                // Show the visible WPF updater window (user can download from here)
+                mainWindow.Dispatcher.InvokeAsync(() =>
+                {
+                    var win = new UpdaterWindow(update, Updater!) { Owner = mainWindow };
+                    win.Show();
+                });
             }
             else
             {

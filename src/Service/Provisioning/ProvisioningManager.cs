@@ -31,8 +31,9 @@ public class ProvisioningManager
     private const string PolicyJsonValue     = "PolicyJson";
     private const string PolicyVersionValue  = "PolicyVersion";
 
-    // Hardcoded network share for Policy.json — customise per school district
-    private const string PolicyNetworkPath   = @"\\dc01.school.local\NETLOGON\TAD\Policy.json";
+    // Network share for Policy.json — resolved at runtime from registry, env, or naming convention
+    private const string FallbackPolicyShareSubPath = @"NETLOGON\TAD\Policy.json";
+    private const string PolicyNetworkPathRegValue  = "PolicyNetworkPath";
 
     private readonly ILogger<ProvisioningManager> _log;
 
@@ -62,6 +63,40 @@ public class ProvisioningManager
     }
 
     // ─── Registry Helpers ────────────────────────────────────────────
+
+    private string ResolvePolicyNetworkPath()
+    {
+        // 1. Registry: HKLM\SOFTWARE\TAD_RV\PolicyNetworkPath (admin-configurable)
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(RegistryKeyPath, writable: false);
+            string? regPath = key?.GetValue(PolicyNetworkPathRegValue) as string;
+            if (!string.IsNullOrWhiteSpace(regPath)) return regPath;
+        }
+        catch { /* registry unavailable */ }
+
+        // 2. Environment variable TAD_POLICY_PATH
+        string? envPath = Environment.GetEnvironmentVariable("TAD_POLICY_PATH");
+        if (!string.IsNullOrWhiteSpace(envPath)) return envPath;
+
+        // 3. LOGONSERVER env-var (e.g. \\DC01) → standard NETLOGON share layout
+        string? logonServer = Environment.GetEnvironmentVariable("LOGONSERVER");
+        if (!string.IsNullOrWhiteSpace(logonServer))
+        {
+            // LOGONSERVER may be \\SERVER or just SERVER — normalise
+            if (!logonServer.StartsWith(@"\")) logonServer = @"\\" + logonServer.TrimStart('\\');
+            return Path.Combine(logonServer, FallbackPolicyShareSubPath);
+        }
+
+        // 4. Last resort: assume conventional DC name based on DNS domain
+        string domain = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
+        string dcShare = string.IsNullOrEmpty(domain)
+            ? @"\\dc01\NETLOGON\TAD\Policy.json"
+            : $@"\\{domain}\NETLOGON\TAD\Policy.json";
+
+        _log.LogWarning("No policy path configured — trying {Path}", dcShare);
+        return dcShare;
+    }
 
     private static bool IsProvisioned()
     {
@@ -125,18 +160,19 @@ public class ProvisioningManager
         // ── Fetch Policy.json ────────────────────────────────────────
         string policyJson = string.Empty;
         TadPolicyConfig? policyConfig = null;
+        string policyNetworkPath = ResolvePolicyNetworkPath();
 
         try
         {
             // Try network path first
-            if (File.Exists(PolicyNetworkPath))
+            if (File.Exists(policyNetworkPath))
             {
-                policyJson = await File.ReadAllTextAsync(PolicyNetworkPath, ct);
-                _log.LogInformation("Loaded Policy.json from {Path}", PolicyNetworkPath);
+                policyJson = await File.ReadAllTextAsync(policyNetworkPath, ct);
+                _log.LogInformation("Loaded Policy.json from {Path}", policyNetworkPath);
             }
             else
             {
-                _log.LogWarning("Policy.json not found at {Path} — using defaults", PolicyNetworkPath);
+                _log.LogWarning("Policy.json not found at {Path} — using defaults", policyNetworkPath);
                 policyConfig = TadPolicyConfig.Default;
             }
         }
@@ -183,17 +219,25 @@ public class ProvisioningManager
         try
         {
             using var key = Registry.LocalMachine.OpenSubKey(RegistryKeyPath, writable: false);
-            if (key == null) return null;
 
-            string? json = key.GetValue(PolicyJsonValue) as string;
-            string? ou   = key.GetValue(OuValue) as string;
+            string? json = key?.GetValue(PolicyJsonValue) as string;
+            string? ou   = key?.GetValue(OuValue) as string;
 
-            if (string.IsNullOrEmpty(json)) return null;
+            TadPolicyConfig? config = null;
+            if (!string.IsNullOrEmpty(json))
+            {
+                try
+                {
+                    config = JsonSerializer.Deserialize<TadPolicyConfig>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                catch (JsonException ex)
+                {
+                    _log.LogWarning(ex, "Cached policy JSON is corrupt — falling back to defaults");
+                }
+            }
 
-            var config = JsonSerializer.Deserialize<TadPolicyConfig>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (config == null) return null;
+            config ??= TadPolicyConfig.Default;
 
             return new TadPolicyBuffer
             {
@@ -229,11 +273,11 @@ public sealed class TadPolicyConfig
     public int    HeartbeatTimeoutMs  { get; set; } = 6000;
     public int    AllowedUnloadRoles  { get; set; } = 0x04;  // Admin only
 
-    /// <summary>AD group → role mapping.</summary>
+    /// <summary>AD group → role mapping. Customise per deployment.</summary>
     public Dictionary<string, int> GroupRoleMappings { get; set; } = new()
     {
-        ["Domain Students"]      = 0,   // TadRoleStudent
-        ["Domain Teachers"]      = 1,   // TadRoleTeacher
+        ["Domain Users"]         = 0,   // TadRoleEndpoint (default)
+        ["TAD-Controllers"]      = 1,   // TadRoleController (teacher / presenter)
         ["Domain Admins"]        = 2,   // TadRoleAdmin
         ["TAD-Administrators"]   = 2,
     };

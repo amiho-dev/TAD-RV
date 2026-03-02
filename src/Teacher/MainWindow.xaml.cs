@@ -221,12 +221,12 @@ public partial class MainWindow : Window
                 if (_webViewReady && _isDemoMode)
                 {
                     TadLogger.Info("Posting config (demo mode)");
-                    PostJsonMessage(new { type = "config", demoMode = true, version = "26700.192" });
+                    PostJsonMessage(new { type = "config", demoMode = true, version = GetRunningVersion() });
                 }
                 else if (_webViewReady)
                 {
                     TadLogger.Info("Posting config (production mode)");
-                    PostJsonMessage(new { type = "config", demoMode = false, version = "26700.192" });
+                    PostJsonMessage(new { type = "config", demoMode = false, version = GetRunningVersion() });
                 }
                 else
                 {
@@ -292,6 +292,14 @@ public partial class MainWindow : Window
             DashboardWebView.CoreWebView2?.PostWebMessageAsString(raw);
         }
         catch { /* WebView2 may be closing */ }
+    }
+
+    /// <summary>Returns the InformationalVersion from the running assembly (e.g. v26.3.02.002-teacher).</summary>
+    private static string GetRunningVersion()
+    {
+        var asm = System.Reflection.Assembly.GetExecutingAssembly();
+        var attr = asm.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
+        return attr?.InformationalVersion ?? asm.GetName().Version?.ToString() ?? "0.0";
     }
 
     private static string LoadEmbeddedHtml()
@@ -466,11 +474,13 @@ public partial class MainWindow : Window
         if (_allFrozen)
         {
             if (_isDemoMode) _demoManager!.BroadcastFreeze(300, "Eyes on the teacher!");
+            else _tcpManager!.BroadcastFreeze();
             TxtStatus.Text = "Froze all screens — Eyes on the teacher!";
         }
         else
         {
             if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
+            else _tcpManager!.BroadcastUnfreeze();
             TxtStatus.Text = "Unfroze all screens";
         }
 
@@ -501,6 +511,12 @@ public partial class MainWindow : Window
         if (_isDemoMode) _demoManager!.PingAll();
         else _tcpManager!.PingAll();
         TxtStatus.Text = "Refreshing...";
+    }
+
+    private void BtnRoomDesigner_Click(object sender, RoutedEventArgs e)
+    {
+        var designer = new TadTeacher.ClassDesigner.ClassDesignerWindow { Owner = this };
+        designer.Show();
     }
 
     private void UpdateStatusBar()

@@ -15,7 +15,7 @@
     <Company>TAD Europe</Company>
     <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
     <Product>TAD.RV Teacher Controller</Product>
-    <Description>Teacher dashboard for real-time monitoring and control of student endpoints. Next-generation classroom management built on TAD.RV technology.</Description>
+    <Description>Teacher dashboard for real-time monitoring and control of student endpoints. Next-generation endpoint management built on TAD.RV technology.</Description>
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

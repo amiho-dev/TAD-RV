@@ -152,6 +152,12 @@
                             <TextBlock Text="Refresh" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+                    <Button x:Name="BtnRoomDesigner" Click="BtnRoomDesigner_Click" Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE80F;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
+                            <TextBlock Text="Room" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>

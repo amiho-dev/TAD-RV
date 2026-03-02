@@ -41,7 +41,7 @@ public sealed class EmulatedProvisioningManager : ProvisioningManager
             Flags               = (uint)defaultConfig.Flags,
             HeartbeatIntervalMs = (uint)defaultConfig.HeartbeatIntervalMs,
             HeartbeatTimeoutMs  = (uint)defaultConfig.HeartbeatTimeoutMs,
-            OrganizationalUnit  = "OU=Demo,OU=TAD,DC=school,DC=local",
+            OrganizationalUnit  = "OU=Demo,OU=TAD,DC=corp",
             AllowedRoles        = (uint)defaultConfig.AllowedUnloadRoles,
             Reserved            = new uint[8]
         };

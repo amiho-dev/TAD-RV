@@ -7,7 +7,7 @@
         Background="Transparent"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Width="520" Height="340"
+        Width="700" Height="460"
         Topmost="True">
 
     <Border CornerRadius="16" Background="#0D1117" BorderBrush="#30363D" BorderThickness="1">
@@ -15,7 +15,7 @@
             <DropShadowEffect BlurRadius="30" ShadowDepth="0" Color="#000000" Opacity="0.6" />
         </Border.Effect>
 
-        <Grid Margin="40,32">
+        <Grid Margin="60,48">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -39,7 +39,7 @@
                        HorizontalAlignment="Center" Margin="0,4,0,0" />
 
             <!-- Branding Line -->
-            <TextBlock Grid.Row="2" Text="Classroom Management System"
+            <TextBlock Grid.Row="2" Text="Endpoint Management Platform"
                        FontSize="11" Foreground="#8B949E" FontStyle="Italic"
                        HorizontalAlignment="Center" Margin="0,17,0,0" />
 

@@ -12,7 +12,7 @@ public struct TAD_BANNED_APPS_INPUT
 
 public class TadDriverClient
 {
-    private SafeFileHandle _handle;
+    private SafeFileHandle _handle = null!;
 
     public bool Connect()
     {

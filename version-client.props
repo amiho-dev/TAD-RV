@@ -5,11 +5,14 @@
       - TadBridgeService (Windows service)
       - TadBootstrap (GPO bootstrap loader)
     Bump this independently when the client components change.
+
+    Format: v{year}.{month}.{day:00}.{patch:000}
+    Current: v26.3.02.002 — Year 2026, March 2, Patch 002
   -->
   <PropertyGroup>
-    <Version>26030.2</Version>
-    <FileVersion>26030.2.0.0</FileVersion>
-    <InformationalVersion>26030.02NR-client</InformationalVersion>
+    <Version>26.3.2</Version>
+    <FileVersion>26.3.2.2</FileVersion>
+    <InformationalVersion>v26.3.02.002-client</InformationalVersion>
   </PropertyGroup>
 
 </Project>

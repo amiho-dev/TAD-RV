@@ -30,6 +30,20 @@ bool demoMode = args.Any(a =>
 
 bool userMode = !legacyKernelMode;
 
+// Auto-detect domain membership: even in --kernel mode, if machine is not
+// domain-joined fall back to emulated AD so the service stays functional
+// during DC maintenance or on standalone machines.
+bool isDomainJoined = false;
+try
+{
+    string domain = System.Net.NetworkInformation.IPGlobalProperties
+                        .GetIPGlobalProperties().DomainName;
+    isDomainJoined = !string.IsNullOrWhiteSpace(domain);
+}
+catch { /* network query failed — assume standalone */ }
+
+bool useEmulatedAd = userMode || !isDomainJoined;
+
 var builder = Host.CreateApplicationBuilder(args);
 
 // Run as a Windows Service (sc.exe / services.msc)
@@ -65,6 +79,21 @@ if (userMode)
 
     // Tray icon so the user sees the service state when run interactively
     builder.Services.AddHostedService<TrayIconManager>();
+}
+else if (useEmulatedAd)
+{
+    // ── Kernel driver mode on a non-domain-joined machine ─────────
+    // (DC unreachable / under maintenance) — real driver, emulated AD
+    builder.Services.AddSingleton<DriverBridge>();
+    builder.Services.AddSingleton<OfflineCacheManager>();
+
+    builder.Services.AddSingleton<ProvisioningManager>(sp =>
+        new EmulatedProvisioningManager(sp.GetRequiredService<ILogger<ProvisioningManager>>()));
+
+    builder.Services.AddSingleton<AdGroupWatcher>(sp =>
+        new EmulatedAdGroupWatcher(
+            sp.GetRequiredService<ILogger<AdGroupWatcher>>(),
+            sp.GetRequiredService<OfflineCacheManager>()));
 }
 else
 {
@@ -103,7 +132,11 @@ if (userMode)
 else
 {
     var log = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
-    log.LogWarning("Running in LEGACY KERNEL mode (--kernel)");
+    if (useEmulatedAd)
+        log.LogWarning("Running in LEGACY KERNEL mode (--kernel) — DC not reachable, using emulated AD");
+    else
+        log.LogWarning("Running in LEGACY KERNEL mode (--kernel) — domain={Domain}", 
+            System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName);
 }
 
 host.Run();

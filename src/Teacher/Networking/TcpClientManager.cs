@@ -94,6 +94,10 @@ public sealed class TcpClientManager : IDisposable
 
     public void BroadcastLock() => BroadcastCommand(TadCommand.Lock);
     public void BroadcastUnlock() => BroadcastCommand(TadCommand.Unlock);
+    /// <summary>Freeze = Lock in user-mode (no kernel driver required).</summary>
+    public void BroadcastFreeze() => BroadcastCommand(TadCommand.Lock);
+    /// <summary>Unfreeze = Unlock in user-mode.</summary>
+    public void BroadcastUnfreeze() => BroadcastCommand(TadCommand.Unlock);
     public void BroadcastCollectFiles()
     {
         var request = new CollectFilesRequest();
