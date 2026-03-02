@@ -134,7 +134,7 @@ public partial class App : Application
                 await mainWindow.NotifyUpdateAvailable(update.Version, update.ReleaseNotes, update.HtmlUrl);
 
                 // Show the visible WPF updater window (user can download from here)
-                mainWindow.Dispatcher.InvokeAsync(() =>
+                await mainWindow.Dispatcher.InvokeAsync(() =>
                 {
                     var win = new UpdaterWindow(update, Updater!) { Owner = mainWindow };
                     win.Show();
