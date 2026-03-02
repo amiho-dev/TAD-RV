@@ -2,16 +2,16 @@
 // DriverBridge.cs — P/Invoke bridge to \\.\TadRvLink
 //
 // Provides typed wrappers around DeviceIoControl for every IOCTL defined
-// in TadShared.h.  Handles safe handle management, buffer marshalling,
+// in TADShared.h.  Handles safe handle management, buffer marshalling,
 // and Win32 error translation.
 // ───────────────────────────────────────────────────────────────────────────
 
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32.SafeHandles;
-using TadBridge.Shared;
+using TADBridge.Shared;
 
-namespace TadBridge.Driver;
+namespace TADBridge.Driver;
 
 /// <summary>
 /// Low-level communication channel to the TAD.RV kernel driver.

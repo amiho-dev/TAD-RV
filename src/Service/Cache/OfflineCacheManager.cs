@@ -18,9 +18,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using TadBridge.Shared;
+using TADBridge.Shared;
 
-namespace TadBridge.Cache;
+namespace TADBridge.Cache;
 
 /// <summary>
 /// Manages the DPAPI-encrypted offline user resolution cache.

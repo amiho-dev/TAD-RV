@@ -16,11 +16,11 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
-using TadBridge.Cache;
-using TadBridge.Provisioning;
-using TadBridge.Shared;
+using TADBridge.Cache;
+using TADBridge.Provisioning;
+using TADBridge.Shared;
 
-namespace TadBridge.ActiveDirectory;
+namespace TADBridge.ActiveDirectory;
 
 /// <summary>
 /// Resolves the interactive user's AD groups and maps them to a TAD role.

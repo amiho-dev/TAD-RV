@@ -6,7 +6,7 @@
     Installs the TAD.RV kernel driver using the simplest method available.
     Prefers pnputil (INF-based) with automatic fallback to sc.exe.
 
-    Run this once on each student PC. The TadBridgeService will
+    Run this once on each student PC. The TADBridgeService will
     auto-detect and connect to the driver at startup.
 
 .EXAMPLE

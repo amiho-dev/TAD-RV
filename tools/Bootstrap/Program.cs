@@ -4,8 +4,8 @@
 // (C) 2026 TAD Europe — https://tad-it.eu
 //
 // ZERO-INSTALL deployment for non-domain environments:
-//   1. Launched via GPO Startup Script from \\Server\TAD\TadBootstrap.exe
-//   2. Copies TadBridgeService.exe to hidden local cache
+//   1. Launched via GPO Startup Script from \\Server\TAD\TADBootstrap.exe
+//   2. Copies TADBridgeService.exe to hidden local cache
 //   3. Registers + starts a SYSTEM service with auto-recovery
 //
 // Runs as SYSTEM (GPO startup context). No reboot required.
@@ -18,29 +18,29 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
 
-namespace TadBootstrap;
+namespace TADBootstrap;
 
 internal static class Program
 {
     // ─── Configuration ────────────────────────────────────────────────
 
-    const string ServiceName        = "TadBridgeService";
+    const string ServiceName        = "TADBridgeService";
     const string ServiceDisplayName = "TAD.RV Bridge Service";
 
     static readonly string CacheDir   = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
         ".tad_cache");
 
-    static readonly string ServiceExe = Path.Combine(CacheDir, "TadBridgeService.exe");
+    static readonly string ServiceExe = Path.Combine(CacheDir, "TADBridgeService.exe");
     static readonly string VersionFile = Path.Combine(CacheDir, ".version");
 
     // Files to deploy from the UNC share (relative to bootstrap exe location)
     static readonly string[] DeployFiles = new[]
     {
-        "TadBridgeService.exe",
-        "TadBridgeService.dll",
-        "TadBridgeService.deps.json",
-        "TadBridgeService.runtimeconfig.json",
+        "TADBridgeService.exe",
+        "TADBridgeService.dll",
+        "TADBridgeService.deps.json",
+        "TADBridgeService.runtimeconfig.json",
     };
 
     // ─── Entry Point ──────────────────────────────────────────────────
@@ -146,7 +146,7 @@ internal static class Program
 
     static string GetSourceVersion()
     {
-        var sourceExe = Path.Combine(AppContext.BaseDirectory, "TadBridgeService.exe");
+        var sourceExe = Path.Combine(AppContext.BaseDirectory, "TADBridgeService.exe");
         if (File.Exists(sourceExe))
         {
             var vi = FileVersionInfo.GetVersionInfo(sourceExe);

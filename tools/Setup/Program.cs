@@ -3,16 +3,16 @@
 //
 // (C) 2026 TAD Europe — https://tad-it.eu
 //
-// Single-file self-contained installer for the TadBridgeService endpoint.
+// Single-file self-contained installer for the TADBridgeService endpoint.
 //
 // Usage (must run as Administrator):
-//   TadSetup.exe                   → interactive install
-//   TadSetup.exe --install         → silent install
-//   TadSetup.exe --uninstall       → remove service + files
-//   TadSetup.exe --status          → print current service status
+//   TADSetup.exe                   → interactive install
+//   TADSetup.exe --install         → silent install
+//   TADSetup.exe --uninstall       → remove service + files
+//   TADSetup.exe --status          → print current service status
 //
 // Installs to:  %ProgramFiles%\TAD-RV\
-// Service name: TadBridgeService
+// Service name: TADBridgeService
 // Runs as:      LocalSystem   (cannot be killed by normal users)
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -22,10 +22,10 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using Microsoft.Win32;
 
-const string ServiceName    = "TadBridgeService";
+const string ServiceName    = "TADBridgeService";
 const string ServiceDisplay = "TAD.RV Bridge Service";
 const string ServiceDesc    = "TAD.RV endpoint protection and remote-view agent. User-mode runtime — no kernel driver required.";
-const string ServiceBinary  = "TadBridgeService.exe";
+const string ServiceBinary  = "TADBridgeService.exe";
 const string InstallSubDir  = @"TAD-RV";
 
 // ── Argument parsing ─────────────────────────────────────────────────────

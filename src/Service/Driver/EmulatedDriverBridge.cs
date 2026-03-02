@@ -6,9 +6,9 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 using Microsoft.Extensions.Logging;
-using TadBridge.Shared;
+using TADBridge.Shared;
 
-namespace TadBridge.Driver;
+namespace TADBridge.Driver;
 
 /// <summary>
 /// Drop-in replacement for <see cref="DriverBridge"/> that responds with

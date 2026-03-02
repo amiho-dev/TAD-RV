@@ -164,11 +164,11 @@ REM Start it
 sc start TAD_RV
 ```
 
-### Method 4: Programmatic (via TadBridgeService)
+### Method 4: Programmatic (via TADBridgeService)
 
 ```batch
 REM The service can auto-install the driver on first run
-TadBridgeService.exe --auto-install
+TADBridgeService.exe --auto-install
 ```
 
 This calls `DriverInstaller.EnsureInstalled()` which handles:
@@ -183,13 +183,13 @@ For zero-touch deployment in school labs:
 
 ```batch
 REM Place on NETLOGON share
-\\dc01.school.local\NETLOGON\TAD\TadBootstrap.exe
+\\dc01.school.local\NETLOGON\TAD\TADBootstrap.exe
 ```
 
 Configure as a **GPO Computer Startup Script**. The bootstrap loader:
 1. Copies binaries to a hidden local cache (`%ProgramData%\.tad_cache\`)
 2. Installs the kernel driver via `sc create`
-3. Registers and starts TadBridgeService as auto-start SYSTEM service
+3. Registers and starts TADBridgeService as auto-start SYSTEM service
 4. Configures crash recovery (restart after 5s/10s/30s)
 
 See [Docs/Deployment-Guide.md](Deployment-Guide.md) for full GPO walkthrough.
@@ -238,7 +238,7 @@ Look for `TAD_RV` with altitude `371100`.
 Use **WinObj** (Sysinternals) to browse `\Callback\` for the TAD.RV registration, or check the Event Log for:
 
 ```
-Source: TadBridgeService
+Source: TADBridgeService
 Event ID: 9001
 ```
 
@@ -289,7 +289,7 @@ certutil -addstore TrustedPublisher TAD-Dev.cer
 
 **Fix**: Verify the service runs as `LocalSystem` (which has access). Check:
 ```batch
-sc qc TadBridgeService
+sc qc TADBridgeService
 ```
 Ensure `SERVICE_START_NAME` is `LocalSystem`.
 
@@ -322,8 +322,8 @@ If missing, check `TAD_RV.inf` includes the correct `Instance1.Altitude = 371100
 
 ```batch
 REM Stop the user-mode service first
-sc stop TadBridgeService
-sc delete TadBridgeService
+sc stop TADBridgeService
+sc delete TADBridgeService
 
 REM Stop and remove the kernel driver
 sc stop TAD_RV
@@ -349,7 +349,7 @@ rd /s /q %ProgramData%\TAD_RV
 rd /s /q %ProgramData%\.tad_cache
 reg delete HKLM\SOFTWARE\TAD_RV /f
 reg delete HKLM\SYSTEM\CurrentControlSet\Services\TAD_RV /f
-reg delete HKLM\SYSTEM\CurrentControlSet\Services\TadBridgeService /f
+reg delete HKLM\SYSTEM\CurrentControlSet\Services\TADBridgeService /f
 ```
 
 ---

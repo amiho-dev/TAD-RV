@@ -32,7 +32,7 @@
 
 ### Launch
 
-Run `TadConsole.exe` — the application will request UAC elevation because it needs access to:
+Run `TADDomainController.exe` — the application will request UAC elevation because it needs access to:
 - Windows Service management (`sc.exe`)
 - Registry (`HKLM\SOFTWARE\TAD_RV`)
 - Windows Event Log
@@ -47,7 +47,7 @@ The default landing page provides a real-time overview:
 | Card | Shows |
 |---|---|
 | **Driver Status** | Whether `TAD.RV.sys` is loaded in the kernel |
-| **Service Status** | Whether `TadBridgeService` is running |
+| **Service Status** | Whether `TADBridgeService` is running |
 | **Policy Flags** | Currently active policy bitmask value |
 | **Uptime** | Service uptime since last start |
 
@@ -71,7 +71,7 @@ Live view of all values under `HKLM\SOFTWARE\TAD_RV` — editable from the Polic
 
 | Button | Action |
 |---|---|
-| **Start** | Start the TadBridgeService |
+| **Start** | Start the TADBridgeService |
 | **Stop** | Stop the service (requires driver unlock) |
 | **Restart** | Stop + Start with 3-second delay |
 
@@ -82,7 +82,7 @@ Full-featured deployment wizard replacing the legacy PowerShell script.
 ### Steps
 
 1. **Select driver** — Browse to `TAD.RV.sys`
-2. **Select service binary** — Browse to `TadBridgeService.exe`
+2. **Select service binary** — Browse to `TADBridgeService.exe`
 3. **Choose install directory** — Default: `C:\Program Files\TAD_RV`
 4. **Click Deploy Now**
 
@@ -164,7 +164,7 @@ Visual layout tool for defining classroom desk arrangements.
 - Grid snapping for clean alignment
 - Room naming and management
 - Export/import room layouts
-- Links to Teacher Controller for live monitoring
+- Links to Admin Controller for live monitoring
 
 ### Usage
 
@@ -174,7 +174,7 @@ Visual layout tool for defining classroom desk arrangements.
 4. Name the room (e.g., "Computer Lab A")
 5. Click **Save**
 
-Rooms are stored locally and can be referenced by the Teacher Controller.
+Rooms are stored locally and can be referenced by the Admin Controller.
 
 ## 7. Language Settings
 

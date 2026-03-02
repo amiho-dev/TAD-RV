@@ -1,7 +1,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 // TrayIconManager.cs — System tray icon for interactive / emulation mode
 //
-// When TadBridgeService runs interactively (--emulate / --demo), this shows
+// When TADBridgeService runs interactively (--emulate / --demo), this shows
 // a tray icon so the user knows the service is active.  In true Windows
 // Service mode this class is not registered.
 // ───────────────────────────────────────────────────────────────────────────
@@ -11,7 +11,7 @@ using System.Reflection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace TadBridge.Tray;
+namespace TADBridge.Tray;
 
 public sealed class TrayIconManager : IHostedService, IDisposable
 {

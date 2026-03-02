@@ -1,8 +1,8 @@
-# TAD.RV — Teacher Controller Guide
+# TAD.RV — Admin Controller Guide
 
 **(C) 2026 TAD Europe — https://tad-it.eu**
 
-> **Scope**: User guide for the TAD.RV Teacher Controller application —
+> **Scope**: User guide for the TAD.RV Admin Controller application —
 > classroom monitoring, screen viewing, and student management.
 
 ---
@@ -34,11 +34,11 @@
 
 ### Launch
 
-Run `TadTeacher.exe` — no installation or admin privileges required. The application opens maximised and immediately begins discovering student endpoints on the local network.
+Run `TADAdmin.exe` — no installation or admin privileges required. The application opens maximised and immediately begins discovering student endpoints on the local network.
 
 ### Prerequisites on Student Machines
 
-Students must be running `TadBridgeService.exe` with:
+Students must be running `TADBridgeService.exe` with:
 - **Multicast discovery** enabled (default)
 - **TCP listener** active on port 47101 (default)
 - **Screen capture** policy enabled (`LOG_SCREENSHOTS` flag)
@@ -86,7 +86,7 @@ Students must be running `TadBridgeService.exe` with:
 
 ## 3. Student Discovery
 
-The Teacher Controller uses **UDP multicast** to discover student endpoints automatically:
+The Admin Controller uses **UDP multicast** to discover student endpoints automatically:
 
 - Multicast group: `239.77.65.68`
 - Port: `47100`
@@ -193,7 +193,7 @@ Language preference is saved and restored on next launch.
 |---|---|
 | Different VLAN | Ensure Teacher and Students are on the same network segment |
 | Firewall blocking UDP | Open UDP port 47100 inbound |
-| Service not running | Verify `TadBridgeService` is running on student machines |
+| Service not running | Verify `TADBridgeService` is running on student machines |
 | Multicast disabled | Check network switch supports multicast / IGMP snooping |
 
 ### RV not working
@@ -215,7 +215,7 @@ Language preference is saved and restored on next launch.
 ### General
 
 - Check the status bar at the bottom of the window for connection counts
-- All errors are logged to the Windows Event Log under source `TadTeacher`
+- All errors are logged to the Windows Event Log under source `TADAdmin`
 - For persistent issues, try restarting the Teacher application
 
 ---

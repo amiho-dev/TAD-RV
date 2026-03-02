@@ -10,10 +10,10 @@
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using TadBridge.Driver;
-using TadBridge.Shared;
+using TADBridge.Driver;
+using TADBridge.Shared;
 
-namespace TadBridge.Core;
+namespace TADBridge.Core;
 
 public sealed class AlertReaderWorker : BackgroundService
 {
@@ -84,7 +84,7 @@ public sealed class AlertReaderWorker : BackgroundService
         {
             case TadAlertType.ServiceTamper:
                 _log.LogCritical(
-                    "SECURITY: Process PID {Pid} attempted to kill TadBridgeService! Detail: {Detail}",
+                    "SECURITY: Process PID {Pid} attempted to kill TADBridgeService! Detail: {Detail}",
                     alert.SourcePid, alert.Detail);
                 WriteAdminAlertToEventLog(alert);
                 break;
@@ -124,7 +124,7 @@ public sealed class AlertReaderWorker : BackgroundService
         try
         {
             using var eventLog = new System.Diagnostics.EventLog("Application");
-            eventLog.Source = "TadBridgeService";
+            eventLog.Source = "TADBridgeService";
             eventLog.WriteEntry(
                 $"[TAD.RV ALERT] Type={alert.AlertType}, PID={alert.SourcePid}, " +
                 $"Detail={alert.Detail}",

@@ -19,7 +19,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
-namespace TadBridge.Capture;
+namespace TADBridge.Capture;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Stream Profile Definitions

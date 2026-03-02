@@ -24,7 +24,7 @@
 
 TAD.RV uses a lightweight client-side i18n system called `TAD_I18N`. It operates entirely in the browser (WebView2) — no server round-trips, no build step. All translations are loaded as embedded JavaScript resources.
 
-Both the **Management Console** and **Teacher Controller** share the same i18n module and language packs.
+Both the **Management Console** and **Admin Controller** share the same i18n module and language packs.
 
 ## 2. Supported Languages
 
@@ -142,7 +142,7 @@ TAD_I18N.register('ja', {
 
 ### 3. Add to both .csproj files
 
-In `Console/TadConsole.csproj` and `Teacher/TadTeacher.csproj`:
+In `Console/TADDomainController.csproj` and `Teacher/TADAdmin.csproj`:
 
 ```xml
 <EmbeddedResource Include="..\Shared\Web\lang\ja.js" Link="Web\lang\ja.js" />

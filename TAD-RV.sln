@@ -4,17 +4,17 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Service", "Service", "{226567F5-DD15-7888-5BF1-C4407778305A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Console", "Console", "{09D8FB36-4898-7C8E-B3F7-02AC6C3AAC25}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DomainController", "DomainController", "{09D8FB36-4898-7C8E-B3F7-02AC6C3AAC25}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TadBridgeService", "src\Service\TadBridgeService.csproj", "{762479E2-E890-C7AC-F0CA-88623AA40516}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TADBridgeService", "src\Service\TADBridgeService.csproj", "{762479E2-E890-C7AC-F0CA-88623AA40516}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TadConsole", "src\Console\TadConsole.csproj", "{866D9E2A-0A25-78B4-7A4D-73D0CA03225B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TADDomainController", "src\DomainController\TADDomainController.csproj", "{866D9E2A-0A25-78B4-7A4D-73D0CA03225B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TadTeacher", "src\Teacher\TadTeacher.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF0123456789}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TADAdmin", "src\Admin\TADAdmin.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF0123456789}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TadBootstrap", "tools\Bootstrap\TadBootstrap.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F01234567890}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TADBootstrap", "tools\Bootstrap\TADBootstrap.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F01234567890}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TadSetup", "tools\Setup\TadSetup.csproj", "{C3D4E5F6-A7B8-9012-CDEF-012345678901}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TADSetup", "tools\Setup\TADSetup.csproj", "{C3D4E5F6-A7B8-9012-CDEF-012345678901}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

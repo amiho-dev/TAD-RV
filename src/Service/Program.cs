@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────────
-// Program.cs — Entry point for TadBridgeService
+// Program.cs — Entry point for TADBridgeService
 //
 // Configures the .NET Generic Host as a Windows Service.
 // Default runtime is user-mode only (no kernel driver dependency).
@@ -10,14 +10,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using TadBridge.Core;
-using TadBridge.Driver;
-using TadBridge.ActiveDirectory;
-using TadBridge.Provisioning;
-using TadBridge.Cache;
-using TadBridge.Capture;
-using TadBridge.Networking;
-using TadBridge.Tray;
+using TADBridge.Core;
+using TADBridge.Driver;
+using TADBridge.ActiveDirectory;
+using TADBridge.Provisioning;
+using TADBridge.Cache;
+using TADBridge.Capture;
+using TADBridge.Networking;
+using TADBridge.Tray;
 
 bool legacyKernelMode = args.Any(a =>
     a.Equals("--kernel", StringComparison.OrdinalIgnoreCase) ||
@@ -49,13 +49,13 @@ var builder = Host.CreateApplicationBuilder(args);
 // Run as a Windows Service (sc.exe / services.msc)
 builder.Services.AddWindowsService(options =>
 {
-    options.ServiceName = "TadBridgeService";
+    options.ServiceName = "TADBridgeService";
 });
 
 // Logging
 builder.Logging.AddEventLog(settings =>
 {
-    settings.SourceName = "TadBridgeService";
+    settings.SourceName = "TADBridgeService";
     settings.LogName    = "Application";
 });
 
@@ -112,7 +112,7 @@ builder.Services.AddSingleton<ScreenCaptureEngine>();
 builder.Services.AddSingleton<MulticastDiscovery>();
 
 // Hosted background workers
-builder.Services.AddHostedService<TadBridgeWorker>();
+builder.Services.AddHostedService<TADBridgeWorker>();
 builder.Services.AddHostedService<HeartbeatWorker>();
 builder.Services.AddHostedService<AlertReaderWorker>();
 builder.Services.AddHostedService<TadTcpListener>();

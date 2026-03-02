@@ -11,10 +11,10 @@
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using TadBridge.Driver;
-using TadBridge.Shared;
+using TADBridge.Driver;
+using TADBridge.Shared;
 
-namespace TadBridge.Core;
+namespace TADBridge.Core;
 
 public sealed class HeartbeatWorker : BackgroundService
 {

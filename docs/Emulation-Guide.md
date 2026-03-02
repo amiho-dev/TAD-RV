@@ -32,15 +32,15 @@ Emulation mode allows you to run the complete TAD.RV stack **without installing 
 
 ```bash
 # Run the service in emulation mode
-TadBridgeService.exe --emulate
+TADBridgeService.exe --emulate
 
 # Alternative flag
-TadBridgeService.exe --demo
+TADBridgeService.exe --demo
 ```
 
 The service will:
 1. Print `*** EMULATION MODE — no kernel driver required ***` to console
-2. Stop any existing production `TadBridgeService` (to free the TCP port)
+2. Stop any existing production `TADBridgeService` (to free the TCP port)
 3. Start all subsystems with the `EmulatedDriverBridge` instead of real P/Invoke calls
 4. Show a system tray icon (when running interactively)
 
@@ -78,7 +78,7 @@ In emulation mode, `ReadAlert()` generates **synthetic security alerts** to demo
 
 These alerts flow through the same pipeline as real alerts:
 1. `AlertReaderWorker` reads the alert from `EmulatedDriverBridge`
-2. Alert is written to the Windows Event Log (source `TadBridgeService`, event ID 9001)
+2. Alert is written to the Windows Event Log (source `TADBridgeService`, event ID 9001)
 3. The Management Console's **Alerts** page picks them up on its next refresh
 
 ## 5. Tray Icon
@@ -101,14 +101,14 @@ To demonstrate the complete system:
 
 ```bash
 cd release-addc
-.\TadBridgeService.exe --emulate
+.\TADBridgeService.exe --emulate
 ```
 
 ### Terminal 2 — Management Console
 
 ```bash
 cd release-client
-.\TadConsole.exe
+.\TADDomainController.exe
 ```
 
 Navigate through:
@@ -117,11 +117,11 @@ Navigate through:
 - **Policy** → Toggle flags (changes are reflected in the emulated driver)
 - **Classrooms** → Design a room layout
 
-### Terminal 3 — Teacher Controller
+### Terminal 3 — Admin Controller
 
 ```bash
 cd release-teacher
-.\TadTeacher.exe
+.\TADAdmin.exe
 ```
 
 The Teacher will discover the emulated service via multicast and show it in the student grid.

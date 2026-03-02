@@ -23,9 +23,9 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
-using TadBridge.Shared;
+using TADBridge.Shared;
 
-namespace TadBridge.Capture;
+namespace TADBridge.Capture;
 
 /// <summary>
 /// Category of content to redact. Extensible via policy.

@@ -58,9 +58,9 @@ This runs `dotnet publish` for each project and copies outputs to:
 
 | Folder | Contents |
 |---|---|
-| `release-client/` | `TadConsole.exe` + PDB |
-| `release-teacher/` | `TadTeacher.exe` + PDB |
-| `release-addc/` | `TadBridgeService.exe`, `TadBootstrap.exe` + PDBs |
+| `release-client/` | `TADDomainController.exe` + PDB |
+| `release-teacher/` | `TADAdmin.exe` + PDB |
+| `release-addc/` | `TADBridgeService.exe`, `TADBootstrap.exe` + PDBs |
 
 ## 3. Individual Projects
 
@@ -72,9 +72,9 @@ dotnet build -c Debug
 dotnet publish -c Release -r win-x64 --self-contained
 ```
 
-Output: `Console/bin/Release/net8.0-windows/win-x64/publish/TadConsole.exe`
+Output: `Console/bin/Release/net8.0-windows/win-x64/publish/TADDomainController.exe`
 
-### Teacher Controller
+### Admin Controller
 
 ```bash
 cd Teacher
@@ -82,7 +82,7 @@ dotnet build -c Debug
 dotnet publish -c Release -r win-x64 --self-contained
 ```
 
-Output: `Teacher/bin/Release/net8.0-windows/win-x64/publish/TadTeacher.exe`
+Output: `Teacher/bin/Release/net8.0-windows/win-x64/publish/TADAdmin.exe`
 
 ### Bridge Service
 
@@ -92,7 +92,7 @@ dotnet build -c Debug
 dotnet publish -c Release -r win-x64 --self-contained
 ```
 
-Output: `Service/bin/Release/net8.0-windows/win-x64/publish/TadBridgeService.exe`
+Output: `Service/bin/Release/net8.0-windows/win-x64/publish/TADBridgeService.exe`
 
 ### Bootstrap Loader
 
@@ -102,7 +102,7 @@ dotnet build -c Debug
 dotnet publish -c Release -r win-x64 --self-contained
 ```
 
-Output: `Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TadBootstrap.exe`
+Output: `Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TADBootstrap.exe`
 
 ## 4. Release Builds
 
@@ -123,8 +123,8 @@ Version numbers are managed via `.props` files:
 | File | Scope |
 |---|---|
 | `version-client.props` | Bootstrap (shared with service deployment) |
-| `version-console.props` | Management Console |
-| `version-teacher.props` | Teacher Controller |
+| `version-dc.props` | Management Console |
+| `version-admin.props` | Admin Controller |
 | `Directory.Build.props` | Solution-wide defaults |
 
 ## 5. Kernel Driver
@@ -149,7 +149,7 @@ build -ceZ
 | File | Purpose |
 |---|---|
 | `TAD_RV.c` | Full driver implementation |
-| `TAD_RV.h` | Driver header (includes `../Shared/TadShared.h`) |
+| `TAD_RV.h` | Driver header (includes `../Shared/TADShared.h`) |
 | `TAD_RV.inf` | Installation INF (minifilter) |
 | `TAD_RV.rc` | Version resource |
 | `SOURCES` | WDK build metadata |

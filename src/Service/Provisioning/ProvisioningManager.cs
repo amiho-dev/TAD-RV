@@ -15,9 +15,9 @@ using System.DirectoryServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
-using TadBridge.Shared;
+using TADBridge.Shared;
 
-namespace TadBridge.Provisioning;
+namespace TADBridge.Provisioning;
 
 /// <summary>
 /// Manages first-boot AD provisioning and policy retrieval.

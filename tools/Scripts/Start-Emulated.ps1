@@ -38,14 +38,14 @@ $exeDirs = @(
 
 $exeDir = $null
 foreach ($d in $exeDirs) {
-    if (Test-Path (Join-Path $d 'TadBridgeService.exe')) {
+    if (Test-Path (Join-Path $d 'TADBridgeService.exe')) {
         $exeDir = $d
         break
     }
 }
 
 if (-not $exeDir) {
-    Write-Host '[ERROR] Cannot find TadBridgeService.exe. Place this script next to the exe files or in Scripts/.' -ForegroundColor Red
+    Write-Host '[ERROR] Cannot find TADBridgeService.exe. Place this script next to the exe files or in Scripts/.' -ForegroundColor Red
     Read-Host 'Press Enter to exit'
     exit 1
 }
@@ -63,10 +63,10 @@ Write-Host ''
 if ($Demo) {
     Write-Host '[1/3] Demo mode — skipping service management.' -ForegroundColor Gray
 } else {
-    Write-Host '[1/4] Stopping existing TadBridgeService...' -ForegroundColor Yellow
-    $svc = Get-Service -Name TadBridgeService -ErrorAction SilentlyContinue
+    Write-Host '[1/4] Stopping existing TADBridgeService...' -ForegroundColor Yellow
+    $svc = Get-Service -Name TADBridgeService -ErrorAction SilentlyContinue
     if ($svc -and $svc.Status -eq 'Running') {
-        Stop-Service TadBridgeService -Force
+        Stop-Service TADBridgeService -Force
         Start-Sleep -Seconds 2
         Write-Host '       Service stopped.' -ForegroundColor Green
     } else {
@@ -74,7 +74,7 @@ if ($Demo) {
     }
 
     # Also kill any leftover processes
-    Get-Process -Name TadBridgeService -ErrorAction SilentlyContinue | Stop-Process -Force
+    Get-Process -Name TADBridgeService -ErrorAction SilentlyContinue | Stop-Process -Force
     Start-Sleep -Milliseconds 500
 }
 
@@ -83,8 +83,8 @@ $bridge = $null
 if ($Demo) {
     Write-Host '[2/3] Demo mode — skipping bridge service.' -ForegroundColor Gray
 } else {
-    Write-Host '[2/4] Starting TadBridgeService --emulate...' -ForegroundColor Yellow
-    $bridge = Start-Process -FilePath (Join-Path $exeDir 'TadBridgeService.exe') `
+    Write-Host '[2/4] Starting TADBridgeService --emulate...' -ForegroundColor Yellow
+    $bridge = Start-Process -FilePath (Join-Path $exeDir 'TADBridgeService.exe') `
         -ArgumentList '--emulate' `
         -PassThru -WindowStyle Normal
     Write-Host "       PID: $($bridge.Id)" -ForegroundColor Green
@@ -95,26 +95,26 @@ if ($Demo) {
 
 # ── Step 3: Launch Console ────────────────────────────────────────
 $consoleStep = if ($Demo) { '2/3' } else { '3/4' }
-$consolePath = Join-Path $exeDir 'TadConsole.exe'
+$consolePath = Join-Path $exeDir 'TADDomainController.exe'
 if (Test-Path $consolePath) {
     $consoleArgs = if ($Demo) { '--demo' } else { $null }
-    Write-Host "[$consoleStep] Launching TadConsole$(if ($Demo) {' --demo'})..." -ForegroundColor Yellow
+    Write-Host "[$consoleStep] Launching TADDomainController$(if ($Demo) {' --demo'})..." -ForegroundColor Yellow
     $console = Start-Process -FilePath $consolePath -ArgumentList $consoleArgs -PassThru
     Write-Host "       PID: $($console.Id)" -ForegroundColor Green
 } else {
-    Write-Host "[$consoleStep] TadConsole.exe not found — skipping." -ForegroundColor Gray
+    Write-Host "[$consoleStep] TADDomainController.exe not found — skipping." -ForegroundColor Gray
 }
 
 # ── Step 4: Launch Teacher ────────────────────────────────────────
 $teacherStep = if ($Demo) { '3/3' } else { '4/4' }
-$teacherPath = Join-Path $exeDir 'TadTeacher.exe'
+$teacherPath = Join-Path $exeDir 'TADAdmin.exe'
 if (Test-Path $teacherPath) {
     $teacherArgs = if ($Demo) { '--demo' } else { $null }
-    Write-Host "[$teacherStep] Launching TadTeacher$(if ($Demo) {' --demo'})..." -ForegroundColor Yellow
+    Write-Host "[$teacherStep] Launching TADAdmin$(if ($Demo) {' --demo'})..." -ForegroundColor Yellow
     $teacher = Start-Process -FilePath $teacherPath -ArgumentList $teacherArgs -PassThru
     Write-Host "       PID: $($teacher.Id)" -ForegroundColor Green
 } else {
-    Write-Host "[$teacherStep] TadTeacher.exe not found — skipping." -ForegroundColor Gray
+    Write-Host "[$teacherStep] TADAdmin.exe not found — skipping." -ForegroundColor Gray
 }
 
 Write-Host ''

@@ -1,7 +1,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 // EmulatedAdGroupWatcher.cs — Mock AD group resolution for demo / emulation
 //
-// Activated via: TadBridgeService.exe --emulate
+// Activated via: TADBridgeService.exe --emulate
 //
 // Returns plausible user/role data without contacting a Domain Controller.
 // Cycles through Student → Teacher → Admin roles every ~60 seconds so the
@@ -9,10 +9,10 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 using Microsoft.Extensions.Logging;
-using TadBridge.Cache;
-using TadBridge.Shared;
+using TADBridge.Cache;
+using TADBridge.Shared;
 
-namespace TadBridge.ActiveDirectory;
+namespace TADBridge.ActiveDirectory;
 
 /// <summary>
 /// Drop-in replacement for <see cref="AdGroupWatcher"/> that returns

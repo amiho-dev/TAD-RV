@@ -30,7 +30,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 
-namespace TadBridge.Networking;
+namespace TADBridge.Networking;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Discovery Packet

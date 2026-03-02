@@ -17,7 +17,7 @@ User-mode classroom endpoint monitoring and control platform for Windows school 
 ## What changed in 26030.02NR
 
 - Complete runtime pivot to user-mode protection by default
-- `TadBridgeService` now runs as hardened `LocalSystem` service (auto-recovery + unrestricted service SID)
+- `TADBridgeService` now runs as hardened `LocalSystem` service (auto-recovery + unrestricted service SID)
 - Kernel driver installation path removed from deployment scripts and bootstrap flow
 - Service runtime defaults to user-mode; legacy kernel mode is opt-in via `--kernel`
 - Release and version metadata synchronized to `26030.02NR`
@@ -53,22 +53,22 @@ chmod +x build.sh && ./build.sh
 
 ```bash
 # default (recommended): user-mode protection
-TadBridgeService.exe
+TADBridgeService.exe
 
 # user-mode with synthetic alerts/demo telemetry
-TadBridgeService.exe --demo
+TADBridgeService.exe --demo
 
 # legacy compatibility mode (kernel bridge)
-TadBridgeService.exe --kernel
+TADBridgeService.exe --kernel
 ```
 
 ## Release artifacts
 
 `build.sh` produces:
 
-- `TadConsole-26030.02NR-win-x64.zip`
-- `TadTeacher-26030.02NR-win-x64.zip`
-- `TadBridgeService-26030.02NR-win-x64.zip`
+- `TADDomainController-26030.02NR-win-x64.zip`
+- `TADAdmin-26030.02NR-win-x64.zip`
+- `TADBridgeService-26030.02NR-win-x64.zip`
 
 ## Repository layout
 

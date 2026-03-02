@@ -1,16 +1,16 @@
 // ───────────────────────────────────────────────────────────────────────────
 // EmulatedProvisioningManager.cs — Mock provisioning for demo / emulation
 //
-// Activated via: TadBridgeService.exe --emulate
+// Activated via: TADBridgeService.exe --emulate
 //
 // Returns a sensible default policy without contacting a Domain Controller
 // or touching the registry.  Perfect for demos and integration testing.
 // ───────────────────────────────────────────────────────────────────────────
 
 using Microsoft.Extensions.Logging;
-using TadBridge.Shared;
+using TADBridge.Shared;
 
-namespace TadBridge.Provisioning;
+namespace TADBridge.Provisioning;
 
 /// <summary>
 /// Drop-in replacement for <see cref="ProvisioningManager"/> that returns

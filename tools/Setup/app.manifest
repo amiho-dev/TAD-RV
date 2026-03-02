@@ -4,7 +4,7 @@
   <assemblyIdentity
       version="1.0.0.0"
       processorArchitecture="X86"
-      name="TadSetup"
+      name="TADSetup"
       type="win32" />
 
   <description>TAD.RV Client Endpoint Installer</description>

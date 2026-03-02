@@ -38,9 +38,9 @@ After running `./build.sh`, the release folders contain:
 
 | Folder | Contents | Target |
 |---|---|---|
-| `release-client/` | `TadConsole.exe` | Admin workstation (Management Console) |
-| `release-teacher/` | `TadTeacher.exe` | Teacher workstation (Classroom Controller) |
-| `release-addc/` | `TadBridgeService.exe`, `TadBootstrap.exe` | Student endpoints (via GPO) |
+| `release-client/` | `TADDomainController.exe` | Admin workstation (Management Console) |
+| `release-teacher/` | `TADAdmin.exe` | Teacher workstation (Classroom Controller) |
+| `release-addc/` | `TADBridgeService.exe`, `TADBootstrap.exe` | Student endpoints (via GPO) |
 
 All executables are single-file, self-contained — no .NET installation required on target machines.
 
@@ -48,11 +48,11 @@ All executables are single-file, self-contained — no .NET installation require
 
 ### 3.1 GUI Console (Recommended)
 
-1. Run `TadConsole.exe` on an admin workstation (requests UAC elevation automatically)
+1. Run `TADDomainController.exe` on an admin workstation (requests UAC elevation automatically)
 2. Navigate to the **Deploy** page via the sidebar
 3. Fill in:
    - **Driver path**: path to `TAD.RV.sys`
-   - **Service path**: path to `TadBridgeService.exe`
+   - **Service path**: path to `TADBridgeService.exe`
    - **Install directory**: target folder (default `C:\Program Files\TAD_RV`)
 4. Click **Deploy Now**
 5. Monitor real-time progress in the deployment log
@@ -73,7 +73,7 @@ or `sc.exe` (fallback), and starts the driver. No parameters required.
 and it will install the driver automatically at startup:
 
 ```batch
-TadBridgeService.exe --auto-install
+TADBridgeService.exe --auto-install
 ```
 
 ### 3.3 PowerShell Script (Full Deployment)
@@ -81,7 +81,7 @@ TadBridgeService.exe --auto-install
 ```powershell
 .\Scripts\Deploy-TadRV.ps1 `
     -DriverPath  ".\Kernel\TAD.RV.sys" `
-    -ServicePath ".\release-addc\TadBridgeService.exe"
+    -ServicePath ".\release-addc\TADBridgeService.exe"
 ```
 
 The script copies files, installs the driver, registers the Windows Service, and starts it.
@@ -97,29 +97,29 @@ sc start TAD.RV
 
 :: 2. Copy the service binary
 mkdir "C:\Program Files\TAD_RV"
-copy release-addc\TadBridgeService.exe "C:\Program Files\TAD_RV\"
+copy release-addc\TADBridgeService.exe "C:\Program Files\TAD_RV\"
 
 :: 3. Register and start the Windows Service
-sc create TadBridgeService binPath="C:\Program Files\TAD_RV\TadBridgeService.exe" start=auto obj=LocalSystem
-sc failure TadBridgeService reset=86400 actions=restart/5000/restart/10000/restart/30000
-sc start TadBridgeService
+sc create TADBridgeService binPath="C:\Program Files\TAD_RV\TADBridgeService.exe" start=auto obj=LocalSystem
+sc failure TADBridgeService reset=86400 actions=restart/5000/restart/10000/restart/30000
+sc start TADBridgeService
 ```
 
 ## 4. GPO Startup Script (Mass Deployment)
 
-For domain-wide deployment, use `TadBootstrap.exe` as a GPO startup script:
+For domain-wide deployment, use `TADBootstrap.exe` as a GPO startup script:
 
-1. Copy `TadBootstrap.exe` and `TadBridgeService.exe` to a NETLOGON share:
+1. Copy `TADBootstrap.exe` and `TADBridgeService.exe` to a NETLOGON share:
    ```
-   \\dc01.school.local\NETLOGON\TAD\TadBootstrap.exe
-   \\dc01.school.local\NETLOGON\TAD\TadBridgeService.exe
+   \\dc01.school.local\NETLOGON\TAD\TADBootstrap.exe
+   \\dc01.school.local\NETLOGON\TAD\TADBridgeService.exe
    ```
 
 2. In Group Policy Management → Computer Configuration → Policies → Windows Settings → Scripts → Startup:
-   - Add `\\dc01.school.local\NETLOGON\TAD\TadBootstrap.exe`
+   - Add `\\dc01.school.local\NETLOGON\TAD\TADBootstrap.exe`
 
-3. `TadBootstrap.exe` will:
-   - Copy `TadBridgeService.exe` to `C:\Program Files\TAD_RV\`
+3. `TADBootstrap.exe` will:
+   - Copy `TADBridgeService.exe` to `C:\Program Files\TAD_RV\`
    - Register a SYSTEM service with automatic recovery
    - Start the service immediately
 
@@ -177,13 +177,13 @@ After deployment, verify on the target machine:
 sc query TAD.RV
 
 :: Check service is running
-sc query TadBridgeService
+sc query TADBridgeService
 
 :: Check registry configuration
 reg query "HKLM\SOFTWARE\TAD_RV"
 
 :: Check Event Log for TAD.RV events
-wevtutil qe Application /q:"*[System[Provider[@Name='TadBridgeService']]]" /c:5 /f:text
+wevtutil qe Application /q:"*[System[Provider[@Name='TADBridgeService']]]" /c:5 /f:text
 ```
 
 In the Management Console, the **Dashboard** page shows:
@@ -196,8 +196,8 @@ In the Management Console, the **Dashboard** page shows:
 
 ```batch
 :: 1. Stop and remove the service
-sc stop TadBridgeService
-sc delete TadBridgeService
+sc stop TADBridgeService
+sc delete TADBridgeService
 
 :: 2. Stop and remove the driver  
 sc stop TAD.RV

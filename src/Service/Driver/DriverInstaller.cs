@@ -19,7 +19,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
-namespace TadBridge.Driver;
+namespace TADBridge.Driver;
 
 /// <summary>
 /// Simplified, one-call kernel driver installation and lifecycle management.

@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────────
-// UpdateWorker.cs — Background update checker for TadBridgeService
+// UpdateWorker.cs — Background update checker for TADBridgeService
 //
 // (C) 2026 TAD Europe — https://tad-it.eu
 //
@@ -15,9 +15,9 @@
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using TadBridge.Shared;
+using TADBridge.Shared;
 
-namespace TadBridge.Core;
+namespace TADBridge.Core;
 
 public sealed class UpdateWorker : BackgroundService
 {
@@ -123,7 +123,7 @@ public sealed class UpdateWorker : BackgroundService
         try
         {
             using var eventLog = new System.Diagnostics.EventLog("Application");
-            eventLog.Source = "TadBridgeService";
+            eventLog.Source = "TADBridgeService";
             eventLog.WriteEntry(
                 $"[TAD.RV UPDATE] Version {update.Version} applied. " +
                 $"Service will restart to complete the update.\n\n" +

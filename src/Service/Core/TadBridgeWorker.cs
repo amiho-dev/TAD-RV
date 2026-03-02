@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────────
-// TadBridgeWorker.cs — Primary background service worker
+// TADBridgeWorker.cs — Primary background service worker
 //
 // Orchestrates the startup sequence:
 //   1. Connect to kernel driver
@@ -11,17 +11,17 @@
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using TadBridge.Driver;
-using TadBridge.ActiveDirectory;
-using TadBridge.Provisioning;
-using TadBridge.Shared;
+using TADBridge.Driver;
+using TADBridge.ActiveDirectory;
+using TADBridge.Provisioning;
+using TADBridge.Shared;
 using System.Diagnostics;
 
-namespace TadBridge.Core;
+namespace TADBridge.Core;
 
-public sealed class TadBridgeWorker : BackgroundService
+public sealed class TADBridgeWorker : BackgroundService
 {
-    private readonly ILogger<TadBridgeWorker> _log;
+    private readonly ILogger<TADBridgeWorker> _log;
     private readonly DriverBridge             _driver;
     private readonly ProvisioningManager      _provisioning;
     private readonly AdGroupWatcher           _adWatcher;
@@ -29,8 +29,8 @@ public sealed class TadBridgeWorker : BackgroundService
     private TadUserRole _lastPushedRole = TadUserRole.Unknown;
     private string      _lastPushedSid  = string.Empty;
 
-    public TadBridgeWorker(
-        ILogger<TadBridgeWorker> logger,
+    public TADBridgeWorker(
+        ILogger<TADBridgeWorker> logger,
         DriverBridge             driver,
         ProvisioningManager      provisioning,
         AdGroupWatcher           adWatcher)
@@ -43,7 +43,7 @@ public sealed class TadBridgeWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _log.LogInformation("TadBridgeWorker starting…");
+        _log.LogInformation("TADBridgeWorker starting…");
 
         // ── Step 1: Connect to the kernel driver ─────────────────────
         try
@@ -107,12 +107,12 @@ public sealed class TadBridgeWorker : BackgroundService
             catch (OperationCanceledException) { break; }
         }
 
-        _log.LogInformation("TadBridgeWorker stopped");
+        _log.LogInformation("TADBridgeWorker stopped");
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        _log.LogInformation("TadBridgeWorker shutting down — unlocking driver…");
+        _log.LogInformation("TADBridgeWorker shutting down — unlocking driver…");
 
         try
         {

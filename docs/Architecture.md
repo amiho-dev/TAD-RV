@@ -12,10 +12,10 @@
 1. [System Overview](#1-system-overview)
 2. [Component Map](#2-component-map)
 3. [Kernel Driver (TAD.RV.sys)](#3-kernel-driver-tadrvsys)
-4. [Bridge Service (TadBridgeService.exe)](#4-bridge-service-tadbridgeserviceexe)
-5. [Management Console (TadConsole.exe)](#5-management-console-tadconsoleexe)
-6. [Teacher Controller (TadTeacher.exe)](#6-teacher-controller-tadteacherexe)
-7. [Bootstrap Loader (TadBootstrap.exe)](#7-bootstrap-loader-tadbootstrapexe)
+4. [Bridge Service (TADBridgeService.exe)](#4-bridge-service-tadbridgeserviceexe)
+5. [Management Console (TADDomainController.exe)](#5-management-console-tadconsoleexe)
+6. [Admin Controller (TADAdmin.exe)](#6-teacher-controller-tadteacherexe)
+7. [Bootstrap Loader (TADBootstrap.exe)](#7-bootstrap-loader-tadbootstrapexe)
 8. [Communication Protocols](#8-communication-protocols)
 9. [Security Model](#9-security-model)
 10. [Emulation Mode](#10-emulation-mode)
@@ -34,7 +34,7 @@ TAD.RV is a multi-layered endpoint monitoring platform designed for school envir
            │ LDAP / Group Policy           │ SMB
            ▼                               ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  TadBridgeService.exe       (.NET 8 Worker Service / SYSTEM)     │
+│  TADBridgeService.exe       (.NET 8 Worker Service / SYSTEM)     │
 │  ┌─────────────┐ ┌──────────────┐ ┌────────────────────────┐    │
 │  │ Provisioning │ │ AdGroupWatch │ │ OfflineCache (DPAPI)   │    │
 │  └──────┬──────┘ └──────┬───────┘ └──────────┬─────────────┘    │
@@ -69,10 +69,10 @@ TAD.RV is a multi-layered endpoint monitoring platform designed for school envir
 | Component | Binary | Framework | Role |
 |---|---|---|---|
 | **Kernel Driver** | `TAD.RV.sys` | C / WDK | Ring 0 protection & enforcement |
-| **Bridge Service** | `TadBridgeService.exe` | .NET 8 Worker Service | Ring 3 service — AD, driver comms, screen capture |
-| **Management Console** | `TadConsole.exe` | .NET 8 WPF + WebView2 | Admin dashboard, deployment, policy editor |
-| **Teacher Controller** | `TadTeacher.exe` | .NET 8 WPF + WebView2 | Classroom monitoring, freeze/unfreeze, RV |
-| **Bootstrap Loader** | `TadBootstrap.exe` | .NET 8 Console | GPO startup — zero-touch deployment |
+| **Bridge Service** | `TADBridgeService.exe` | .NET 8 Worker Service | Ring 3 service — AD, driver comms, screen capture |
+| **Management Console** | `TADDomainController.exe` | .NET 8 WPF + WebView2 | Admin dashboard, deployment, policy editor |
+| **Admin Controller** | `TADAdmin.exe` | .NET 8 WPF + WebView2 | Classroom monitoring, freeze/unfreeze, RV |
+| **Bootstrap Loader** | `TADBootstrap.exe` | .NET 8 Console | GPO startup — zero-touch deployment |
 
 ## 3. Kernel Driver (TAD.RV.sys)
 
@@ -94,7 +94,7 @@ Written in C using the Windows Driver Kit (WDK). Operates at Ring 0.
 
 ### IOCTL Interface
 
-All IOCTLs use `METHOD_BUFFERED` on device type `0x8000`, defined in `Shared/TadShared.h`.
+All IOCTLs use `METHOD_BUFFERED` on device type `0x8000`, defined in `Shared/TADShared.h`.
 
 | Code | Name | Direction | Payload |
 |---|---|---|---|
@@ -105,13 +105,13 @@ All IOCTLs use `METHOD_BUFFERED` on device type `0x8000`, defined in `Shared/Tad
 | 0x804 | `IOCTL_TAD_SET_POLICY` | Svc → Driver | `TAD_POLICY_BUFFER` |
 | 0x805 | `IOCTL_TAD_READ_ALERT` | Driver → Svc | `TAD_ALERT_OUTPUT` |
 
-## 4. Bridge Service (TadBridgeService.exe)
+## 4. Bridge Service (TADBridgeService.exe)
 
 .NET 8 Worker Service running as `LocalSystem`. Five subsystems:
 
 | Worker | Responsibility |
 |---|---|
-| **TadBridgeWorker** | Primary startup orchestrator — coordinates all subsystems |
+| **TADBridgeWorker** | Primary startup orchestrator — coordinates all subsystems |
 | **HeartbeatWorker** | Sends `IOCTL_TAD_HEARTBEAT` every 2 seconds |
 | **AlertReaderWorker** | Long-polls `IOCTL_TAD_READ_ALERT`, writes alerts to Event Log |
 | **ProvisioningManager** | First-boot AD/OU provisioning, fetches `Policy.json` from NETLOGON |
@@ -140,7 +140,7 @@ Supporting components:
 | `PolicySource` | SZ | UNC path to Policy.json |
 | `LastProvision` | SZ | ISO 8601 timestamp of last provisioning |
 
-## 5. Management Console (TadConsole.exe)
+## 5. Management Console (TADDomainController.exe)
 
 WPF shell hosting a WebView2 control. The entire UI is an embedded SPA (HTML/CSS/JS) using a GitHub-dark theme.
 
@@ -159,7 +159,7 @@ WPF shell hosting a WebView2 control. The entire UI is an embedded SPA (HTML/CSS
 The Console uses `chrome.webview.hostObjects` to call C# services from JavaScript:
 
 - `DeploymentService` — file copy, driver install, service registration
-- `TadServiceController` — start/stop/restart Windows Service
+- `TADServiceController` — start/stop/restart Windows Service
 - `RegistryService` — read/write `HKLM\SOFTWARE\TAD_RV`
 - `EventLogService` — query Windows Event Log
 - `SystemInfoService` — machine info, driver/service status
@@ -169,7 +169,7 @@ The Console uses `chrome.webview.hostObjects` to call C# services from JavaScrip
 All UI text uses the `TAD_I18N` module with `data-i18n` attributes. Seven languages are bundled:
 English, German, French, Dutch, Spanish, Italian, Polish.
 
-## 6. Teacher Controller (TadTeacher.exe)
+## 6. Admin Controller (TADAdmin.exe)
 
 WPF shell with WebView2, designed for teacher use during class. Features:
 
@@ -189,11 +189,11 @@ Teachers discover student endpoints via **UDP multicast** (239.77.65.68:47100), 
 - Freeze/unfreeze commands
 - Status polling
 
-## 7. Bootstrap Loader (TadBootstrap.exe)
+## 7. Bootstrap Loader (TADBootstrap.exe)
 
 Minimal console application designed for GPO startup scripts:
 
-1. Copies `TadBridgeService.exe` from UNC share to `C:\Program Files\TAD_RV\`
+1. Copies `TADBridgeService.exe` from UNC share to `C:\Program Files\TAD_RV\`
 2. Registers Windows Service with automatic start + recovery policy
 3. Starts the service immediately
 
@@ -203,7 +203,7 @@ No UI, no .NET runtime required on target — fully self-contained.
 
 ### Driver ↔ Service
 
-`DeviceIoControl` via `\\.\TadRvLink` device handle. All payloads are `StructLayout.Sequential` with `Pack = 8`. The C header (`Shared/TadShared.h`) and C# interop (`Shared/TadSharedInterop.cs`) are kept in sync manually.
+`DeviceIoControl` via `\\.\TadRvLink` device handle. All payloads are `StructLayout.Sequential` with `Pack = 8`. The C header (`Shared/TADShared.h`) and C# interop (`Shared/TADSharedInterop.cs`) are kept in sync manually.
 
 ### Service ↔ Teacher
 
@@ -246,7 +246,7 @@ Message framing: 4-byte length prefix + JSON envelope for commands, raw frame da
 For development and demos, the service supports `--emulate` (or `--demo`):
 
 ```bash
-TadBridgeService.exe --emulate
+TADBridgeService.exe --emulate
 ```
 
 This activates `EmulatedDriverBridge` which:

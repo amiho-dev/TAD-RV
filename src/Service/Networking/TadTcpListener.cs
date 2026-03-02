@@ -3,7 +3,7 @@
 //
 // (C) 2026 TAD Europe — https://tad-it.eu
 //
-// Runs inside TadBridgeService as a hosted background worker.
+// Runs inside TADBridgeService as a hosted background worker.
 // Accepts a single TCP connection from the teacher controller and
 // routes commands to the appropriate subsystem (lock, RV, collect).
 //
@@ -16,11 +16,11 @@ using System.Net.Sockets;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using TadBridge.Driver;
-using TadBridge.Shared;
-using TadBridge.Capture;
+using TADBridge.Driver;
+using TADBridge.Shared;
+using TADBridge.Capture;
 
-namespace TadBridge.Networking;
+namespace TADBridge.Networking;
 
 public sealed class TadTcpListener : BackgroundService
 {

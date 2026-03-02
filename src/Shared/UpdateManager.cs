@@ -19,7 +19,7 @@
 // Update flow:
 //   1. Query https://api.github.com/repos/{owner}/{repo}/releases/latest
 //   2. Compare version tag with current assembly version
-//   3. Download matching asset (TadTeacher-*.zip, TadBridgeService-*.zip, etc.)
+//   3. Download matching asset (TADAdmin-*.zip, TADBridgeService-*.zip, etc.)
 //   4. Extract to temp directory
 //   5. Signal the caller to apply (swap binaries and restart)
 //
@@ -39,7 +39,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Win32;
 #endif
 
-namespace TadBridge.Shared;
+namespace TADBridge.Shared;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Update Info
@@ -65,7 +65,7 @@ public sealed class UpdateInfo
     /// <summary>Direct download URL for the matching asset.</summary>
     public required string DownloadUrl { get; init; }
 
-    /// <summary>Asset file name (e.g., "TadTeacher-26200.173-win-x64.zip").</summary>
+    /// <summary>Asset file name (e.g., "TADAdmin-26200.173-win-x64.zip").</summary>
     public required string AssetName { get; init; }
 
     /// <summary>Asset file size in bytes.</summary>
@@ -140,10 +140,10 @@ public sealed class UpdateManager : IDisposable
     private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
 
     // Asset name prefixes per component
-    private const string TeacherAssetPrefix    = "TadTeacher";
-    private const string ServiceAssetPrefix    = "TadBridgeService";
-    private const string ConsoleAssetPrefix    = "TadConsole";
-    private const string BootstrapAssetPrefix  = "TadBootstrap";
+    private const string TeacherAssetPrefix    = "TADAdmin";
+    private const string ServiceAssetPrefix    = "TADBridgeService";
+    private const string ConsoleAssetPrefix    = "TADDomainController";
+    private const string BootstrapAssetPrefix  = "TADBootstrap";
     private const string DriverAssetPrefix     = "TAD_RV";
 
     private readonly HttpClient _http;
@@ -362,7 +362,7 @@ public sealed class UpdateManager : IDisposable
 
     private GitHubAsset? FindMatchingAsset(List<GitHubAsset> assets)
     {
-        // Primary: exact prefix match (e.g., "TadTeacher-26200.173-win-x64.zip")
+        // Primary: exact prefix match (e.g., "TADAdmin-26200.173-win-x64.zip")
         var match = assets.FirstOrDefault(a =>
             a.Name.StartsWith(_componentPrefix, StringComparison.OrdinalIgnoreCase) &&
             a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));

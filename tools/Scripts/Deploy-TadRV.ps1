@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Deploys the TAD.RV user-mode TadBridgeService to a target machine.
+    Deploys the TAD.RV user-mode TADBridgeService to a target machine.
 
 .DESCRIPTION
     Copies published service binaries,
@@ -8,7 +8,7 @@
     provisioning against Active Directory.
 
 .PARAMETER ServicePath
-    Path to the published TadBridgeService directory (self-contained).
+    Path to the published TADBridgeService directory (self-contained).
 
 .PARAMETER TargetDir
     Installation directory on the target machine.
@@ -93,11 +93,11 @@ if (-not (Test-Path $TargetDir)) {
 
 # ── 3. Stop existing services ────────────────────────────────────────
 Write-Host "`n[*] Stopping existing services ..." -ForegroundColor Cyan
-Stop-ServiceSafe "TadBridgeService"
+Stop-ServiceSafe "TADBridgeService"
 
 # ── 4. Deploy user-mode service ──────────────────────────────────────
 if (-not $SkipService) {
-    Write-Host "`n[*] Deploying TadBridgeService ..." -ForegroundColor Cyan
+    Write-Host "`n[*] Deploying TADBridgeService ..." -ForegroundColor Cyan
 
     $svcDir = Join-Path $TargetDir "Service"
     if (-not (Test-Path $svcDir)) {
@@ -108,28 +108,28 @@ if (-not $SkipService) {
     Copy-Item -Path "$ServicePath\*" -Destination $svcDir -Recurse -Force
     Write-Host "  Copied service binaries to $svcDir"
 
-    $svcExe = Join-Path $svcDir "TadBridgeService.exe"
+    $svcExe = Join-Path $svcDir "TADBridgeService.exe"
     if (-not (Test-Path $svcExe)) {
-        throw "TadBridgeService.exe not found in publish output!"
+        throw "TADBridgeService.exe not found in publish output!"
     }
 
     # Register Windows service
-    Remove-ServiceSafe "TadBridgeService"
-    sc.exe create "TadBridgeService" `
+    Remove-ServiceSafe "TADBridgeService"
+    sc.exe create "TADBridgeService" `
         binPath="$svcExe" `
         start=auto `
         obj=LocalSystem `
         DisplayName="TAD.RV Bridge Service" | Out-Null
 
-    sc.exe description "TadBridgeService" "Runs the TAD.RV user-mode protection service with Active Directory integration for school endpoint monitoring." | Out-Null
-    sc.exe sidtype "TadBridgeService" unrestricted | Out-Null
-    sc.exe failureflag "TadBridgeService" 1 | Out-Null
-    sc.exe failure "TadBridgeService" reset=86400 actions=restart/5000/restart/10000/restart/30000 | Out-Null
+    sc.exe description "TADBridgeService" "Runs the TAD.RV user-mode protection service with Active Directory integration for school endpoint monitoring." | Out-Null
+    sc.exe sidtype "TADBridgeService" unrestricted | Out-Null
+    sc.exe failureflag "TADBridgeService" 1 | Out-Null
+    sc.exe failure "TADBridgeService" reset=86400 actions=restart/5000/restart/10000/restart/30000 | Out-Null
 
-    Write-Host "[+] TadBridgeService registered with auto-restart" -ForegroundColor Green
+    Write-Host "[+] TADBridgeService registered with auto-restart" -ForegroundColor Green
 
-    sc.exe start "TadBridgeService" | Out-Null
-    Write-Host "[+] TadBridgeService started" -ForegroundColor Green
+    sc.exe start "TADBridgeService" | Out-Null
+    Write-Host "[+] TADBridgeService started" -ForegroundColor Green
 }
 
 # ── 5. Create registry provisioning key ──────────────────────────────

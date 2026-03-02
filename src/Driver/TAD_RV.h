@@ -43,7 +43,7 @@ Environment:
 #include <winioctl.h>
 #endif
 
-#include "../Shared/TadShared.h"
+#include "../Shared/TADShared.h"
 
 /* ═══════════════════════════════════════════════════════════════════════
  * Driver Identity & Build Configuration
@@ -56,7 +56,7 @@ Environment:
 
 #define TAD_DRIVER_FILENAME     L"TAD.RV.sys"
 #define TAD_UI_FILENAME         L"TAD.RV.exe"
-#define TAD_SERVICE_FILENAME    L"TadBridgeService.exe"
+#define TAD_SERVICE_FILENAME    L"TADBridgeService.exe"
 
 /* ═══════════════════════════════════════════════════════════════════════
  * Authentication Key  (256-bit / 32-byte pre-shared secret)
@@ -173,7 +173,7 @@ extern TAD_DRIVER_GLOBALS g_Tad;
 /* ── Driver Entry / Unload ───────────────────────────────────────────── */
 
 DRIVER_INITIALIZE   DriverEntry;
-DRIVER_UNLOAD       TadDriverUnload;
+DRIVER_UNLOAD       TADDriverUnload;
 
 /* ── Dispatch Routines ───────────────────────────────────────────────── */
 
