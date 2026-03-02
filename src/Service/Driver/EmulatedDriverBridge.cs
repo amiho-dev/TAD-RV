@@ -1,11 +1,8 @@
 // ───────────────────────────────────────────────────────────────────────────
-// EmulatedDriverBridge.cs — Mock driver for testing without a kernel driver
+// EmulatedDriverBridge.cs — User-mode protection engine
 //
-// Activated via: TadBridgeService.exe --emulate
-//
-// Simulates all IOCTL responses with plausible data so the full Bridge
-// Service + Teacher + Console stack can be tested on any Windows machine
-// without installing TAD_RV.sys.
+// Provides a driver-compatible contract in pure user mode so the full
+// Bridge Service + Teacher + Console stack can run without TAD_RV.sys.
 // ───────────────────────────────────────────────────────────────────────────
 
 using Microsoft.Extensions.Logging;
@@ -15,11 +12,12 @@ namespace TadBridge.Driver;
 
 /// <summary>
 /// Drop-in replacement for <see cref="DriverBridge"/> that responds with
-/// simulated data instead of talking to \\.\TadRvLink.
+/// user-mode state instead of talking to \\.\TadRvLink.
 /// </summary>
 public sealed class EmulatedDriverBridge : DriverBridge
 {
     private readonly ILogger _log;
+    private readonly bool _enableSyntheticAlerts;
     private bool _connected;
     private uint _protectedPid;
     private TadUserRole _currentRole = TadUserRole.Student;
@@ -29,9 +27,10 @@ public sealed class EmulatedDriverBridge : DriverBridge
     private bool _stealthActive;
     private int _alertCounter;
 
-    public EmulatedDriverBridge(ILogger<DriverBridge> logger) : base(logger)
+    public EmulatedDriverBridge(ILogger<DriverBridge> logger, bool enableSyntheticAlerts = false) : base(logger)
     {
         _log = logger;
+        _enableSyntheticAlerts = enableSyntheticAlerts;
     }
 
     public override bool IsConnected => _connected;
@@ -39,30 +38,30 @@ public sealed class EmulatedDriverBridge : DriverBridge
     public override void Connect()
     {
         _connected = true;
-        _log.LogInformation("[EMULATED] Driver bridge connected (no real driver)");
+        _log.LogInformation("[USERMODE] Protection bridge connected");
     }
 
     public override void Disconnect()
     {
         _connected = false;
-        _log.LogInformation("[EMULATED] Driver bridge disconnected");
+        _log.LogInformation("[USERMODE] Protection bridge disconnected");
     }
 
     public override void ProtectPid(uint pid)
     {
         _protectedPid = pid;
-        _log.LogInformation("[EMULATED] Registered PID {Pid} for protection", pid);
+        _log.LogInformation("[USERMODE] Registered PID {Pid} for protection", pid);
     }
 
     public override void UnprotectPid(uint pid)
     {
         if (_protectedPid == pid) _protectedPid = 0;
-        _log.LogDebug("[EMULATED] Unprotected PID {Pid}", pid);
+        _log.LogDebug("[USERMODE] Unprotected PID {Pid}", pid);
     }
 
     public override bool Unlock()
     {
-        _log.LogInformation("[EMULATED] Driver unlock accepted");
+        _log.LogInformation("[USERMODE] Unlock request accepted");
         return true;
     }
 
@@ -87,26 +86,30 @@ public sealed class EmulatedDriverBridge : DriverBridge
     {
         _currentRole = role;
         _currentSession = sessionId;
-        _log.LogInformation("[EMULATED] User role set: {Role} for session {Session}",
+        _log.LogInformation("[USERMODE] User role set: {Role} for session {Session}",
             role, sessionId);
     }
 
     public override void SetPolicy(TadPolicyBuffer policy)
     {
         _policyFlags = (TadPolicyFlags)policy.Flags;
-        _log.LogInformation("[EMULATED] Policy applied: flags=0x{Flags:X}", policy.Flags);
+        _log.LogInformation("[USERMODE] Policy applied: flags=0x{Flags:X}", policy.Flags);
     }
 
     public override TadAlertOutput? ReadAlert()
     {
-        // Simulate a long-poll: block for 15-45 seconds, then occasionally generate a demo alert
+        if (!_enableSyntheticAlerts)
+        {
+            Thread.Sleep(10000);
+            return null;
+        }
+
         Thread.Sleep(15000 + Random.Shared.Next(30000));
         _alertCounter++;
 
-        // Generate a demo alert every 3rd cycle
         if (_alertCounter % 3 == 0)
         {
-            _log.LogInformation("[EMULATED] Generating demo alert #{Counter}", _alertCounter);
+            _log.LogInformation("[USERMODE] Generating demo alert #{Counter}", _alertCounter);
             return new TadAlertOutput
             {
                 AlertType = (uint)TadAlertType.ServiceTamper,
@@ -123,19 +126,19 @@ public sealed class EmulatedDriverBridge : DriverBridge
     public override void SendHardLock(bool enable)
     {
         _hardLocked = enable;
-        _log.LogInformation("[EMULATED] Hard-lock {State}", enable ? "ENGAGED" : "RELEASED");
+        _log.LogInformation("[USERMODE] Hard-lock {State}", enable ? "ENGAGED" : "RELEASED");
     }
 
     public override void ProtectUiProcess(uint pid, bool protect = true)
     {
-        _log.LogInformation("[EMULATED] UI process {Pid} protection {State}",
+        _log.LogInformation("[USERMODE] UI process {Pid} protection {State}",
             pid, protect ? "ON" : "OFF");
     }
 
     public override void SetStealth(bool enable, TadStealthFlags flags = TadStealthFlags.All)
     {
         _stealthActive = enable;
-        _log.LogInformation("[EMULATED] Stealth mode {State} (flags=0x{Flags:X})",
+        _log.LogInformation("[USERMODE] Stealth mode {State} (flags=0x{Flags:X})",
             enable ? "ACTIVE" : "DISABLED", (uint)flags);
     }
 
@@ -143,9 +146,9 @@ public sealed class EmulatedDriverBridge : DriverBridge
     {
         var list = imageNames?.ToList() ?? [];
         if (list.Count == 0)
-            _log.LogInformation("[EMULATED] Banned-app list cleared");
+            _log.LogInformation("[USERMODE] Banned-app list cleared");
         else
-            _log.LogInformation("[EMULATED] Banned apps: {Names}", string.Join(", ", list));
+            _log.LogInformation("[USERMODE] Banned apps: {Names}", string.Join(", ", list));
     }
 
     public override void Dispose()

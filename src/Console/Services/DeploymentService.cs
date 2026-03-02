@@ -1,11 +1,10 @@
 // ───────────────────────────────────────────────────────────────────────────
-// DeploymentService.cs — Handles driver + service deployment operations
+// DeploymentService.cs — Handles user-mode service deployment operations
 //
-// Encapsulates every step from the original Deploy-TadRV.ps1 script:
-//   • Copy driver binary to %SYSTEMROOT%\system32\drivers\
-//   • Register and start the kernel-mode service
+// Encapsulates deployment steps:
 //   • Copy published service binaries to install dir
-//   • Register and start the user-mode Windows service
+//   • Register and start the user-mode Windows service (LocalSystem)
+//   • Configure service hardening/recovery settings
 //   • Configure registry keys
 //   • Verify NETLOGON policy share
 // ───────────────────────────────────────────────────────────────────────────
@@ -32,11 +31,9 @@ public sealed class DeploymentStepResult
 /// </summary>
 public sealed class DeploymentConfig
 {
-    public string DriverPath       { get; set; } = "";
     public string ServicePath      { get; set; } = "";
     public string TargetDir        { get; set; } = @"C:\Program Files\TAD_RV";
     public string DomainController { get; set; } = "dc01.school.local";
-    public bool   InstallDriver    { get; set; } = true;
     public bool   InstallService   { get; set; } = true;
 }
 
@@ -54,7 +51,6 @@ public sealed class DeploymentService
     {
         var results = new List<DeploymentStepResult>();
         int totalSteps = 0;
-        if (config.InstallDriver)  totalSteps += 2;
         if (config.InstallService) totalSteps += 2;
         totalSteps += 2; // registry + policy check
         int currentStep = 0;
@@ -64,59 +60,12 @@ public sealed class DeploymentService
         // ── 1. Stop existing services ────────────────────────────────
         Log("Stopping existing services…");
         await StopServiceAsync("TadBridgeService");
-        await StopServiceAsync("TAD.RV");
 
         // ── 2. Create target directory ───────────────────────────────
         Log($"Ensuring target directory: {config.TargetDir}");
         Directory.CreateDirectory(config.TargetDir);
 
-        // ── 3. Deploy kernel driver ──────────────────────────────────
-        if (config.InstallDriver)
-        {
-            ct.ThrowIfCancellationRequested();
-            results.Add(await RunStepAsync("Copy Driver Binary", async () =>
-            {
-                string driverDest = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.System),
-                    "drivers", "TAD.RV.sys");
-
-                File.Copy(config.DriverPath, driverDest, overwrite: true);
-                Log($"  Copied driver → {driverDest}");
-
-                // Copy INF if present
-                string infSource = Path.Combine(
-                    Path.GetDirectoryName(config.DriverPath) ?? "", "TAD_RV.inf");
-                if (File.Exists(infSource))
-                {
-                    File.Copy(infSource, Path.Combine(config.TargetDir, "TAD_RV.inf"), true);
-                    Log("  Copied INF to target directory");
-                }
-
-                await Task.CompletedTask;
-            }));
-            ReportProgress();
-
-            ct.ThrowIfCancellationRequested();
-            results.Add(await RunStepAsync("Register Kernel Driver", async () =>
-            {
-                await RemoveServiceAsync("TAD.RV");
-
-                string driverPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.System),
-                    "drivers", "TAD.RV.sys");
-
-                await RunScExeAsync("create", "TAD.RV",
-                    $"type=kernel binPath=\"{driverPath}\" start=auto");
-
-                Log("  Kernel driver registered");
-
-                await RunScExeAsync("start", "TAD.RV", "");
-                Log("  Kernel driver started");
-            }));
-            ReportProgress();
-        }
-
-        // ── 4. Deploy user-mode service ──────────────────────────────
+        // ── 3. Deploy user-mode service ──────────────────────────────
         if (config.InstallService)
         {
             ct.ThrowIfCancellationRequested();
@@ -147,7 +96,10 @@ public sealed class DeploymentService
                     $"binPath=\"{svcExe}\" start=auto obj=LocalSystem DisplayName=\"TAD.RV Bridge Service\"");
 
                 await RunScExeAsync("description", "TadBridgeService",
-                    "\"Manages the TAD.RV kernel driver and integrates with Active Directory.\"");
+                    "\"Runs the TAD.RV user-mode protection service with Active Directory integration.\"");
+
+                await RunScExeAsync("sidtype", "TadBridgeService", "unrestricted");
+                await RunScExeAsync("failureflag", "TadBridgeService", "1");
 
                 await RunScExeAsync("failure", "TadBridgeService",
                     "reset=86400 actions=restart/5000/restart/10000/restart/30000");
@@ -160,7 +112,7 @@ public sealed class DeploymentService
             ReportProgress();
         }
 
-        // ── 5. Registry configuration ────────────────────────────────
+        // ── 4. Registry configuration ────────────────────────────────
         ct.ThrowIfCancellationRequested();
         results.Add(await RunStepAsync("Configure Registry", async () =>
         {
@@ -176,7 +128,7 @@ public sealed class DeploymentService
         }));
         ReportProgress();
 
-        // ── 6. NETLOGON policy check ─────────────────────────────────
+        // ── 5. NETLOGON policy check ─────────────────────────────────
         ct.ThrowIfCancellationRequested();
         results.Add(await RunStepAsync("Verify NETLOGON Policy", async () =>
         {

@@ -1,14 +1,11 @@
 <#
 .SYNOPSIS
-    Deploys the TAD.RV kernel driver and TadBridgeService to a target machine.
+    Deploys the TAD.RV user-mode TadBridgeService to a target machine.
 
 .DESCRIPTION
-    Copies the signed driver and published service binaries,
-    registers both as Windows services, and performs first-boot
+    Copies published service binaries,
+    registers the service, and performs first-boot
     provisioning against Active Directory.
-
-.PARAMETER DriverPath
-    Path to the signed TAD.RV.sys binary.
 
 .PARAMETER ServicePath
     Path to the published TadBridgeService directory (self-contained).
@@ -21,21 +18,15 @@
     FQDN of the domain controller for NETLOGON policy fetch.
     Default: dc01.school.local
 
-.PARAMETER SkipDriver
-    Skip kernel driver installation (service-only update).
-
 .PARAMETER SkipService
-    Skip service installation (driver-only update).
+    Skip service installation.
 
 .EXAMPLE
-    .\Deploy-TadRV.ps1 -DriverPath .\Kernel\TAD.RV.sys -ServicePath .\Service\bin\Release\net8.0-windows\win-x64\publish
+    .\Deploy-TadRV.ps1 -ServicePath .\Service\bin\Release\net8.0-windows\win-x64\publish
 #>
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $false)]
-    [string]$DriverPath,
-
     [Parameter(Mandatory = $false)]
     [string]$ServicePath,
 
@@ -45,7 +36,6 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$DomainController = "dc01.school.local",
 
-    [switch]$SkipDriver,
     [switch]$SkipService
 )
 
@@ -90,10 +80,6 @@ Write-Host "║        TAD.RV Deployment Script                  ║" -Foregroun
 Write-Host "╚══════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
 
 # ── 1. Validate parameters ───────────────────────────────────────────
-if (-not $SkipDriver) {
-    if (-not $DriverPath) { throw "-DriverPath is required unless -SkipDriver is set." }
-    if (-not (Test-Path $DriverPath)) { throw "Driver binary not found: $DriverPath" }
-}
 if (-not $SkipService) {
     if (-not $ServicePath) { throw "-ServicePath is required unless -SkipService is set." }
     if (-not (Test-Path $ServicePath)) { throw "Service publish directory not found: $ServicePath" }
@@ -108,33 +94,8 @@ if (-not (Test-Path $TargetDir)) {
 # ── 3. Stop existing services ────────────────────────────────────────
 Write-Host "`n[*] Stopping existing services ..." -ForegroundColor Cyan
 Stop-ServiceSafe "TadBridgeService"
-Stop-ServiceSafe "TAD.RV"
 
-# ── 4. Deploy kernel driver ──────────────────────────────────────────
-if (-not $SkipDriver) {
-    Write-Host "`n[*] Deploying kernel driver ..." -ForegroundColor Cyan
-
-    $driverDest = "$env:SystemRoot\system32\drivers\TAD.RV.sys"
-    Copy-Item -Path $DriverPath -Destination $driverDest -Force
-    Write-Host "  Copied driver to $driverDest"
-
-    # Copy INF for pnputil
-    $infSource = Join-Path (Split-Path $DriverPath) "TAD_RV.inf"
-    if (Test-Path $infSource) {
-        Copy-Item -Path $infSource -Destination $TargetDir -Force
-        Write-Host "  Copied INF to $TargetDir"
-    }
-
-    # Register kernel service
-    Remove-ServiceSafe "TAD.RV"
-    sc.exe create "TAD.RV" type=kernel binPath="$driverDest" start=auto | Out-Null
-    Write-Host "[+] Kernel driver registered" -ForegroundColor Green
-
-    sc.exe start "TAD.RV" | Out-Null
-    Write-Host "[+] Kernel driver started" -ForegroundColor Green
-}
-
-# ── 5. Deploy user-mode service ──────────────────────────────────────
+# ── 4. Deploy user-mode service ──────────────────────────────────────
 if (-not $SkipService) {
     Write-Host "`n[*] Deploying TadBridgeService ..." -ForegroundColor Cyan
 
@@ -160,7 +121,9 @@ if (-not $SkipService) {
         obj=LocalSystem `
         DisplayName="TAD.RV Bridge Service" | Out-Null
 
-    sc.exe description "TadBridgeService" "Manages the TAD.RV kernel driver and integrates with Active Directory for school endpoint monitoring." | Out-Null
+    sc.exe description "TadBridgeService" "Runs the TAD.RV user-mode protection service with Active Directory integration for school endpoint monitoring." | Out-Null
+    sc.exe sidtype "TadBridgeService" unrestricted | Out-Null
+    sc.exe failureflag "TadBridgeService" 1 | Out-Null
     sc.exe failure "TadBridgeService" reset=86400 actions=restart/5000/restart/10000/restart/30000 | Out-Null
 
     Write-Host "[+] TadBridgeService registered with auto-restart" -ForegroundColor Green
@@ -169,7 +132,7 @@ if (-not $SkipService) {
     Write-Host "[+] TadBridgeService started" -ForegroundColor Green
 }
 
-# ── 6. Create registry provisioning key ──────────────────────────────
+# ── 5. Create registry provisioning key ──────────────────────────────
 Write-Host "`n[*] Setting up registry ..." -ForegroundColor Cyan
 $regPath = "HKLM:\SOFTWARE\TAD_RV"
 if (-not (Test-Path $regPath)) {
@@ -180,7 +143,7 @@ Set-ItemProperty -Path $regPath -Name "DomainController" -Value $DomainControlle
 Set-ItemProperty -Path $regPath -Name "DeployedAt"     -Value (Get-Date -Format "o")
 Write-Host "[+] Registry configured at $regPath" -ForegroundColor Green
 
-# ── 7. Verify NETLOGON policy share ─────────────────────────────────
+# ── 6. Verify NETLOGON policy share ─────────────────────────────────
 Write-Host "`n[*] Checking NETLOGON policy share ..." -ForegroundColor Cyan
 $policyPath = "\\$DomainController\NETLOGON\TAD\Policy.json"
 if (Test-Path $policyPath -ErrorAction SilentlyContinue) {
@@ -191,11 +154,10 @@ if (Test-Path $policyPath -ErrorAction SilentlyContinue) {
     Write-Host "    Expected location: \\$DomainController\NETLOGON\TAD\Policy.json" -ForegroundColor Yellow
 }
 
-# ── 8. Summary ───────────────────────────────────────────────────────
+# ── 7. Summary ───────────────────────────────────────────────────────
 Write-Host "`n╔══════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║        Deployment Complete                       ║" -ForegroundColor Green
 Write-Host "╠══════════════════════════════════════════════════╣" -ForegroundColor Green
-Write-Host "║  Driver:  $(if($SkipDriver){'SKIPPED'}else{'INSTALLED'})" -ForegroundColor Green
 Write-Host "║  Service: $(if($SkipService){'SKIPPED'}else{'INSTALLED'})" -ForegroundColor Green
 Write-Host "║  Target:  $TargetDir" -ForegroundColor Green
 Write-Host "╚══════════════════════════════════════════════════╝`n" -ForegroundColor Green

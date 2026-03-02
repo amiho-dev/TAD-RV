@@ -2,9 +2,9 @@
 // Program.cs — Entry point for TadBridgeService
 //
 // Configures the .NET Generic Host as a Windows Service.
-// Pass --emulate or --demo to run without a kernel driver or domain
-// controller — uses EmulatedDriverBridge, EmulatedAdGroupWatcher, and
-// EmulatedProvisioningManager plus a system-tray icon.
+// Default runtime is user-mode only (no kernel driver dependency).
+// Use --kernel for legacy kernel-driver communication mode.
+// Use --demo to enable synthetic alert generation for showcases.
 // ───────────────────────────────────────────────────────────────────────────
 
 using Microsoft.Extensions.DependencyInjection;
@@ -19,28 +19,16 @@ using TadBridge.Capture;
 using TadBridge.Networking;
 using TadBridge.Tray;
 
-// ── Detect emulation mode ────────────────────────────────────────────────
-bool emulate = args.Any(a =>
-    a.Equals("--emulate", StringComparison.OrdinalIgnoreCase) ||
-    a.Equals("--demo",    StringComparison.OrdinalIgnoreCase) ||
-    a.Equals("/emulate",  StringComparison.OrdinalIgnoreCase) ||
-    a.Equals("/demo",     StringComparison.OrdinalIgnoreCase));
+bool legacyKernelMode = args.Any(a =>
+    a.Equals("--kernel", StringComparison.OrdinalIgnoreCase) ||
+    a.Equals("--legacy-kernel", StringComparison.OrdinalIgnoreCase) ||
+    a.Equals("/kernel", StringComparison.OrdinalIgnoreCase));
 
-bool autoInstallDriver = args.Any(a =>
-    a.Equals("--auto-install", StringComparison.OrdinalIgnoreCase) ||
-    a.Equals("/auto-install",  StringComparison.OrdinalIgnoreCase));
+bool demoMode = args.Any(a =>
+    a.Equals("--demo", StringComparison.OrdinalIgnoreCase) ||
+    a.Equals("/demo", StringComparison.OrdinalIgnoreCase));
 
-// ── Auto-install kernel driver if requested ──────────────────────────────
-if (autoInstallDriver && !emulate)
-{
-    using var factory = LoggerFactory.Create(b => b.AddConsole());
-    var installLog = factory.CreateLogger("DriverInstaller");
-    if (!DriverInstaller.EnsureInstalled(installLog))
-    {
-        installLog.LogError("Driver auto-install failed. Continuing anyway — " +
-                            "DriverBridge.Connect() will fail at runtime if driver is needed.");
-    }
-}
+bool userMode = !legacyKernelMode;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -57,11 +45,13 @@ builder.Logging.AddEventLog(settings =>
     settings.LogName    = "Application";
 });
 
-if (emulate)
+if (userMode)
 {
-    // ── Emulation mode — no kernel driver, no domain controller ──────
+    // ── User-mode protection plane (default) ──────────────────────
     builder.Services.AddSingleton<DriverBridge>(sp =>
-        new EmulatedDriverBridge(sp.GetRequiredService<ILogger<DriverBridge>>()));
+        new EmulatedDriverBridge(
+            sp.GetRequiredService<ILogger<DriverBridge>>(),
+            enableSyntheticAlerts: demoMode));
 
     builder.Services.AddSingleton<OfflineCacheManager>();
 
@@ -73,12 +63,12 @@ if (emulate)
             sp.GetRequiredService<ILogger<AdGroupWatcher>>(),
             sp.GetRequiredService<OfflineCacheManager>()));
 
-    // Tray icon so the user sees the emulated service is running
+    // Tray icon so the user sees the service state when run interactively
     builder.Services.AddHostedService<TrayIconManager>();
 }
 else
 {
-    // ── Production mode — real driver + AD ───────────────────────────
+    // ── Legacy kernel mode — real driver + AD ───────────────────────
     builder.Services.AddSingleton<DriverBridge>();
     builder.Services.AddSingleton<ProvisioningManager>();
     builder.Services.AddSingleton<AdGroupWatcher>();
@@ -102,13 +92,18 @@ builder.Services.AddHostedService<UpdateWorker>();
 
 var host = builder.Build();
 
-if (emulate)
+if (userMode)
 {
     var log = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
-    log.LogWarning("╔══════════════════════════════════════════════════════════╗");
-    log.LogWarning("║  TAD.RV Bridge Service — EMULATION MODE                 ║");
-    log.LogWarning("║  No kernel driver · No domain controller required       ║");
-    log.LogWarning("╚══════════════════════════════════════════════════════════╝");
+    log.LogInformation("╔══════════════════════════════════════════════════════════╗");
+    log.LogInformation("║  TAD.RV Bridge Service — USER MODE                      ║");
+    log.LogInformation("║  LocalSystem service · no kernel driver dependency      ║");
+    log.LogInformation("╚══════════════════════════════════════════════════════════╝");
+}
+else
+{
+    var log = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
+    log.LogWarning("Running in LEGACY KERNEL mode (--kernel)");
 }
 
 host.Run();

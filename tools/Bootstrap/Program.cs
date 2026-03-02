@@ -5,9 +5,8 @@
 //
 // ZERO-INSTALL deployment for non-domain environments:
 //   1. Launched via GPO Startup Script from \\Server\TAD\TadBootstrap.exe
-//   2. Copies TadBridgeService.exe + TAD_RV.sys to hidden local cache
+//   2. Copies TadBridgeService.exe to hidden local cache
 //   3. Registers + starts a SYSTEM service with auto-recovery
-//   4. Installs the kernel driver via sc.exe
 //
 // Runs as SYSTEM (GPO startup context). No reboot required.
 // Supports 50-seat labs with no Domain Controller.
@@ -27,15 +26,12 @@ internal static class Program
 
     const string ServiceName        = "TadBridgeService";
     const string ServiceDisplayName = "TAD.RV Bridge Service";
-    const string DriverName         = "TAD_RV";
 
     static readonly string CacheDir   = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
         ".tad_cache");
 
     static readonly string ServiceExe = Path.Combine(CacheDir, "TadBridgeService.exe");
-    static readonly string DriverSys  = Path.Combine(CacheDir, "TAD_RV.sys");
-    static readonly string DriverInf  = Path.Combine(CacheDir, "TAD_RV.inf");
     static readonly string VersionFile = Path.Combine(CacheDir, ".version");
 
     // Files to deploy from the UNC share (relative to bootstrap exe location)
@@ -45,9 +41,6 @@ internal static class Program
         "TadBridgeService.dll",
         "TadBridgeService.deps.json",
         "TadBridgeService.runtimeconfig.json",
-        "TAD_RV.sys",
-        "TAD_RV.inf",
-        "TAD_RV.cat",
     };
 
     // ─── Entry Point ──────────────────────────────────────────────────
@@ -93,10 +86,7 @@ internal static class Program
                 Log("Binaries are up to date");
             }
 
-            // Step 4: Install kernel driver (if not already loaded)
-            InstallKernelDriver();
-
-            // Step 5: Register and start the SYSTEM service
+            // Step 4: Register and start the SYSTEM service
             RegisterService();
             ConfigureServiceRecovery();
             StartService();
@@ -223,36 +213,7 @@ internal static class Program
         Log($"Copied {copied} files to cache");
     }
 
-    // ─── Step 4: Kernel Driver ────────────────────────────────────────
-
-    static void InstallKernelDriver()
-    {
-        // Check if driver is already loaded
-        var sc = RunProcess("sc.exe", $"query {DriverName}");
-        if (sc.Contains("RUNNING"))
-        {
-            Log("Kernel driver already loaded");
-            return;
-        }
-
-        if (!File.Exists(DriverSys))
-        {
-            Log("WARNING: TAD_RV.sys not found in cache — skipping driver install");
-            return;
-        }
-
-        // Create driver service entry
-        string sysPath = DriverSys.Replace("/", "\\");
-        RunProcess("sc.exe",
-            $"create {DriverName} type= kernel start= demand binPath= \"{sysPath}\" " +
-            $"DisplayName= \"TAD.RV Kernel Driver\"");
-
-        // Start the driver
-        RunProcess("sc.exe", $"start {DriverName}");
-        Log("Kernel driver installed and started");
-    }
-
-    // ─── Step 5: Service Registration ─────────────────────────────────
+    // ─── Step 4: Service Registration ─────────────────────────────────
 
     static void RegisterService()
     {
@@ -278,7 +239,9 @@ internal static class Program
         // Set description
         RunProcess("sc.exe",
             $"description {ServiceName} \"TAD.RV endpoint management service — " +
-            $"driver bridge, screen capture, and teacher communication.\"");
+            $"user-mode protection, screen capture, and teacher communication.\"");
+
+        RunProcess("sc.exe", $"sidtype {ServiceName} unrestricted");
 
         Log("Service registered as auto-start LocalSystem");
     }

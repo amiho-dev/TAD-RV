@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\..\version-console.props" Condition="Exists('..\..\version-console.props')" />
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -11,7 +13,6 @@
     <RootNamespace>TadConsole</RootNamespace>
     <AssemblyName>TadConsole</AssemblyName>
     <ApplicationIcon>logo.ico</ApplicationIcon>
-    <Version>1.0.0.1</Version>
     <Company>TAD Europe</Company>
     <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
     <Product>TAD.RV Management Console</Product>

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="..\version-teacher.props" />
+  <Import Project="..\..\version-teacher.props" Condition="Exists('..\..\version-teacher.props')" />
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -17,6 +17,7 @@
     <Product>TAD.RV Teacher Controller</Product>
     <Description>Teacher dashboard for real-time monitoring and control of student endpoints. Next-generation classroom management built on TAD.RV technology.</Description>
     <ApplicationIcon>logo.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
