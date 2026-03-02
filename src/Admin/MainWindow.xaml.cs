@@ -522,6 +522,64 @@ public partial class MainWindow : Window
         designer.Show();
     }
 
+    // ── Manual endpoint add (workgroup / no-DC environments) ─────────
+    private const string IpPlaceholder = "IP or hostname…";
+
+    private void TxtManualIp_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (TxtManualIp.Text == IpPlaceholder)
+        {
+            TxtManualIp.Text = string.Empty;
+            TxtManualIp.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0xC9, 0xD1, 0xD9));
+        }
+    }
+
+    private void TxtManualIp_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(TxtManualIp.Text))
+        {
+            TxtManualIp.Text = IpPlaceholder;
+            TxtManualIp.Foreground = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(0x48, 0x4F, 0x58));
+        }
+    }
+
+    private void TxtManualIp_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+            AddManualEndpoint();
+    }
+
+    private void BtnAddEndpoint_Click(object sender, RoutedEventArgs e)
+        => AddManualEndpoint();
+
+    private void AddManualEndpoint()
+    {
+        var raw = TxtManualIp.Text.Trim();
+        if (string.IsNullOrEmpty(raw) || raw == IpPlaceholder) return;
+
+        // Optional port suffix:  192.168.1.5:17420
+        string ip = raw;
+        int port  = 17420;
+        if (raw.Contains(':'))
+        {
+            var parts = raw.Split(':', 2);
+            ip = parts[0].Trim();
+            if (!int.TryParse(parts[1], out port)) port = 17420;
+        }
+
+        if (_isDemoMode)
+            _demoManager!.AddStudent(ip, port);
+        else
+            _tcpManager!.AddStudent(ip, port);
+
+        TxtStatus.Text = $"Connecting to {ip}:{port}…";
+        TxtManualIp.Text = IpPlaceholder;
+        TxtManualIp.Foreground = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromRgb(0x48, 0x4F, 0x58));
+    }
+
     private void UpdateStatusBar()
     {
         int connected, total;

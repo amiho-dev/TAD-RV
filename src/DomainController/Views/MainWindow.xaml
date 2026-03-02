@@ -31,6 +31,9 @@
         <DataTemplate DataType="{x:Type vm:AlertsViewModel}">
             <v:AlertsView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RecordingsViewModel}">
+            <v:RecordingsView />
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -95,6 +98,11 @@
                                  Content="Alerts &amp; Logs"
                                  Tag="&#xE783;"
                                  Command="{Binding NavigateAlertsCommand}" />
+
+                    <RadioButton Style="{StaticResource NavButton}"
+                                 Content="Recordings"
+                                 Tag="&#xE7C3;"
+                                 Command="{Binding NavigateRecordingsCommand}" />
                 </StackPanel>
 
                 <!-- Footer -->

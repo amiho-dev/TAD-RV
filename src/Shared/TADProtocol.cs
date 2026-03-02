@@ -36,6 +36,7 @@ public enum TadCommand : byte
     ChatMessage     = 0x41,     // Teacher → Student chat message
     LaunchApp       = 0x42,     // Launch application on student
     LaunchUrl       = 0x43,     // Open URL on student browser
+    Snapshot        = 0x50,     // Request a JPEG screenshot from the endpoint
 
     // Student → Teacher
     Pong            = 0x81,
@@ -47,8 +48,9 @@ public enum TadCommand : byte
     VideoKeyFrame   = 0xA1,     // H.264 sub-stream IDR
     MainFrame       = 0xA2,     // H.264 main-stream frame (30fps 720p)
     MainKeyFrame    = 0xA3,     // H.264 main-stream IDR
-    FileChunk       = 0xB0,     // File transfer chunk
-    FileComplete    = 0xB1,     // File transfer done
+    SnapshotData    = 0xB0,     // JPEG screenshot in response to Snapshot cmd
+    FileChunk       = 0xC0,     // File transfer chunk
+    FileComplete    = 0xC1,     // File transfer done
     Error           = 0xFF,
 }
 

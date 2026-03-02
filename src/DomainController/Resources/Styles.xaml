@@ -3,7 +3,8 @@
      GitHub-style dark palette with accent highlights
      ═══════════════════════════════════════════════════════════════════════ -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:helpers="clr-namespace:TADDomainController.Helpers">
 
     <!-- ═══ Color Palette ═════════════════════════════════════════════ -->
     <SolidColorBrush x:Key="PrimaryBrush"       Color="#0D1117" />
@@ -122,5 +123,10 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- ═══ Value Converters ════════════════════════════════════════════ -->
+    <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    <helpers:BoolToColorConverter      x:Key="BoolToColorConverter" />
+    <helpers:BoolToTypeConverter       x:Key="BoolToTypeConverter" />
 
 </ResourceDictionary>

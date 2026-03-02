@@ -158,6 +158,52 @@
                             <TextBlock Text="Room" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
+
+                    <!-- Manual endpoint add (workgroup / no-DC environments) -->
+                    <Border Width="1" Background="#30363D" Margin="12,6,4,6" />
+                    <TextBox x:Name="TxtManualIp"
+                             Width="140"
+                             Text="IP or hostname…"
+                             VerticalAlignment="Center"
+                             Margin="4,0,0,0"
+                             Padding="6,4"
+                             Background="#0D1117"
+                             Foreground="#484F58"
+                             BorderBrush="#30363D"
+                             CaretBrush="#58A6FF"
+                             FontSize="12"
+                             ToolTip="Enter IP or hostname to connect without a DC"
+                             Tag="placeholder"
+                             GotFocus="TxtManualIp_GotFocus"
+                             LostFocus="TxtManualIp_LostFocus"
+                             KeyDown="TxtManualIp_KeyDown">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="TextBox">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4">
+                                                <ScrollViewer x:Name="PART_ContentHost"
+                                                              Margin="{TemplateBinding Padding}"
+                                                              VerticalAlignment="Center" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                    <Button x:Name="BtnAddEndpoint" Click="BtnAddEndpoint_Click"
+                            Style="{StaticResource ToolButton}" Tag="success" Margin="4,0,0,0"
+                            ToolTip="Add endpoint manually">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,4,0" />
+                            <TextBlock Text="Add" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>

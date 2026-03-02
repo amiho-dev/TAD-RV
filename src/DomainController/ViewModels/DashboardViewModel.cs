@@ -18,7 +18,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private bool   _updateAvailable;
     private string _releaseNotes  = "";
 
-    private readonly UpdateManager _updater = new("console");
+    private readonly UpdateManager _updater = new("dc");
 
     public DashboardViewModel()
     {

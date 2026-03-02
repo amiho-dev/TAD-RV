@@ -19,10 +19,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var dashboard = new DashboardViewModel();
         _currentView = dashboard;
 
-        NavigateDashboardCommand = new RelayCommand(() => CurrentView = new DashboardViewModel());
-        NavigateDeployCommand    = new RelayCommand(() => CurrentView = new DeployViewModel());
-        NavigatePolicyCommand    = new RelayCommand(() => CurrentView = new PolicyViewModel());
-        NavigateAlertsCommand    = new RelayCommand(() => CurrentView = new AlertsViewModel());
+        NavigateDashboardCommand  = new RelayCommand(() => CurrentView = new DashboardViewModel());
+        NavigateDeployCommand     = new RelayCommand(() => CurrentView = new DeployViewModel());
+        NavigatePolicyCommand     = new RelayCommand(() => CurrentView = new PolicyViewModel());
+        NavigateAlertsCommand     = new RelayCommand(() => CurrentView = new AlertsViewModel());
+        NavigateRecordingsCommand = new RelayCommand(() => CurrentView = new RecordingsViewModel());
     }
 
     public object CurrentView
@@ -31,10 +32,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set { _currentView = value; OnPropertyChanged(); }
     }
 
-    public ICommand NavigateDashboardCommand { get; }
-    public ICommand NavigateDeployCommand    { get; }
-    public ICommand NavigatePolicyCommand    { get; }
-    public ICommand NavigateAlertsCommand    { get; }
+    public ICommand NavigateDashboardCommand  { get; }
+    public ICommand NavigateDeployCommand     { get; }
+    public ICommand NavigatePolicyCommand     { get; }
+    public ICommand NavigateAlertsCommand     { get; }
+    public ICommand NavigateRecordingsCommand { get; }
 
     // ── INotifyPropertyChanged ──────────────────────────────────────
     public event PropertyChangedEventHandler? PropertyChanged;

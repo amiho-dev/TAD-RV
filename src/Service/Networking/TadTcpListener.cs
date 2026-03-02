@@ -191,6 +191,10 @@ public sealed class TadTcpListener : BackgroundService
                 }
                 break;
 
+            case TadCommand.Snapshot:
+                _ = SendSnapshotAsync();
+                break;
+
             case TadCommand.PushMessage:
                 // Future: show message on student screen
                 break;
@@ -380,6 +384,58 @@ public sealed class TadTcpListener : BackgroundService
             {
                 _log.LogWarning(ex, "Failed to collect {File}", filePath);
             }
+        }
+    }
+
+    // ─── Snapshot ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Capture the primary screen as JPEG and send it back as SnapshotData.
+    /// Uses GDI+ BitBlt — fast, works without GPU drivers.
+    /// Quality: 75% JPEG (~50–150 KB per screenshot).
+    /// </summary>
+    private async Task SendSnapshotAsync()
+    {
+        try
+        {
+            await Task.Run(() =>
+            {
+                var screen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (screen == null) return;
+
+                var bounds = screen.Bounds;
+                using var bmp = new System.Drawing.Bitmap(
+                    bounds.Width, bounds.Height,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                    g.CopyFromScreen(bounds.Location, System.Drawing.Point.Empty, bounds.Size);
+
+                // Encode as JPEG at quality 75
+                var jpegCodec = System.Drawing.Imaging.ImageCodecInfo
+                    .GetImageEncoders()
+                    .FirstOrDefault(e => e.FormatID == System.Drawing.Imaging.ImageFormat.Jpeg.Guid);
+
+                using var ms = new MemoryStream();
+                if (jpegCodec != null)
+                {
+                    var ep = new System.Drawing.Imaging.EncoderParameters(1);
+                    ep.Param[0] = new System.Drawing.Imaging.EncoderParameter(
+                        System.Drawing.Imaging.Encoder.Quality, 75L);
+                    bmp.Save(ms, jpegCodec, ep);
+                }
+                else
+                {
+                    bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+                }
+
+                SendFrame(TadCommand.SnapshotData, ms.GetBuffer().AsSpan(0, (int)ms.Length));
+                _log.LogDebug("Snapshot sent ({Bytes} bytes)", ms.Length);
+            });
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Snapshot capture failed");
         }
     }
 
