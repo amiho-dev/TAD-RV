@@ -2,31 +2,24 @@
 
   <PropertyGroup>
     <!--
-      This project is built THREE times by build.sh with different flags:
-        -p:SetupTarget=Client        -p:AssemblyName=TADClientSetup
-        -p:SetupTarget=Admin         -p:AssemblyName=TADAdminSetup
-        -p:SetupTarget=DomainController  -p:AssemblyName=TADDomainControllerSetup
-
-      Each build embeds only the relevant binary and produces one WPF GUI installer.
+      Built THREE times by build.sh — one CLI EXE per component:
+        -p:SetupTarget=Client          -p:AssemblyName=TADClientSetup
+        -p:SetupTarget=Admin           -p:AssemblyName=TADAdminSetup
+        -p:SetupTarget=DomainController -p:AssemblyName=TADDomainControllerSetup
     -->
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <UseWPF>true</UseWPF>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- Fallback name for building directly (not via build.sh) -->
+    <!-- Fallback name when building directly (not via build.sh) -->
     <AssemblyName Condition="'$(AssemblyName)'==''">TADSetup</AssemblyName>
     <RootNamespace>TADSetup</RootNamespace>
 
-    <!-- Single-file self-contained EXE — no .NET runtime on target needed -->
+    <!-- Single-file self-contained EXE — no .NET runtime needed on target -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
-    <!-- IncludeNativeLibrariesForSelfExtract omitted (defaults to false):
-         Setting it true causes WPF native DLLs to be bundled+extracted to %TEMP%
-         at every launch, which antivirus / enterprise policies often block. -->
     <PublishReadyToRun>false</PublishReadyToRun>
 
     <!-- UAC elevation via manifest -->
@@ -49,9 +42,9 @@
 
   <ItemGroup>
     <!--
-      Each binary is copied here by build.sh before the matching Setup build.
-      Only the relevant resource for the current SetupTarget is included.
-      The Condition prevents build failure when building in isolation.
+      Binaries are staged here by build.sh before each Setup build.
+      Only the resource matching the current SetupTarget is included.
+      Conditions prevent build failure when building in isolation.
     -->
     <EmbeddedResource
       Include="Resources\TADBridgeService.exe"

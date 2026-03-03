@@ -8,9 +8,9 @@
     Current: v26.3.02.003 — Year 2026, March 2, Patch 002
   -->
   <PropertyGroup>
-    <Version>26.3.15</Version>
-    <FileVersion>26.3.15.0</FileVersion>
-    <InformationalVersion>v26.3.03.007-admin</InformationalVersion>
+    <Version>26.3.16</Version>
+    <FileVersion>26.3.16.0</FileVersion>
+    <InformationalVersion>v26.3.03.008-admin</InformationalVersion>
   </PropertyGroup>
 
 </Project>
