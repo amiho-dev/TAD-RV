@@ -37,7 +37,9 @@
                 <span class="stat-value stat-hand" id="statHandRaised">0</span>
                 <span class="stat-label">Hand Raised</span>
             </div>
-            <div class="stat">
+            <div class="stat stat-toggle" id="offlineToggle"
+                 onclick="toggleOfflineVisibility()"
+                 title="Click to show / hide offline computers">
                 <span class="stat-value stat-offline" id="statOffline">0</span>
                 <span class="stat-label">Offline</span>
             </div>
@@ -140,7 +142,43 @@
             </div>
             <div class="changelog-body">
                 <div class="changelog-version">
-                    <div class="changelog-badge current">v26700.192</div>
+                    <div class="changelog-badge current">v26.3.02.007</div>
+                    <span class="changelog-date">March 3, 2026 — Bugfix Release</span>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title fix">Bug Fixes</h3>
+                    <ul class="changelog-list">
+                        <li>Fixed double "vv" version prefix — version bar now correctly shows <code>v26.3.02.007</code> instead of <code>vv26.3.02.007</code></li>
+                        <li>Blank button now sends <code>TadCommand.BlankScreen</code> over TCP to all students (was previously only updating the local JS banner)</li>
+                        <li>Broadcast Message actually delivers the message to student endpoints via <code>TadCommand.PushMessage</code> + <code>msg.exe</code> (was silently dropped)</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title feature">New Features</h3>
+                    <ul class="changelog-list">
+                        <li>Offline computer toggle — click the <strong>Offline</strong> counter in the stats bar to show or hide offline endpoints (hidden by default to avoid clutter)</li>
+                        <li>Service: <code>BlankScreen</code> command launches a fullscreen black overlay window (PowerShell fallback if no TadBlankOverlay.exe)</li>
+                        <li>Service: <code>PushMessage</code> command broadcasts text to all active Windows sessions via <code>msg.exe</code></li>
+                    </ul>
+                </div>
+
+                <div class="changelog-version">
+                    <div class="changelog-badge">v26.3.02.006</div>
+                    <span class="changelog-date">March 3, 2026 — Stability Fix</span>
+                </div>
+
+                <div class="changelog-section">
+                    <h3 class="changelog-section-title fix">Bug Fixes</h3>
+                    <ul class="changelog-list">
+                        <li>Bootstrap: removed false SKIP warnings for .dll/.deps.json/.runtimeconfig.json (single-file builds don't produce these)</li>
+                        <li>Service: <code>SocketException 10048</code> when port 17420 is already in use now logs a clear "do not run manually" message</li>
+                    </ul>
+                </div>
+
+                <div class="changelog-version">
+                    <div class="changelog-badge">v26700.192</div>
                     <span class="changelog-date">February 19, 2026 — Bugfix Release</span>
                 </div>
 

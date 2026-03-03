@@ -88,6 +88,12 @@ public sealed class CollectFilesRequest
     public long MaxFileSizeBytes { get; set; } = 50 * 1024 * 1024; // 50 MB
 }
 
+public sealed class PushMessageRequest
+{
+    public string Message { get; set; } = "";
+    public int DurationSeconds { get; set; } = 10;  // How long to show on student screen
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Frame Codec — Length-prefixed binary framing
 // ═══════════════════════════════════════════════════════════════════════════

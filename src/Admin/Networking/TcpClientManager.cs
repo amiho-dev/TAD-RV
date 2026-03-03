@@ -98,6 +98,13 @@ public sealed class TcpClientManager : IDisposable
     public void BroadcastFreeze() => BroadcastCommand(TadCommand.Lock);
     /// <summary>Unfreeze = Unlock in user-mode.</summary>
     public void BroadcastUnfreeze() => BroadcastCommand(TadCommand.Unlock);
+    public void BroadcastBlankScreen() => BroadcastCommand(TadCommand.BlankScreen);
+    public void BroadcastUnblankScreen() => BroadcastCommand(TadCommand.UnblankScreen);
+    public void BroadcastPushMessage(string message)
+    {
+        var frame = TadFrameCodec.EncodeJson(TadCommand.PushMessage, new PushMessageRequest { Message = message });
+        BroadcastRaw(frame);
+    }
     public void BroadcastCollectFiles()
     {
         var request = new CollectFilesRequest();

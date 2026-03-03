@@ -38,7 +38,9 @@ public sealed class TadTcpListener : BackgroundService
     // Status state
     private volatile bool _isLocked;
     private volatile bool _isStreaming;
+    private volatile bool _isBlanked;
     private Process? _lockOverlayProcess;
+    private Process? _blankOverlayProcess;
 
     public TadTcpListener(
         ILogger<TadTcpListener> log,
@@ -129,7 +131,8 @@ public sealed class TadTcpListener : BackgroundService
 
             // Auto-cleanup on disconnect
             if (_isStreaming) StopStreaming();
-            if (_isLocked) ExecuteUnlock();
+            if (_isLocked)  ExecuteUnlock();
+            if (_isBlanked) ExecuteUnblankScreen();
         }
     }
 
@@ -208,9 +211,114 @@ public sealed class TadTcpListener : BackgroundService
                 _ = SendSnapshotAsync();
                 break;
 
-            case TadCommand.PushMessage:
-                // Future: show message on student screen
+            case TadCommand.BlankScreen:
+                ExecuteBlankScreen();
                 break;
+
+            case TadCommand.UnblankScreen:
+                ExecuteUnblankScreen();
+                break;
+
+            case TadCommand.PushMessage:
+                try
+                {
+                    var req = JsonSerializer.Deserialize<PushMessageRequest>(payload.Span);
+                    if (req != null && !string.IsNullOrEmpty(req.Message))
+                        ExecutePushMessage(req.Message, req.DurationSeconds);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogWarning(ex, "Bad PushMessage payload");
+                }
+                break;
+        }
+    }
+
+    // ─── Blank Screen ─────────────────────────────────────────────────
+
+    private void ExecuteBlankScreen()
+    {
+        if (_isBlanked) return;
+        _isBlanked = true;
+        try
+        {
+            // Try dedicated overlay first; fall back to PowerShell blackout
+            var overlayPath = Path.Combine(AppContext.BaseDirectory, "TadBlankOverlay.exe");
+            if (File.Exists(overlayPath))
+            {
+                _blankOverlayProcess = Process.Start(new ProcessStartInfo
+                {
+                    FileName = overlayPath,
+                    WindowStyle = ProcessWindowStyle.Maximized,
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                // PowerShell fullscreen black WinForms window
+                _blankOverlayProcess = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-WindowStyle Hidden -Command \"" +
+                        "Add-Type -AssemblyName System.Windows.Forms; " +
+                        "$f=New-Object System.Windows.Forms.Form; " +
+                        "$f.BackColor='Black'; $f.FormBorderStyle='None'; " +
+                        "$f.WindowState='Maximized'; $f.TopMost=$true; " +
+                        "$f.ShowDialog()\"",
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                });
+            }
+            _log.LogInformation("Blank screen activated (PID {Pid})",
+                _blankOverlayProcess?.Id);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to activate blank screen");
+        }
+    }
+
+    private void ExecuteUnblankScreen()
+    {
+        if (!_isBlanked) return;
+        _isBlanked = false;
+        try
+        {
+            if (_blankOverlayProcess is { HasExited: false })
+            {
+                _blankOverlayProcess.Kill();
+                _blankOverlayProcess.WaitForExit(2000);
+            }
+            _blankOverlayProcess?.Dispose();
+            _blankOverlayProcess = null;
+            _log.LogInformation("Blank screen removed");
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to remove blank screen");
+        }
+    }
+
+    // ─── Push Message ─────────────────────────────────────────────────
+
+    private void ExecutePushMessage(string message, int durationSeconds = 10)
+    {
+        try
+        {
+            // msg.exe broadcasts to the active interactive session — works from SYSTEM context
+            var safeMsg = message.Replace("\"", "'").Replace("\r", " ").Replace("\n", " ");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName  = "msg.exe",
+                Arguments = $"* /TIME:{durationSeconds} \"{safeMsg}\"",
+                UseShellExecute  = false,
+                CreateNoWindow   = true
+            });
+            _log.LogInformation("Push message sent ({Sec}s): {Msg}", durationSeconds, message);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to send push message");
         }
     }
 
@@ -467,8 +575,9 @@ public sealed class TadTcpListener : BackgroundService
                     Username = Environment.UserName,
                     IpAddress = GetLocalIp(),
                     DriverLoaded = heartbeat != null,
-                    IsLocked = _isLocked,
-                    IsStreaming = _isStreaming,
+                    IsLocked     = _isLocked,
+                    IsStreaming   = _isStreaming,
+                    IsBlankScreen = _isBlanked,
                     ActiveWindow = GetForegroundWindowTitle(),
                     CpuUsage = 0,   // Populated by perf counter in production
                     RamUsedMb = Environment.WorkingSet / (1024 * 1024),

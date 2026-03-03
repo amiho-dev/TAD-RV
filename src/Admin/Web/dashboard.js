@@ -24,6 +24,7 @@ let rvMainDecoder = null;             // Main-stream decoder (30fps 720p)
 let isDemoMode = false;               // Set by config message from C#
 let currentFilter = '';               // Search filter string
 let appVersion = '26700.192';         // Updated by config message
+let showOffline = false;              // Toggle: show/hide offline computer tiles
 
 // ── Message Bridge (C# → JS) ────────────────────────────────────────
 
@@ -41,7 +42,11 @@ window.chrome.webview.addEventListener('message', (event) => {
         case 'config':
             isDemoMode = !!msg.demoMode;
             if (msg.version) {
-                appVersion = msg.version;
+                // Strip leading 'v' if present, then strip component suffix (e.g. '-admin')
+                let ver = msg.version.startsWith('v') ? msg.version.substring(1) : msg.version;
+                const di = ver.indexOf('-');
+                if (di > 0) ver = ver.substring(0, di);
+                appVersion = ver;
                 const verEl = document.getElementById('aboutVersion');
                 if (verEl) verEl.textContent = 'v' + appVersion;
             }
@@ -261,8 +266,25 @@ function filterStudents(query) {
     students.forEach(s => applyFilter(s));
 }
 
+function toggleOfflineVisibility() {
+    showOffline = !showOffline;
+    const btn = document.getElementById('offlineToggle');
+    if (btn) btn.classList.toggle('active', showOffline);
+    const lbl = document.querySelector('#offlineToggle .stat-label');
+    if (lbl) lbl.textContent = showOffline ? 'Offline ▲' : 'Offline';
+    students.forEach(s => applyFilter(s));
+}
+
 function applyFilter(student) {
     if (!student.tileEl) return;
+
+    // Hide offline tiles unless the toggle is on
+    const isOffline = !student.status || (Date.now() - student.lastSeen >= 10000);
+    if (isOffline && !showOffline) {
+        student.tileEl.style.display = 'none';
+        return;
+    }
+
     if (!currentFilter) {
         student.tileEl.style.display = '';
         return;
@@ -383,6 +405,21 @@ function renderDemoDesktop(ctx, w, h, f) {
         ctx.fillStyle = '#8B949E';
         ctx.font = `${11 * sx}px Segoe UI, sans-serif`;
         ctx.fillText('This workstation is locked by the admin', w / 2, h / 2 + 18 * sy);
+        ctx.textAlign = 'left';
+        return;
+    }
+
+    if (f.blanked) {
+        // ── Blank Screen ─────────────────────────────────────────
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.font = `bold ${18 * sx}px Segoe UI, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('⬛ SCREEN BLANKED', w / 2, h / 2 - 8 * sy);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.font = `${10 * sx}px Segoe UI, sans-serif`;
+        ctx.fillText('Eyes on the teacher', w / 2, h / 2 + 14 * sy);
         ctx.textAlign = 'left';
         return;
     }
@@ -954,6 +991,9 @@ function updateStats() {
     document.getElementById('statStreaming').textContent = streaming;
     document.getElementById('statHandRaised').textContent = handRaised;
     document.getElementById('statOffline').textContent = offline;
+
+    // Re-apply filter so newly-offline tiles get hidden/shown per toggle
+    students.forEach(s => applyFilter(s));
 }
 
 // Refresh stats every 5 seconds

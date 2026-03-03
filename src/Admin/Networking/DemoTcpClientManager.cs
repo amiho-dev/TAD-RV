@@ -152,6 +152,7 @@ public sealed class DemoTcpClientManager : IDisposable
                 Role = "Student",
                 IsFrozen = student.IsFrozen,
                 FreezeSecondsRemaining = student.FreezeSecondsRemaining,
+                IsBlankScreen = student.IsBlankScreen,
                 Timestamp = DateTime.UtcNow,
             };
 
@@ -180,6 +181,7 @@ public sealed class DemoTcpClientManager : IDisposable
                 ram = student.RamUsedMb,
                 locked = student.IsLocked,
                 frozen = student.IsFrozen,
+                blanked = student.IsBlankScreen,
                 cursorX = student.CursorX,
                 cursorY = student.CursorY,
                 time = DateTime.Now.ToString("HH:mm:ss"),
@@ -269,6 +271,18 @@ public sealed class DemoTcpClientManager : IDisposable
 
     public void BroadcastCollectFiles() { /* No-op in demo */ }
 
+    public void BroadcastBlankScreen()
+    {
+        foreach (var s in _students.Values) s.IsBlankScreen = true;
+    }
+
+    public void BroadcastUnblankScreen()
+    {
+        foreach (var s in _students.Values) s.IsBlankScreen = false;
+    }
+
+    public void BroadcastPushMessage(string message) { /* No-op in demo — message is shown via JS announcement */ }
+
     public void PingAll()
     {
         // Force a status + frame update cycle
@@ -297,6 +311,7 @@ public sealed class DemoTcpClientManager : IDisposable
         public bool IsLocked { get; set; }
         public bool IsStreaming { get; set; }
         public bool IsFrozen { get; set; }
+        public bool IsBlankScreen { get; set; }
         public int FreezeSecondsRemaining { get; set; }
         public double CpuUsage { get; set; }
         public long RamUsedMb { get; set; }

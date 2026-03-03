@@ -108,6 +108,27 @@ body {
 .stat-hand     { color: var(--accent-purple); }
 .stat-offline  { color: var(--text-secondary); }
 
+/* Clickable offline toggle stat */
+.stat-toggle {
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+    user-select: none;
+}
+.stat-toggle:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: var(--border);
+}
+.stat-toggle.active .stat-offline {
+    color: var(--accent-orange);
+}
+.stat-toggle.active {
+    border-color: var(--accent-orange);
+    background: rgba(210,153,34,0.08);
+}
+
 .stat-label {
     font-size: 11px;
     color: var(--text-secondary);

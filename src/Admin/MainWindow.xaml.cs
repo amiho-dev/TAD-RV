@@ -66,8 +66,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         TADLogger.Info("InitializeComponent() done");
 
-        // Show short version in status bar (strip component suffix)
-        var fullVer = GetRunningVersion();
+        // Show short version in status bar (strip leading 'v' + component suffix)
+        var fullVer = GetRunningVersion().TrimStart('v');
         var shortVer = fullVer;
         var dashIdx = fullVer.IndexOf('-');
         if (dashIdx > 0) shortVer = fullVer[..dashIdx];
@@ -391,7 +391,12 @@ public partial class MainWindow : Window
                     else _tcpManager!.UnlockStudent(msg.Target);
                     break;
                 case "message":
-                    TxtStatus.Text = $"Message sent: {msg.Payload}";
+                    if (!string.IsNullOrWhiteSpace(msg.Payload))
+                    {
+                        if (_isDemoMode) _demoManager!.BroadcastPushMessage(msg.Payload);
+                        else _tcpManager!.BroadcastPushMessage(msg.Payload);
+                        TxtStatus.Text = $"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"";
+                    }
                     break;
             }
         }
@@ -498,7 +503,18 @@ public partial class MainWindow : Window
     private void BtnBlankAll_Click(object sender, RoutedEventArgs e)
     {
         _allBlanked = !_allBlanked;
-        TxtStatus.Text = _allBlanked ? "Blanked all screens" : "Restored all screens";
+        if (_allBlanked)
+        {
+            if (_isDemoMode) _demoManager!.BroadcastBlankScreen();
+            else _tcpManager!.BroadcastBlankScreen();
+            TxtStatus.Text = "Blanked all screens — Black screen active";
+        }
+        else
+        {
+            if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
+            else _tcpManager!.BroadcastUnblankScreen();
+            TxtStatus.Text = "Restored all screens";
+        }
         PostJsonMessage(new { type = "blank_all", blanked = _allBlanked });
     }
 
