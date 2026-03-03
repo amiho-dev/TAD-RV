@@ -383,13 +383,21 @@ static void CreateStartMenuShortcut()
         Directory.CreateDirectory(StartMenuDir());
         string lnkPath = Path.Combine(StartMenuDir(), ShortcutName);
         string target  = InstallBin(BinaryName);
-        string ps =
-            $"$s=(New-Object -COM WScript.Shell).CreateShortcut('{lnkPath}');" +
-            $"$s.TargetPath='{target}';" +
-            $"$s.WorkingDirectory='{InstallDir()}';" +
-            $"$s.Description='{ShortcutDesc}';" +
-            "$s.Save()";
-        int rc = RunVerbose("powershell", $"-NoProfile -NonInteractive -Command \"{ps}\"");
+        string workDir = InstallDir();
+        string desc    = ShortcutDesc;
+
+        // Build the PS script first, then Base64-encode it.
+        // This completely avoids quoting/backslash issues with -Command "...".
+        string psScript =
+            $"$s = (New-Object -ComObject WScript.Shell).CreateShortcut([string]'{EscapePs(lnkPath)}');\n" +
+            $"$s.TargetPath      = [string]'{EscapePs(target)}';\n" +
+            $"$s.WorkingDirectory = [string]'{EscapePs(workDir)}';\n" +
+            $"$s.Description     = [string]'{EscapePs(desc)}';\n" +
+            "$s.Save();\n";
+
+        // PowerShell -EncodedCommand expects UTF-16LE Base64
+        string encoded = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(psScript));
+        int rc = RunVerbose("powershell", $"-NoProfile -NonInteractive -EncodedCommand {encoded}");
         if (rc == 0)
             Ok($"Start Menu shortcut  →  {lnkPath}");
         else
@@ -397,6 +405,9 @@ static void CreateStartMenuShortcut()
     }
     catch (Exception ex) { Warn($"Shortcut (non-fatal): {ex.Message}"); }
 }
+
+// Escape single quotes inside a PS single-quoted string
+static string EscapePs(string s) => s.Replace("'", "''");
 #endif
 
 static void RemoveShortcuts()
