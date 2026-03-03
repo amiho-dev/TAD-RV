@@ -28,6 +28,7 @@ public sealed class TadTcpListener : BackgroundService
     private readonly DriverBridge _driver;
     private readonly ScreenCaptureEngine _capture;
     private readonly PrivacyRedactor _redactor;
+    private readonly IHostApplicationLifetime _lifetime;
 
     private TcpListener? _listener;
     private NetworkStream? _activeStream;
@@ -46,12 +47,14 @@ public sealed class TadTcpListener : BackgroundService
         ILogger<TadTcpListener> log,
         DriverBridge driver,
         ScreenCaptureEngine capture,
-        PrivacyRedactor redactor)
+        PrivacyRedactor redactor,
+        IHostApplicationLifetime lifetime)
     {
         _log = log;
         _driver = driver;
         _capture = capture;
         _redactor = redactor;
+        _lifetime = lifetime;
     }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -69,7 +72,8 @@ public sealed class TadTcpListener : BackgroundService
                 "TADBridgeService is likely already running as a Windows service. " +
                 "Do not run TADBridgeService.exe manually — use TADBootstrap.exe to manage it.",
                 ListenPort);
-            throw;
+            _lifetime.StopApplication();
+            return;
         }
         _log.LogInformation("TCP listener started on port {Port}", ListenPort);
 
