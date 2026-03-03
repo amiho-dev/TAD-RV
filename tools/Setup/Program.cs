@@ -143,7 +143,7 @@ static bool RunInstall()
 #if SETUP_CLIENT
     int totalSteps = 7;
 #else
-    int totalSteps = CreateShortcut ? 3 : 2;
+    int totalSteps = CreateShortcut ? 4 : 3;
 #endif
 
     Step(1, totalSteps, $"Extracting  {BinaryName}  →  {InstallDir()}");
@@ -174,6 +174,9 @@ static bool RunInstall()
         Step(3, totalSteps, $"Creating Start Menu shortcut  →  {StartMenuFolder}\\{Path.GetFileNameWithoutExtension(ShortcutName)}");
         CreateStartMenuShortcut();
     }
+
+    Step(CreateShortcut ? 4 : 3, totalSteps, $"Registering auto-start  →  {AppDisplayName}  (tray icon at login)...");
+    AddAppRunKey();
 #endif
 
     Console.WriteLine();
@@ -206,10 +209,10 @@ static bool RunUninstall()
     int rc = RunVerbose("sc.exe", $"delete {ServiceName}");
     if (rc != 0 && rc != 1060) Warn($"sc delete returned exit {rc}");
 #else
-    Step(1, 4, $"Terminating {BinaryName} (if running)...");
+    Step(1, 5, $"Terminating {BinaryName} (if running)...");
     RunVerbose("taskkill", $"/f /im {BinaryName}");
 
-    Step(2, 4, "Removing Start Menu shortcuts...");
+    Step(2, 5, "Removing Start Menu shortcuts...");
     RemoveShortcuts();
 #endif
 
@@ -233,10 +236,20 @@ static bool RunUninstall()
 
     Step(5, 5, $"Removing files from  {installDir}...");
 #else
-    Step(3, 4, "Removing registry entries...");
+    Step(3, 5, "Removing auto-start Run key...");
+    try
+    {
+        using var runKey2 = Registry.LocalMachine.OpenSubKey(
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true);
+        runKey2?.DeleteValue(AppDisplayName, false);
+        Ok("Auto-start Run key removed.");
+    }
+    catch (Exception ex) { Warn($"Run key removal: {ex.Message}"); }
+
+    Step(4, 5, "Removing registry entries...");
     try { Registry.LocalMachine.DeleteSubKeyTree(UninstallSubKey, throwOnMissingSubKey: false); Ok("Uninstall registry key removed."); } catch (Exception ex) { Warn(ex.Message); }
 
-    Step(4, 4, $"Removing files from  {installDir}...");
+    Step(5, 5, $"Removing files from  {installDir}...");
 #endif
     RunVerbose("taskkill", $"/f /im {BinaryName}");
     System.Threading.Thread.Sleep(500);
@@ -447,6 +460,20 @@ static void AddTrayRunKey()
 
 
 #if !SETUP_CLIENT
+static void AddAppRunKey()
+{
+    // HKLM Run key → starts the app (which has a built-in tray icon) at every user logon.
+    try
+    {
+        using var key = Registry.LocalMachine.CreateSubKey(
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true);
+        string value = $"\"{InstallBin(BinaryName)}\"";
+        key.SetValue(AppDisplayName, value, RegistryValueKind.String);
+        Ok($"HKLM\\...\\Run  \u2192  \"{AppDisplayName}\"  (auto-start at user logon).");
+    }
+    catch (Exception ex) { Warn($"Auto-start Run key (non-fatal): {ex.Message}"); }
+}
+
 static void CreateStartMenuShortcut()
 {
     try

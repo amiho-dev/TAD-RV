@@ -211,6 +211,11 @@ public partial class MainWindow : Window
         {
             _tcpManager?.AddStudent(ip, port);
             TxtStatus.Text = $"Discovered: {hostname} ({ip})";
+
+            // Notify the WebView immediately so a tile appears even before the
+            // first status beacon (fired every 3 s) has time to arrive.
+            if (_webViewReady)
+                PostJsonMessage(new { type = "add_students", ips = new[] { ip } });
         });
     }
 
@@ -246,6 +251,16 @@ public partial class MainWindow : Window
                 {
                     TADLogger.Info("Posting config (production mode)");
                     PostJsonMessage(new { type = "config", demoMode = false, version = GetRunningVersion() });
+
+                    // Flush any students already discovered before the WebView was ready.
+                    // Without this, students that connected before NavigationCompleted
+                    // never produce a tile (their status updates were silently dropped).
+                    var knownIps = _discoveryListener?.KnownStudentIps;
+                    if (knownIps?.Count > 0)
+                    {
+                        TADLogger.Info($"Flushing {knownIps.Count} already-known student(s) to WebView");
+                        PostJsonMessage(new { type = "add_students", ips = knownIps.ToArray() });
+                    }
                 }
                 else
                 {
