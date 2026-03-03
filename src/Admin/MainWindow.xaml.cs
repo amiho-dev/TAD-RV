@@ -534,13 +534,6 @@ public partial class MainWindow : Window
         PostJsonMessage(new { type = "show_message_dialog" });
     }
 
-    private void BtnCollect_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isDemoMode) _demoManager!.BroadcastCollectFiles();
-        else _tcpManager!.BroadcastCollectFiles();
-        TxtStatus.Text = "File collection started...";
-    }
-
     private void BtnRefresh_Click(object sender, RoutedEventArgs e)
     {
         if (_isDemoMode) _demoManager!.PingAll();

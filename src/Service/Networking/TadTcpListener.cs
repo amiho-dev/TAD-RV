@@ -13,6 +13,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -59,22 +60,26 @@ public sealed class TadTcpListener : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        _listener = new TcpListener(IPAddress.Any, ListenPort);
-        try
+        // Retry loop: if the port is already in use (e.g., previous instance still shutting down
+        // or a race on delayed-auto start) wait and retry rather than crashing the service.
+        while (!ct.IsCancellationRequested)
         {
-            _listener.Start();
+            _listener = new TcpListener(IPAddress.Any, ListenPort);
+            try
+            {
+                _listener.Start();
+                break; // bound successfully
+            }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.AddressAlreadyInUse)
+            {
+                _log.LogWarning(
+                    "Port {Port} is already in use — another instance may still be shutting down. "
+                    + "Retrying in 10 s…", ListenPort);
+                _listener.Stop();
+                try { await Task.Delay(10_000, ct); } catch (OperationCanceledException) { return; }
+            }
         }
-        catch (System.Net.Sockets.SocketException ex)
-            when (ex.SocketErrorCode == System.Net.Sockets.SocketError.AddressAlreadyInUse)
-        {
-            _log.LogError(
-                "Port {Port} is already in use. " +
-                "TADBridgeService is likely already running as a Windows service. " +
-                "Do not run TADBridgeService.exe manually — use TADBootstrap.exe to manage it.",
-                ListenPort);
-            _lifetime.StopApplication();
-            return;
-        }
+        if (ct.IsCancellationRequested) return;
         _log.LogInformation("TCP listener started on port {Port}", ListenPort);
 
         // Periodic status beacon
@@ -307,22 +312,61 @@ public sealed class TadTcpListener : BackgroundService
 
     private void ExecutePushMessage(string message, int durationSeconds = 10)
     {
+        // WTSSendMessage delivers a Win32 message-box directly to the active console session
+        // from Session 0 (Windows service), which msg.exe cannot reliably do on Win 10/11.
         try
         {
-            // msg.exe broadcasts to the active interactive session — works from SYSTEM context
-            var safeMsg = message.Replace("\"", "'").Replace("\r", " ").Replace("\n", " ");
-            Process.Start(new ProcessStartInfo
+            int sessionId = WTSGetActiveConsoleSessionId();
+            if (sessionId == unchecked((int)0xFFFFFFFF))
             {
-                FileName  = "msg.exe",
-                Arguments = $"* /TIME:{durationSeconds} \"{safeMsg}\"",
-                UseShellExecute  = false,
-                CreateNoWindow   = true
-            });
-            _log.LogInformation("Push message sent ({Sec}s): {Msg}", durationSeconds, message);
+                _log.LogWarning("WTSSendMessage: no active console session — skipping");
+                return;
+            }
+
+            const string title = "TAD.RV — Teacher Message";
+            bool ok = WTSSendMessage(
+                IntPtr.Zero,       // WTS_CURRENT_SERVER_HANDLE
+                sessionId,
+                title,             title.Length,
+                message,           message.Length,
+                0x00000040,        // MB_ICONINFORMATION
+                durationSeconds,   // auto-close after N seconds
+                out _,
+                false);            // non-blocking: returns immediately
+
+            if (ok)
+                _log.LogInformation("Push message delivered to session {Session} ({Sec}s): {Msg}",
+                    sessionId, durationSeconds, message);
+            else
+            {
+                int err = Marshal.GetLastWin32Error();
+                _log.LogWarning("WTSSendMessage failed (Win32={Err}) — falling back to msg.exe", err);
+                FallbackMsgExe(message, durationSeconds);
+            }
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "Failed to send push message");
+            _log.LogWarning(ex, "Failed to send push message — trying msg.exe fallback");
+            FallbackMsgExe(message, durationSeconds);
+        }
+    }
+
+    private void FallbackMsgExe(string message, int durationSeconds)
+    {
+        try
+        {
+            var safeMsg = message.Replace("\"", "'").Replace("\r", " ").Replace("\n", " ");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName        = "msg.exe",
+                Arguments       = $"* /TIME:{durationSeconds} \"{safeMsg}\"",
+                UseShellExecute = false,
+                CreateNoWindow  = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "msg.exe fallback also failed");
         }
     }
 
@@ -635,6 +679,22 @@ public sealed class TadTcpListener : BackgroundService
         }
         catch { return ""; }
     }
+
+    // ─── WTS P/Invoke — message box in the active user session ───────
+
+    [DllImport("Wtsapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool WTSSendMessage(
+        IntPtr  hServer,
+        int     SessionId,
+        string  pTitle,      int TitleLength,
+        string  pMessage,    int MessageLength,
+        uint    Style,
+        int     Timeout,
+        out int pResponse,
+        bool    bWait);
+
+    [DllImport("kernel32.dll")]
+    private static extern int WTSGetActiveConsoleSessionId();
 }
 
 file static class NativeForeground

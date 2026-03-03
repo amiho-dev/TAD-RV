@@ -337,7 +337,7 @@ static bool RegisterService()
     int rc = RunVerbose("sc.exe",
         $"create {ServiceName}" +
         $" binPath= \"{InstallBin(BinaryName)}\"" +
-        $" start= delayed-auto" +
+        $" start= auto" +
         $" obj= \"{VirtualAccount}\"" +
         $" DisplayName= \"{ServiceDisplay}\"");
 
