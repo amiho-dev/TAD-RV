@@ -10,7 +10,7 @@
   <PropertyGroup>
     <Version>26.3.18</Version>
     <FileVersion>26.3.18.0</FileVersion>
-    <InformationalVersion>v26.3.03.10F-admin</InformationalVersion>
+    <InformationalVersion>v26.3.03.100-admin</InformationalVersion>
   </PropertyGroup>
 
 </Project>
