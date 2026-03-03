@@ -32,7 +32,7 @@ public sealed class DeploymentStepResult
 public sealed class DeploymentConfig
 {
     public string ServicePath      { get; set; } = "";
-    public string TargetDir        { get; set; } = @"C:\Program Files\TAD_RV";
+    public string TargetDir        { get; set; } = @"C:\Program Files\TAD";
     public string DomainController { get; set; } = "dc01.school.local";
     public bool   InstallService   { get; set; } = true;
 }
