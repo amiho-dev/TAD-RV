@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Output name changed: installer exe is now TADClientSetup.exe -->
-    <AssemblyName>TADClientSetup</AssemblyName>
+    <!-- Output name: one unified installer for all components -->
+    <AssemblyName>TADSetup</AssemblyName>
     <RootNamespace>TADSetup</RootNamespace>
 
     <!-- Single-file self-contained EXE — no .NET runtime install needed on target -->
@@ -41,6 +41,14 @@
       Include="Resources\TADBridgeService.exe"
       LogicalName="bundled_service"
       Condition="Exists('Resources\TADBridgeService.exe')" />
+    <EmbeddedResource
+      Include="Resources\TADAdmin.exe"
+      LogicalName="bundled_admin"
+      Condition="Exists('Resources\TADAdmin.exe')" />
+    <EmbeddedResource
+      Include="Resources\TADDomainController.exe"
+      LogicalName="bundled_dc"
+      Condition="Exists('Resources\TADDomainController.exe')" />
   </ItemGroup>
 
 </Project>
