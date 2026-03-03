@@ -55,7 +55,20 @@ public sealed class TadTcpListener : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         _listener = new TcpListener(IPAddress.Any, ListenPort);
-        _listener.Start();
+        try
+        {
+            _listener.Start();
+        }
+        catch (System.Net.Sockets.SocketException ex)
+            when (ex.SocketErrorCode == System.Net.Sockets.SocketError.AddressAlreadyInUse)
+        {
+            _log.LogError(
+                "Port {Port} is already in use. " +
+                "TADBridgeService is likely already running as a Windows service. " +
+                "Do not run TADBridgeService.exe manually — use TADBootstrap.exe to manage it.",
+                ListenPort);
+            throw;
+        }
         _log.LogInformation("TCP listener started on port {Port}", ListenPort);
 
         // Periodic status beacon

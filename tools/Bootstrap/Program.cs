@@ -35,12 +35,11 @@ internal static class Program
     static readonly string VersionFile = Path.Combine(CacheDir, ".version");
 
     // Files to deploy from the UNC share (relative to bootstrap exe location)
-    static readonly string[] DeployFiles = new[]
+    // Only the main exe is required — companion files (.dll, .json) are
+    // copied if present, supporting both single-file and framework-dependent builds.
+    static readonly string[] RequiredFiles = new[]
     {
         "TADBridgeService.exe",
-        "TADBridgeService.dll",
-        "TADBridgeService.deps.json",
-        "TADBridgeService.runtimeconfig.json",
     };
 
     // ─── Entry Point ──────────────────────────────────────────────────
@@ -152,9 +151,9 @@ internal static class Program
             var vi = FileVersionInfo.GetVersionInfo(sourceExe);
             return vi.FileVersion ?? "0.0.0.0";
         }
-        // Fallback: hash the file
+        // Fallback: use last-write timestamp of the exe
         return File.GetLastWriteTimeUtc(
-            Path.Combine(AppContext.BaseDirectory, DeployFiles[0])).Ticks.ToString();
+            Path.Combine(AppContext.BaseDirectory, RequiredFiles[0])).Ticks.ToString();
     }
 
     static string GetCachedVersion()
@@ -169,14 +168,15 @@ internal static class Program
         string srcDir = AppContext.BaseDirectory;
         int copied = 0;
 
-        foreach (string file in DeployFiles)
+        // Copy required files (must exist)
+        foreach (string file in RequiredFiles)
         {
             string src = Path.Combine(srcDir, file);
             string dst = Path.Combine(CacheDir, file);
 
             if (!File.Exists(src))
             {
-                Log($"  SKIP (not found): {file}");
+                Log($"  ERROR (required, not found): {file}");
                 continue;
             }
 
@@ -197,17 +197,23 @@ internal static class Program
             }
         }
 
-        // Also copy any .dll dependencies in the source directory
-        foreach (var dll in Directory.EnumerateFiles(srcDir, "*.dll"))
+        // Copy optional companion files (.dll, .deps.json, .runtimeconfig.json)
+        // present for framework-dependent builds; silently skipped for single-file
+        foreach (var pattern in new[] { "*.dll", "*.json" })
         {
-            string name = Path.GetFileName(dll);
-            string dst = Path.Combine(CacheDir, name);
-            try
+            foreach (var srcFile in Directory.EnumerateFiles(srcDir, pattern))
             {
-                File.Copy(dll, dst, overwrite: true);
-                copied++;
+                string name = Path.GetFileName(srcFile);
+                // Skip the bootstrap's own files
+                if (name.StartsWith("TADBootstrap", StringComparison.OrdinalIgnoreCase)) continue;
+                string dst = Path.Combine(CacheDir, name);
+                try
+                {
+                    File.Copy(srcFile, dst, overwrite: true);
+                    copied++;
+                }
+                catch { /* Best effort for companion files */ }
             }
-            catch { /* Best effort for companion DLLs */ }
         }
 
         Log($"Copied {copied} files to cache");
