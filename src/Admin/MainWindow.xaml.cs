@@ -191,6 +191,17 @@ public partial class MainWindow : Window
             Hide();
             _trayIcon?.ShowBalloonTip(2000, "TAD.RV", "Minimized to system tray", ToolTipIcon.Info);
         }
+        else if (WindowState == WindowState.Maximized)
+        {
+            // WindowChrome bypasses WM_GETMINMAXINFO, which normally keeps
+            // the maximized window within the WorkArea (above the taskbar).
+            // Clamping MaxHeight to the logical work-area height fixes this.
+            MaxHeight = SystemParameters.WorkArea.Height;
+        }
+        else
+        {
+            MaxHeight = double.PositiveInfinity;
+        }
     }
 
     /// <summary>Called by DiscoveryListener when a new student IP appears on the network.</summary>
