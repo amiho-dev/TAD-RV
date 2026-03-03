@@ -5,16 +5,12 @@ echo "=== TAD-RV Solution Build (Linux cross-compile) ==="
 echo ""
 
 # ── Clean old artifacts ────────────────────────────────────────────────
-echo "[0/6] Cleaning old build artifacts..."
-rm -rf tools/Bootstrap/bin/Release/net8.0-windows/win-x64/publish \
-       src/Service/bin/Release/net8.0-windows/win-x64/publish \
-       src/DomainController/bin/Release/net8.0-windows/win-x64/publish \
-       src/Admin/bin/Release/net8.0-windows/win-x64/publish \
-       tools/Setup/bin/Release/net8.0-windows/win-x64/publish
-
-for proj in tools/Bootstrap tools/Setup src/Service src/DomainController src/Admin; do
-  rm -rf "$proj/bin" "$proj/obj" || true
-done
+echo "[0/9] Cleaning old build artifacts..."
+rm -rf tools/Bootstrap/bin tools/Bootstrap/obj \
+       tools/Setup/bin tools/Setup/obj tools/Setup/publish \
+       src/Service/bin src/Service/obj \
+       src/DomainController/bin src/DomainController/obj \
+       src/Admin/bin src/Admin/obj
 
 rm -rf build/results/*.exe build/results/*.pdb build/results/*.dll \
        build/results/*.xml build/results/*.json \
@@ -24,10 +20,12 @@ rm -rf build/results/*.exe build/results/*.pdb build/results/*.dll \
        build/results/zh-Hans build/results/zh-Hant build/results/runtimes \
        build/release-addc/*
 
-# Clean all embedded resources from previous build
+# Clean all staged installer resources
 rm -f tools/Setup/Resources/TADBridgeService.exe \
       tools/Setup/Resources/TADAdmin.exe \
       tools/Setup/Resources/TADDomainController.exe
+
+mkdir -p build/results build/release-addc tools/Setup/Resources tools/Setup/publish
 
 echo "   Done."
 echo ""
@@ -36,95 +34,124 @@ echo ""
 echo "[INFO] .NET SDK version: $(dotnet --version)"
 echo ""
 
-# Restore all packages
-echo "[1/6] Restoring NuGet packages..."
+# ── [1/9] Restore ──────────────────────────────────────────────────────
+echo "[1/9] Restoring NuGet packages..."
 dotnet restore TAD-RV.sln -r win-x64
 echo ""
 
-# Build Bootstrap
-echo "[2/6] Publishing TADBootstrap (Single File Exe)..."
+# ── [2/9] Bootstrap ────────────────────────────────────────────────────
+echo "[2/9] Publishing TADBootstrap (Single File Exe)..."
 dotnet publish tools/Bootstrap/TADBootstrap.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# Build Service — must be built before Setup so it can be embedded
-echo "[3/6] Publishing TADBridgeService (Single File Exe)..."
+# ── [3/9] Service ──────────────────────────────────────────────────────
+echo "[3/9] Publishing TADBridgeService (Single File Exe)..."
 dotnet publish src/Service/TADBridgeService.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# Build Admin (WPF + WebView2) — must be built before Setup so it can be embedded
-echo "[4/6] Publishing TADAdmin (Single File Exe)..."
+# ── [4/9] Admin ────────────────────────────────────────────────────────
+echo "[4/9] Publishing TADAdmin (Single File Exe)..."
 dotnet publish src/Admin/TADAdmin.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# Build Domain Controller (WPF) — must be built before Setup so it can be embedded
-echo "[5/6] Publishing TADDomainController (Single File Exe)..."
+# ── [5/9] Domain Controller ────────────────────────────────────────────
+echo "[5/9] Publishing TADDomainController (Single File Exe)..."
 dotnet publish src/DomainController/TADDomainController.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# Embed all three component binaries into Setup's Resources folder
-echo "[+] Staging all component binaries for embedding into unified setup..."
-mkdir -p tools/Setup/Resources
-cp src/Service/bin/Release/net8.0-windows/win-x64/publish/TADBridgeService.exe \
-   tools/Setup/Resources/TADBridgeService.exe
-cp src/Admin/bin/Release/net8.0-windows/win-x64/publish/TADAdmin.exe \
-   tools/Setup/Resources/TADAdmin.exe
-cp src/DomainController/bin/Release/net8.0-windows/win-x64/publish/TADDomainController.exe \
-   tools/Setup/Resources/TADDomainController.exe
-echo "    TADBridgeService.exe   $(du -h tools/Setup/Resources/TADBridgeService.exe    | cut -f1)"
-echo "    TADAdmin.exe           $(du -h tools/Setup/Resources/TADAdmin.exe            | cut -f1)"
-echo "    TADDomainController.exe $(du -h tools/Setup/Resources/TADDomainController.exe | cut -f1)"
-echo ""
+# ── Collect component binaries ─────────────────────────────────────────
+SVC_BIN=src/Service/bin/Release/net8.0-windows/win-x64/publish/TADBridgeService.exe
+ADM_BIN=src/Admin/bin/Release/net8.0-windows/win-x64/publish/TADAdmin.exe
+DC_BIN=src/DomainController/bin/Release/net8.0-windows/win-x64/publish/TADDomainController.exe
 
-# Build unified Setup installer (bundles all three components as embedded resources)
-echo "[6/6] Publishing TADSetup (Unified Bundled Installer EXE)..."
+cp "$SVC_BIN" build/results/TADBridgeService.exe
+cp "$ADM_BIN" build/results/TADAdmin.exe
+cp "$DC_BIN"  build/results/TADDomainController.exe
+cp tools/Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TADBootstrap.exe \
+   build/results/TADBootstrap.exe
+
+# ── [6/9] TADClientSetup — bundles TADBridgeService ───────────────────
+echo "[6/9] Building TADClientSetup (WPF Installer)..."
+cp "$SVC_BIN" tools/Setup/Resources/TADBridgeService.exe
 dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
+  -p:SetupTarget=Client \
+  -p:AssemblyName=TADClientSetup \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
-  -p:PublishReadyToRun=false --no-restore
+  -p:PublishReadyToRun=false \
+  -o tools/Setup/publish/client \
+  --no-restore
+echo "   TADClientSetup.exe  $(du -h tools/Setup/publish/client/TADClientSetup.exe | cut -f1)"
 echo ""
 
-echo "[+] Copying artifacts to results/ and release-addc/..."
-mkdir -p build/results build/release-addc
+# ── [7/9] TADAdminSetup — bundles TADAdmin ─────────────────────────────
+echo "[7/9] Building TADAdminSetup (WPF Installer)..."
+rm -f tools/Setup/Resources/TADBridgeService.exe
+cp "$ADM_BIN" tools/Setup/Resources/TADAdmin.exe
+dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
+  -p:SetupTarget=Admin \
+  -p:AssemblyName=TADAdminSetup \
+  -p:PublishSingleFile=true -p:SelfContained=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishReadyToRun=false \
+  -o tools/Setup/publish/admin \
+  --no-restore
+echo "   TADAdminSetup.exe  $(du -h tools/Setup/publish/admin/TADAdminSetup.exe | cut -f1)"
+echo ""
 
-cp tools/Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TADBootstrap.exe \
-   build/results/
-cp tools/Setup/bin/Release/net8.0-windows/win-x64/publish/TADSetup.exe \
-   build/results/
-cp src/Service/bin/Release/net8.0-windows/win-x64/publish/TADBridgeService.exe \
-   build/results/
-cp src/DomainController/bin/Release/net8.0-windows/win-x64/publish/TADDomainController.exe \
-   build/results/
-cp src/Admin/bin/Release/net8.0-windows/win-x64/publish/TADAdmin.exe \
-   build/results/
+# ── [8/9] TADDomainControllerSetup — bundles TADDomainController ───────
+echo "[8/9] Building TADDomainControllerSetup (WPF Installer)..."
+rm -f tools/Setup/Resources/TADAdmin.exe
+cp "$DC_BIN" tools/Setup/Resources/TADDomainController.exe
+dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
+  -p:SetupTarget=DomainController \
+  -p:AssemblyName=TADDomainControllerSetup \
+  -p:PublishSingleFile=true -p:SelfContained=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishReadyToRun=false \
+  -o tools/Setup/publish/dc \
+  --no-restore
+echo "   TADDomainControllerSetup.exe  $(du -h tools/Setup/publish/dc/TADDomainControllerSetup.exe | cut -f1)"
+echo ""
 
-# Read version label
-VERSION=$(grep -oP '(?<=<InformationalVersion>)[^<]+' version-admin.props \
-          | head -1 | sed 's/-admin$//')
+# ── [9/9] Package release artifacts ───────────────────────────────────
+echo "[9/9] Packaging release artifacts..."
 
-# release-addc: Bootstrap (for GPO/silent deployment) + raw service binary + unified setup
-cp build/results/TADBootstrap.exe      build/release-addc/
-cp build/results/TADBridgeService.exe  build/release-addc/
-cp build/results/TADSetup.exe          build/release-addc/
+VERSION=$(grep -oP '(?<=<InformationalVersion>)[^<]+' version-client.props \
+          | head -1 | sed 's/-client$//')
 
-# Unified installer — single EXE for the release, no separate ZIPs needed
-cp build/results/TADSetup.exe \
-   "build/TADSetup-$VERSION-win-x64.exe"
+cp tools/Setup/publish/client/TADClientSetup.exe         build/results/TADClientSetup.exe
+cp tools/Setup/publish/admin/TADAdminSetup.exe           build/results/TADAdminSetup.exe
+cp tools/Setup/publish/dc/TADDomainControllerSetup.exe   build/results/TADDomainControllerSetup.exe
+
+# Versioned release EXEs
+cp build/results/TADClientSetup.exe           "build/TADClientSetup-$VERSION-win-x64.exe"
+cp build/results/TADAdminSetup.exe            "build/TADAdminSetup-$VERSION-win-x64.exe"
+cp build/results/TADDomainControllerSetup.exe "build/TADDomainControllerSetup-$VERSION-win-x64.exe"
+
+# release-addc: Bootstrap + raw service binary + client setup (for GPO deployment)
+cp build/results/TADBootstrap.exe     build/release-addc/
+cp build/results/TADBridgeService.exe build/release-addc/
+cp build/results/TADClientSetup.exe   build/release-addc/
 
 echo ""
 echo "=== Build Complete ==="
-echo "Artifact ready for release:"
-echo "  TADSetup-$VERSION-win-x64.exe"
-echo "    Contains: TADBridgeService + TADAdmin + TADDomainController"
-echo "    Usage: Run as Administrator → installs all components + Start Menu shortcuts"
+echo "Release artifacts:"
+echo "  TADClientSetup-$VERSION-win-x64.exe"
+echo "    Installs: TADBridgeService (Windows service, endpoint agent)"
+echo "  TADAdminSetup-$VERSION-win-x64.exe"
+echo "    Installs: TADAdmin (dashboard app + Start Menu shortcut)"
+echo "  TADDomainControllerSetup-$VERSION-win-x64.exe"
+echo "    Installs: TADDomainController (DC console + Start Menu shortcut)"

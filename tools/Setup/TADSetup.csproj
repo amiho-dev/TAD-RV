@@ -1,24 +1,39 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!--
+      This project is built THREE times by build.sh with different flags:
+        -p:SetupTarget=Client        -p:AssemblyName=TADClientSetup
+        -p:SetupTarget=Admin         -p:AssemblyName=TADAdminSetup
+        -p:SetupTarget=DomainController  -p:AssemblyName=TADDomainControllerSetup
+
+      Each build embeds only the relevant binary and produces one WPF GUI installer.
+    -->
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWPF>true</UseWPF>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- Output name: one unified installer for all components -->
-    <AssemblyName>TADSetup</AssemblyName>
+
+    <!-- Fallback name for building directly (not via build.sh) -->
+    <AssemblyName Condition="'$(AssemblyName)'==''">TADSetup</AssemblyName>
     <RootNamespace>TADSetup</RootNamespace>
 
-    <!-- Single-file self-contained EXE — no .NET runtime install needed on target -->
+    <!-- Single-file self-contained EXE — no .NET runtime on target needed -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRun>false</PublishReadyToRun>
 
-    <!-- Require elevation via manifest -->
+    <!-- UAC elevation via manifest -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Compile-time target flag — set by build.sh via -p:SetupTarget=... -->
+    <DefineConstants Condition="'$(SetupTarget)'=='Client'">$(DefineConstants);SETUP_CLIENT</DefineConstants>
+    <DefineConstants Condition="'$(SetupTarget)'=='Admin'">$(DefineConstants);SETUP_ADMIN</DefineConstants>
+    <DefineConstants Condition="'$(SetupTarget)'=='DomainController'">$(DefineConstants);SETUP_DC</DefineConstants>
   </PropertyGroup>
 
   <!-- Version from shared client props -->
@@ -32,23 +47,22 @@
 
   <ItemGroup>
     <!--
-      TADBridgeService.exe is copied here by build.sh before Setup is compiled.
-      LogicalName "bundled_service" is how Program.cs looks it up at runtime via
-      Assembly.GetManifestResourceStream("bundled_service").
-      The Condition prevents build failure when building Setup in isolation.
+      Each binary is copied here by build.sh before the matching Setup build.
+      Only the relevant resource for the current SetupTarget is included.
+      The Condition prevents build failure when building in isolation.
     -->
     <EmbeddedResource
       Include="Resources\TADBridgeService.exe"
       LogicalName="bundled_service"
-      Condition="Exists('Resources\TADBridgeService.exe')" />
+      Condition="Exists('Resources\TADBridgeService.exe') And '$(SetupTarget)'=='Client'" />
     <EmbeddedResource
       Include="Resources\TADAdmin.exe"
       LogicalName="bundled_admin"
-      Condition="Exists('Resources\TADAdmin.exe')" />
+      Condition="Exists('Resources\TADAdmin.exe') And '$(SetupTarget)'=='Admin'" />
     <EmbeddedResource
       Include="Resources\TADDomainController.exe"
       LogicalName="bundled_dc"
-      Condition="Exists('Resources\TADDomainController.exe')" />
+      Condition="Exists('Resources\TADDomainController.exe') And '$(SetupTarget)'=='DomainController'" />
   </ItemGroup>
 
 </Project>
