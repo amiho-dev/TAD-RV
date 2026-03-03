@@ -24,7 +24,7 @@ let rvMainDecoder = null;             // Main-stream decoder (30fps 720p)
 let isDemoMode = false;               // Set by config message from C#
 let currentFilter = '';               // Search filter string
 let appVersion = '26700.192';         // Updated by config message
-let showOffline = false;              // Toggle: show/hide offline computer tiles
+let showOffline = true;               // Show offline/connecting tiles by default
 
 // ── Message Bridge (C# → JS) ────────────────────────────────────────
 
@@ -271,15 +271,17 @@ function toggleOfflineVisibility() {
     const btn = document.getElementById('offlineToggle');
     if (btn) btn.classList.toggle('active', showOffline);
     const lbl = document.querySelector('#offlineToggle .stat-label');
-    if (lbl) lbl.textContent = showOffline ? 'Offline ▲' : 'Offline';
+    if (lbl) lbl.textContent = showOffline ? 'Offline ▲' : 'Offline ▼';
     students.forEach(s => applyFilter(s));
 }
 
 function applyFilter(student) {
     if (!student.tileEl) return;
 
-    // Hide offline tiles unless the toggle is on
-    const isOffline = !student.status || (Date.now() - student.lastSeen >= 10000);
+    // lastSeen===0 means discovered but not yet heard from — show as "connecting"
+    // isOffline only applies to tiles that have been seen before but went stale
+    const neverSeen = student.lastSeen === 0;
+    const isOffline = !neverSeen && (!student.status || (Date.now() - student.lastSeen >= 10000));
     if (isOffline && !showOffline) {
         student.tileEl.style.display = 'none';
         return;

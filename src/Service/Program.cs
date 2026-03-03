@@ -156,6 +156,10 @@ host.Run();
 
 static void RunTrayHelper()
 {
+    // Detach from the console window (removes the CMD window that
+    // would otherwise stay open when launched via the HKLM Run key).
+    FreeConsole();
+
     // NotifyIcon requires an STA thread with a Win32 message pump
     var sta = new Thread(() =>
     {
@@ -229,3 +233,6 @@ static void RunTrayHelper()
     sta.Start();
     sta.Join();
 }
+
+[System.Runtime.InteropServices.DllImport("kernel32.dll")]
+static extern bool FreeConsole();

@@ -53,6 +53,7 @@ public partial class MainWindow : Window
 
     private bool _allFrozen;
     private bool _allBlanked;
+    private DateTime? _statusMessageExpiry;
 
     // JSON options for camelCase deserialization
     private static readonly JsonSerializerOptions s_jsonOptions = new()
@@ -210,7 +211,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             _tcpManager?.AddStudent(ip, port);
-            TxtStatus.Text = $"Discovered: {hostname} ({ip})";
+            SetStatus($"Discovered: {hostname} ({ip})");
 
             // Notify the WebView immediately so a tile appears even before the
             // first status beacon (fired every 3 s) has time to arrive.
@@ -281,7 +282,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             TADLogger.Exception(ex, "InitializeWebView");
-            TxtStatus.Text = $"WebView2 init failed: {ex.Message}";
+            SetStatus($"WebView2 init failed: {ex.Message}", 60);
 
             var isMissing =
                 ex is System.Runtime.InteropServices.COMException ||
@@ -421,7 +422,7 @@ public partial class MainWindow : Window
                     {
                         if (_isDemoMode) _demoManager!.BroadcastPushMessage(msg.Payload);
                         else _tcpManager!.BroadcastPushMessage(msg.Payload);
-                        TxtStatus.Text = $"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"";
+                        SetStatus($"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"");;
                     }
                     break;
             }
@@ -497,14 +498,14 @@ public partial class MainWindow : Window
     {
         if (_isDemoMode) _demoManager!.BroadcastLock();
         else _tcpManager!.BroadcastLock();
-        TxtStatus.Text = "Locked all screens";
+        SetStatus("Locked all screens");
     }
 
     private void BtnUnlockAll_Click(object sender, RoutedEventArgs e)
     {
         if (_isDemoMode) _demoManager!.BroadcastUnlock();
         else _tcpManager!.BroadcastUnlock();
-        TxtStatus.Text = "Unlocked all screens";
+        SetStatus("Unlocked all screens");
     }
 
     private void BtnFreezeAll_Click(object sender, RoutedEventArgs e)
@@ -514,13 +515,13 @@ public partial class MainWindow : Window
         {
             if (_isDemoMode) _demoManager!.BroadcastFreeze(300, "Eyes on the teacher!");
             else _tcpManager!.BroadcastFreeze();
-            TxtStatus.Text = "Froze all screens — Eyes on the teacher!";
+            SetStatus("Froze all screens — Eyes on the teacher!");
         }
         else
         {
             if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
             else _tcpManager!.BroadcastUnfreeze();
-            TxtStatus.Text = "Unfroze all screens";
+            SetStatus("Unfroze all screens");
         }
 
         PostJsonMessage(new { type = "freeze_all", frozen = _allFrozen });
@@ -533,13 +534,13 @@ public partial class MainWindow : Window
         {
             if (_isDemoMode) _demoManager!.BroadcastBlankScreen();
             else _tcpManager!.BroadcastBlankScreen();
-            TxtStatus.Text = "Blanked all screens — Black screen active";
+            SetStatus("Blanked all screens — Black screen active");
         }
         else
         {
             if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
             else _tcpManager!.BroadcastUnblankScreen();
-            TxtStatus.Text = "Restored all screens";
+            SetStatus("Restored all screens");
         }
         PostJsonMessage(new { type = "blank_all", blanked = _allBlanked });
     }
@@ -553,7 +554,7 @@ public partial class MainWindow : Window
     {
         if (_isDemoMode) _demoManager!.PingAll();
         else _tcpManager!.PingAll();
-        TxtStatus.Text = "Refreshing...";
+        SetStatus("Refreshing...");
     }
 
     private void BtnRoomDesigner_Click(object sender, RoutedEventArgs e)
@@ -614,7 +615,7 @@ public partial class MainWindow : Window
         else
             _tcpManager!.AddStudent(ip, port);
 
-        TxtStatus.Text = $"Connecting to {ip}:{port}…";
+        SetStatus($"Connecting to {ip}:{port}…");
         TxtManualIp.Text = IpPlaceholder;
         TxtManualIp.Foreground = new System.Windows.Media.SolidColorBrush(
             System.Windows.Media.Color.FromRgb(0x48, 0x4F, 0x58));
@@ -634,6 +635,25 @@ public partial class MainWindow : Window
             total = _tcpManager.TotalEndpoints;
         }
         TxtConnected.Text = $"{connected} / {total}";
+
+        // Keep the bottom-left status text live with endpoint stats.
+        // Overwrite temporary action messages (lock/unlock/etc.) after 5 s
+        // so the bar doesn't stay frozen on the last click forever.
+        if (_statusMessageExpiry == null || DateTime.UtcNow >= _statusMessageExpiry)
+        {
+            _statusMessageExpiry = null;
+            int offline = total - connected;
+            TxtStatus.Text = total == 0
+                ? "Waiting for endpoints…"
+                : $"{connected} connected  ·  {offline} offline";
+        }
+    }
+
+    /// <summary>Set a temporary status message that auto-clears after <paramref name="seconds"/> seconds.</summary>
+    private void SetStatus(string message, int seconds = 5)
+    {
+        TxtStatus.Text = message;
+        _statusMessageExpiry = DateTime.UtcNow.AddSeconds(seconds);
     }
 
     // ─── Custom Caption Buttons ───────────────────────────────────────
