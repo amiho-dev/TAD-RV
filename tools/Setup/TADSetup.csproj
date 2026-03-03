@@ -24,7 +24,9 @@
     <!-- Single-file self-contained EXE — no .NET runtime on target needed -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- IncludeNativeLibrariesForSelfExtract omitted (defaults to false):
+         Setting it true causes WPF native DLLs to be bundled+extracted to %TEMP%
+         at every launch, which antivirus / enterprise policies often block. -->
     <PublishReadyToRun>false</PublishReadyToRun>
 
     <!-- UAC elevation via manifest -->

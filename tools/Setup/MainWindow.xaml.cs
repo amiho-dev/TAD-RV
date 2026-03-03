@@ -78,10 +78,10 @@ public partial class MainWindow : Window
 
     private async void InstallBtn_Click(object sender, RoutedEventArgs e)
     {
-        ReportProgress("Starting installation...", 0);
-        SetBusy(true);
         try
         {
+        ReportProgress("Starting installation...", 0);
+        SetBusy(true);
             string path = PathBox.Text.Trim();
             bool ok = await Task.Run(() =>
                 InstallerCore.RunInstall(path, ReportProgress));
@@ -123,10 +123,10 @@ public partial class MainWindow : Window
                 MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
 
-        ReportProgress("Starting uninstall...", 0);
-        SetBusy(true);
         try
         {
+        ReportProgress("Starting uninstall...", 0);
+        SetBusy(true);
             bool ok = await Task.Run(() =>
                 InstallerCore.RunUninstall(ReportProgress));
 
