@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/runtime-user--mode-success?style=flat-square" alt="User Mode">
   <img src="https://img.shields.io/badge/platform-win--x64-lightgrey?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/license-proprietary-red?style=flat-square" alt="License">
+  <img src="https://komarev.com/ghpvc/?username=amiho-dev-tadrv&color=blueviolet&style=flat-square&label=PROJECT+VIEWS" alt="Project Views">
 </p>
 
 # TAD.RV
