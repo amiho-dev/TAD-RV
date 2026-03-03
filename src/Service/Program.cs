@@ -19,6 +19,15 @@ using TADBridge.Capture;
 using TADBridge.Networking;
 using TADBridge.Tray;
 
+// ── Tray-only mode (launched at user logon via HKLM Run key) ───────────────
+// This bypasses the full service startup and just shows a system tray icon
+// that reports TADBridgeService status. Runs in the user's interactive session.
+if (args.Any(a => a.Equals("--tray", StringComparison.OrdinalIgnoreCase)))
+{
+    RunTrayHelper();
+    return;
+}
+
 bool legacyKernelMode = args.Any(a =>
     a.Equals("--kernel", StringComparison.OrdinalIgnoreCase) ||
     a.Equals("--legacy-kernel", StringComparison.OrdinalIgnoreCase) ||
@@ -140,3 +149,83 @@ else
 }
 
 host.Run();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TRAY HELPER  (--tray mode — runs in user session, NOT as a service)
+// ══════════════════════════════════════════════════════════════════════════════
+
+static void RunTrayHelper()
+{
+    // NotifyIcon requires an STA thread with a Win32 message pump
+    var sta = new Thread(() =>
+    {
+        System.Windows.Forms.Application.EnableVisualStyles();
+        System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+
+        using var trayIcon = new System.Windows.Forms.NotifyIcon();
+
+        // Load the application icon
+        try
+        {
+            string icoPath = Path.Combine(AppContext.BaseDirectory, "logo.ico");
+            trayIcon.Icon = File.Exists(icoPath)
+                ? new System.Drawing.Icon(icoPath)
+                : System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!)
+                  ?? System.Drawing.SystemIcons.Application;
+        }
+        catch { trayIcon.Icon = System.Drawing.SystemIcons.Application; }
+
+        static string GetServiceStatus()
+        {
+            try
+            {
+                using var sc = new System.ServiceProcess.ServiceController("TADBridgeService");
+                return sc.Status switch
+                {
+                    System.ServiceProcess.ServiceControllerStatus.Running      => "Running",
+                    System.ServiceProcess.ServiceControllerStatus.StartPending => "Starting\u2026",
+                    System.ServiceProcess.ServiceControllerStatus.StopPending  => "Stopping\u2026",
+                    System.ServiceProcess.ServiceControllerStatus.Stopped      => "Stopped",
+                    _ => sc.Status.ToString()
+                };
+            }
+            catch { return "Unknown"; }
+        }
+
+        void RefreshIcon()
+        {
+            string s = GetServiceStatus();
+            trayIcon.Text = $"TAD.RV Client \u2014 {s}";
+        }
+
+        // Context menu
+        var titleItem = new System.Windows.Forms.ToolStripMenuItem("TAD.RV Client") { Enabled = false };
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add(titleItem);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Exit", null, (_, _) => System.Windows.Forms.Application.ExitThread());
+        menu.Opening += (_, _) =>
+        {
+            string s = GetServiceStatus();
+            titleItem.Text = $"TAD.RV Client \u2014 {s}";
+        };
+
+        trayIcon.ContextMenuStrip = menu;
+        trayIcon.Visible = true;
+        RefreshIcon();
+
+        // Poll service status every 15 seconds
+        using var timer = new System.Windows.Forms.Timer { Interval = 15_000 };
+        timer.Tick += (_, _) => RefreshIcon();
+        timer.Start();
+
+        System.Windows.Forms.Application.Run();
+        trayIcon.Visible = false;
+    });
+
+    sta.SetApartmentState(ApartmentState.STA);
+    sta.IsBackground = false;
+    sta.Name = "TrayHelper";
+    sta.Start();
+    sta.Join();
+}

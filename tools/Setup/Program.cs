@@ -141,7 +141,7 @@ return RunInstall() ? 0 : 1;
 static bool RunInstall()
 {
 #if SETUP_CLIENT
-    int totalSteps = 5;
+    int totalSteps = 7;
 #else
     int totalSteps = CreateShortcut ? 3 : 2;
 #endif
@@ -162,6 +162,12 @@ static bool RunInstall()
 
     Step(5, totalSteps, $"Starting  '{ServiceName}'...");
     StartService();
+
+    Step(6, totalSteps, "Configuring Windows Firewall rules...");
+    RegisterFirewallRules();
+
+    Step(7, totalSteps, "Registering tray icon (auto-start at login)...");
+    AddTrayRunKey();
 #else
     if (CreateShortcut)
     {
@@ -192,11 +198,11 @@ static bool RunUninstall()
     string installDir = GetInstalledDir() ?? InstallDir();
 
 #if SETUP_CLIENT
-    Step(1, 4, $"Stopping service  '{ServiceName}'...");
+    Step(1, 5, $"Stopping service  '{ServiceName}'...");
     RunVerbose("sc.exe", $"stop {ServiceName}");
     System.Threading.Thread.Sleep(2000);
 
-    Step(2, 4, $"Deleting service registration  '{ServiceName}'...");
+    Step(2, 5, $"Deleting service registration  '{ServiceName}'...");
     int rc = RunVerbose("sc.exe", $"delete {ServiceName}");
     if (rc != 0 && rc != 1060) Warn($"sc delete returned exit {rc}");
 #else
@@ -207,14 +213,31 @@ static bool RunUninstall()
     RemoveShortcuts();
 #endif
 
-    Step(3, 4, "Removing registry entries...");
-    try { Registry.LocalMachine.DeleteSubKeyTree(UninstallSubKey, throwOnMissingSubKey: false); Ok("Uninstall registry key removed."); } catch (Exception ex) { Warn(ex.Message); }
 #if SETUP_CLIENT
+    Step(3, 5, "Removing firewall rules + tray Run key...");
+    RunVerbose("netsh", "advfirewall firewall delete rule name=\"TAD.RV Client (TCP 17420)\"");
+    RunVerbose("netsh", "advfirewall firewall delete rule name=\"TAD.RV Client (UDP 17421)\"");
+    try
+    {
+        using var runKey = Registry.LocalMachine.OpenSubKey(
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true);
+        runKey?.DeleteValue("TAD.RV Tray", false);
+        Ok("Tray Run key removed.");
+    }
+    catch (Exception ex) { Warn($"Tray Run key removal: {ex.Message}"); }
+
+    Step(4, 5, "Removing registry entries...");
+    try { Registry.LocalMachine.DeleteSubKeyTree(UninstallSubKey, throwOnMissingSubKey: false); Ok("Uninstall registry key removed."); } catch (Exception ex) { Warn(ex.Message); }
     try { Registry.LocalMachine.DeleteSubKeyTree(ServiceRegKey, throwOnMissingSubKey: false); Ok("Service registry key removed."); } catch (Exception ex) { Warn(ex.Message); }
     RemoveShortcuts(); // clean up if Admin/DC were also here
-#endif
+
+    Step(5, 5, $"Removing files from  {installDir}...");
+#else
+    Step(3, 4, "Removing registry entries...");
+    try { Registry.LocalMachine.DeleteSubKeyTree(UninstallSubKey, throwOnMissingSubKey: false); Ok("Uninstall registry key removed."); } catch (Exception ex) { Warn(ex.Message); }
 
     Step(4, 4, $"Removing files from  {installDir}...");
+#endif
     RunVerbose("taskkill", $"/f /im {BinaryName}");
     System.Threading.Thread.Sleep(500);
     RemoveInstallDir(installDir);
@@ -372,8 +395,56 @@ static void StartService()
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// START MENU SHORTCUT
+// FIREWALL RULES  (Client only)
 // ═════════════════════════════════════════════════════════════════════════════
+
+#if SETUP_CLIENT
+static void RegisterFirewallRules()
+{
+    // Remove any stale rules from previous installs first (ignore errors)
+    RunVerbose("netsh", "advfirewall firewall delete rule name=\"TAD.RV Client (TCP 17420)\"");
+    RunVerbose("netsh", "advfirewall firewall delete rule name=\"TAD.RV Client (UDP 17421)\"");
+
+    // TCP 17420 inbound — teacher → student command channel
+    int rc1 = RunVerbose("netsh",
+        "advfirewall firewall add rule " +
+        "name=\"TAD.RV Client (TCP 17420)\" " +
+        "protocol=TCP dir=in localport=17420 " +
+        "action=allow enable=yes profile=any " +
+        $"program=\"{InstallBin(BinaryName)}\" " +
+        "description=\"TAD.RV student endpoint — teacher command channel\"");
+    if (rc1 == 0) Ok("Firewall rule added: TCP 17420 inbound (teacher commands).");
+    else          Warn($"netsh TCP rule returned exit {rc1}");
+
+    // UDP 17421 inbound — multicast discovery heartbeats
+    int rc2 = RunVerbose("netsh",
+        "advfirewall firewall add rule " +
+        "name=\"TAD.RV Client (UDP 17421)\" " +
+        "protocol=UDP dir=in localport=17421 " +
+        "action=allow enable=yes profile=any " +
+        $"program=\"{InstallBin(BinaryName)}\" " +
+        "description=\"TAD.RV student endpoint — multicast discovery\"");
+    if (rc2 == 0) Ok("Firewall rule added: UDP 17421 inbound (multicast discovery).");
+    else          Warn($"netsh UDP rule returned exit {rc2}");
+}
+
+static void AddTrayRunKey()
+{
+    // HKLM Run key → runs TADBridgeService.exe --tray at every user logon
+    // This shows a tray icon in the user's taskbar reporting the service status.
+    // Runs in the user's interactive session (not Session 0 like the service).
+    try
+    {
+        using var key = Registry.LocalMachine.CreateSubKey(
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true);
+        string value = $"\"{InstallBin(BinaryName)}\" --tray";
+        key.SetValue("TAD.RV Tray", value, RegistryValueKind.String);
+        Ok(@"HKLM\...\Run  →  TAD.RV Tray  (tray icon at user logon).");
+    }
+    catch (Exception ex) { Warn($"Tray Run key (non-fatal): {ex.Message}"); }
+}
+#endif
+
 
 #if !SETUP_CLIENT
 static void CreateStartMenuShortcut()
