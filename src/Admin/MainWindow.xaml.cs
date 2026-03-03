@@ -66,14 +66,19 @@ public partial class MainWindow : Window
         InitializeComponent();
         TADLogger.Info("InitializeComponent() done");
 
-        // Show version in the status bar
-        TxtBranding.Text = GetRunningVersion();
+        // Show short version in status bar (strip component suffix)
+        var fullVer = GetRunningVersion();
+        var shortVer = fullVer;
+        var dashIdx = fullVer.IndexOf('-');
+        if (dashIdx > 0) shortVer = fullVer[..dashIdx];
+        TxtVersionBar.Text = $"v{shortVer}";
 
         _isDemoMode = demoMode;
 
         if (_isDemoMode)
         {
             TxtDemoTag.Visibility = Visibility.Visible;
+            TxtModeBadge.Text = "Demo";
             Title = "TAD.RV — Admin Controller [DEMO]";
 
             _demoManager = new DemoTcpClientManager();
@@ -593,8 +598,25 @@ public partial class MainWindow : Window
             connected = _tcpManager!.ConnectedCount;
             total = _tcpManager.TotalEndpoints;
         }
-        TxtConnected.Text = $"{connected}/{total} connected";
+        TxtConnected.Text = $"{connected} / {total}";
     }
+
+    // ─── Custom Caption Buttons ───────────────────────────────────────
+
+    private void CaptionMinimize_Click(object sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
+
+    private void CaptionMaxRestore_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+        BtnCaptionMaxRestore.Content = WindowState == WindowState.Maximized
+            ? "\uE923"   // ChromeRestore
+            : "\uE922";  // ChromeMaximize
+    }
+
+    private void CaptionClose_Click(object sender, RoutedEventArgs e) => Close();
 
     protected override void OnClosed(EventArgs e)
     {

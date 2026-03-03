@@ -403,8 +403,20 @@ public sealed class UpdateManager : IDisposable
     private static string GetAssemblyVersion()
     {
         var asm = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-        var ver = asm.GetName().Version;
-        return ver != null ? $"{ver.Major}.{ver.Minor}" : "0.0";
+
+        // Prefer InformationalVersion (e.g., "v26.3.02.004-admin") which matches release tags
+        var attr = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+        if (attr != null)
+        {
+            string ver = attr.InformationalVersion.TrimStart('v', 'V');
+            // Strip component suffix: "26.3.02.004-admin" → "26.3.02.004"
+            int dash = ver.IndexOf('-');
+            return dash > 0 ? ver[..dash] : ver;
+        }
+
+        // Fallback: use all four parts of assembly version
+        var v = asm.GetName().Version;
+        return v != null ? $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}" : "0.0";
     }
 
     private static string ResolveRepoSlug()

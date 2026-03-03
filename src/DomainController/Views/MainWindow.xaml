@@ -131,18 +131,31 @@
                         Content="{Binding CurrentView}"
                         Margin="0" />
 
-        <!-- ═══ Status Bar ═══════════════════════════════════════════ -->
+        <!-- ═══ Status Bar (VS Code style) ════════════════════════════ -->
         <Border Grid.Row="1" Grid.ColumnSpan="2"
-                Background="#0D1117"
-                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
-            <DockPanel Margin="16,0">
-                <TextBlock x:Name="TxtStatus" Text="Ready"
-                           FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"
-                           VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock x:Name="TxtVersionBar"
-                           FontSize="10" Foreground="#484F58" FontStyle="Italic"
-                           VerticalAlignment="Center" HorizontalAlignment="Right"
-                           DockPanel.Dock="Right" />
+                Background="#1F6FEB" BorderThickness="0">
+            <DockPanel>
+                <!-- Left: status indicator -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <Border Background="#1558C0" Padding="10,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE83D;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="11" Foreground="White" VerticalAlignment="Center"/>
+                            <TextBlock Text="Domain Controller" Foreground="White"
+                                       FontSize="11" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="TxtStatus" Text="Ready"
+                               FontSize="11" Foreground="#FFFFFFCC"
+                               VerticalAlignment="Center" Margin="10,0,0,0" />
+                </StackPanel>
+                <!-- Right: version -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock x:Name="TxtVersionBar"
+                               FontSize="11" Foreground="#FFFFFFAA"
+                               VerticalAlignment="Center" Margin="0,0,10,0" />
+                </StackPanel>
             </DockPanel>
         </Border>
     </Grid>

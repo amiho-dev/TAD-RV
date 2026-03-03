@@ -2,40 +2,49 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="TAD.RV — Admin Controller"
         WindowState="Maximized"
-        Background="#0D1117">
+        Background="#0D1117"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+
+    <!-- Dark window chrome — eliminates the white title bar -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="36"
+                            ResizeBorderThickness="4"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
 
     <Window.Resources>
-        <Style x:Key="ToolButton" TargetType="Button">
-            <Setter Property="Background" Value="#21262D" />
+        <!-- ═══ Compact Toolbar Button ════════════════════════════════ -->
+        <Style x:Key="ToolBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="#C9D1D9" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Padding" Value="16,8" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#30363D" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#30363D" />
-                                <Setter TargetName="Bd" Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect Color="#000" BlurRadius="8" Opacity="0.4" ShadowDepth="2" />
-                                    </Setter.Value>
-                                </Setter>
+                                <Setter TargetName="Bd" Property="Background" Value="#1F2937" />
                             </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#30363D" />
+                            </Trigger>
+                            <!-- Tag-based accent colors -->
                             <Trigger Property="Tag" Value="danger">
-                                <Setter Property="BorderBrush" Value="#F85149" />
                                 <Setter Property="Foreground" Value="#F85149" />
                             </Trigger>
                             <MultiTrigger>
@@ -43,11 +52,9 @@
                                     <Condition Property="Tag" Value="danger"/>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="Bd" Property="Background" Value="#F8514922" />
+                                <Setter TargetName="Bd" Property="Background" Value="#F8514918" />
                             </MultiTrigger>
-                            
                             <Trigger Property="Tag" Value="success">
-                                <Setter Property="BorderBrush" Value="#3FB950" />
                                 <Setter Property="Foreground" Value="#3FB950" />
                             </Trigger>
                             <MultiTrigger>
@@ -55,11 +62,9 @@
                                     <Condition Property="Tag" Value="success"/>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="Bd" Property="Background" Value="#3FB95022" />
+                                <Setter TargetName="Bd" Property="Background" Value="#3FB95018" />
                             </MultiTrigger>
-
                             <Trigger Property="Tag" Value="info">
-                                <Setter Property="BorderBrush" Value="#58A6FF" />
                                 <Setter Property="Foreground" Value="#58A6FF" />
                             </Trigger>
                             <MultiTrigger>
@@ -67,11 +72,9 @@
                                     <Condition Property="Tag" Value="info"/>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="Bd" Property="Background" Value="#58A6FF22" />
+                                <Setter TargetName="Bd" Property="Background" Value="#58A6FF18" />
                             </MultiTrigger>
-
                             <Trigger Property="Tag" Value="warning">
-                                <Setter Property="BorderBrush" Value="#D29922" />
                                 <Setter Property="Foreground" Value="#D29922" />
                             </Trigger>
                             <MultiTrigger>
@@ -79,101 +82,188 @@
                                     <Condition Property="Tag" Value="warning"/>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="Bd" Property="Background" Value="#D2992222" />
+                                <Setter TargetName="Bd" Property="Background" Value="#D2992218" />
                             </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Caption button (min/max/close) -->
+        <Style x:Key="CaptionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#8B949E" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1F2937"/>
+                                <Setter Property="Foreground" Value="#C9D1D9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CaptionCloseBtn" TargetType="Button" BasedOn="{StaticResource CaptionBtn}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F85149"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="48" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="32" />
+            <RowDefinition Height="36" />  <!-- Title bar -->
+            <RowDefinition Height="40" />  <!-- Toolbar -->
+            <RowDefinition Height="*" />   <!-- Content -->
+            <RowDefinition Height="24" />  <!-- Status bar -->
         </Grid.RowDefinitions>
 
-        <!-- Top Toolbar -->
-        <Border Grid.Row="0" Background="#161B22" BorderBrush="#30363D" BorderThickness="0,0,0,1">
-            <DockPanel Margin="12,0">
-                <TextBlock Text="&#xE71E;" FontFamily="Segoe MDL2 Assets" FontSize="20"
-                           Foreground="#58A6FF" VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock Text="  TAD.RV" FontSize="16" FontWeight="Bold"
-                           Foreground="#58A6FF" VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock Text="  Admin Controller" FontSize="13" FontWeight="Normal"
-                           Foreground="#8B949E" VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock x:Name="TxtDemoTag" Text="  DEMO" FontSize="10" FontWeight="Bold"
-                           Foreground="#D29922" VerticalAlignment="Center" DockPanel.Dock="Left"
-                           Visibility="Collapsed"
-                           Padding="6,2" Background="#D2992233" />
+        <!-- ═══ Custom Title Bar ══════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="#161B22">
+            <DockPanel>
+                <!-- App identity (left) -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left"
+                            Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="&#xE71E;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                               Foreground="#58A6FF" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="TAD.RV" FontSize="12" FontWeight="Bold"
+                               Foreground="#58A6FF" VerticalAlignment="Center"/>
+                    <TextBlock Text=" — Admin Controller" FontSize="12"
+                               Foreground="#484F58" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtDemoTag" Text="  DEMO" FontSize="9" FontWeight="Bold"
+                               Foreground="#D29922" VerticalAlignment="Center"
+                               Visibility="Collapsed"
+                               Padding="6,2" Margin="8,0,0,0">
+                        <TextBlock.Background>
+                            <SolidColorBrush Color="#D29922" Opacity="0.15"/>
+                        </TextBlock.Background>
+                    </TextBlock>
+                </StackPanel>
 
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                    <Button x:Name="BtnLockAll" Click="BtnLockAll_Click" Style="{StaticResource ToolButton}" Tag="danger">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Lock All" VerticalAlignment="Center" />
+                <!-- Window controls (right) -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right"
+                            HorizontalAlignment="Right">
+                    <Button Content="&#xE921;" Style="{StaticResource CaptionBtn}"
+                            Click="CaptionMinimize_Click"/>
+                    <Button x:Name="BtnCaptionMaxRestore" Content="&#xE922;"
+                            Style="{StaticResource CaptionBtn}"
+                            Click="CaptionMaxRestore_Click"/>
+                    <Button Content="&#xE8BB;" Style="{StaticResource CaptionCloseBtn}"
+                            Click="CaptionClose_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══ Toolbar ═══════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Background="#0D1117" BorderBrush="#21262D" BorderThickness="0,0,0,1">
+            <DockPanel Margin="8,0">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <Button x:Name="BtnLockAll" Click="BtnLockAll_Click"
+                            Style="{StaticResource ToolBtn}" Tag="danger">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72E;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Lock" Margin="6,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="BtnUnlockAll" Click="BtnUnlockAll_Click" Style="{StaticResource ToolButton}" Tag="success" Margin="8,0,0,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Unlock All" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="BtnFreezeAll" Click="BtnFreezeAll_Click" Style="{StaticResource ToolButton}" Tag="warning" Margin="8,0,0,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE7AD;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Freeze" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="BtnBlankAll" Click="BtnBlankAll_Click" Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Blank" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="BtnMessage" Click="BtnMessage_Click" Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Message" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="BtnCollect" Click="BtnCollect_Click" Style="{StaticResource ToolButton}" Margin="8,0,0,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Collect" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="BtnRefresh" Click="BtnRefresh_Click" Style="{StaticResource ToolButton}" Margin="8,0,0,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Refresh" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button x:Name="BtnRoomDesigner" Click="BtnRoomDesigner_Click" Style="{StaticResource ToolButton}" Tag="info" Margin="8,0,0,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE80F;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,8,0" />
-                            <TextBlock Text="Room" VerticalAlignment="Center" />
+                    <Button x:Name="BtnUnlockAll" Click="BtnUnlockAll_Click"
+                            Style="{StaticResource ToolBtn}" Tag="success" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE785;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Unlock" Margin="6,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
-                    <!-- Manual endpoint add (workgroup / no-DC environments) -->
-                    <Border Width="1" Background="#30363D" Margin="12,6,4,6" />
+                    <Border Width="1" Background="#21262D" Margin="6,8" />
+
+                    <Button x:Name="BtnFreezeAll" Click="BtnFreezeAll_Click"
+                            Style="{StaticResource ToolBtn}" Tag="warning" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7AD;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Freeze" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnBlankAll" Click="BtnBlankAll_Click"
+                            Style="{StaticResource ToolBtn}" Tag="info" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7B3;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Blank" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Border Width="1" Background="#21262D" Margin="6,8" />
+
+                    <Button x:Name="BtnMessage" Click="BtnMessage_Click"
+                            Style="{StaticResource ToolBtn}" Tag="info" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8BD;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Message" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnCollect" Click="BtnCollect_Click"
+                            Style="{StaticResource ToolBtn}" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Collect" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="BtnRefresh" Click="BtnRefresh_Click"
+                            Style="{StaticResource ToolBtn}" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Refresh" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Border Width="1" Background="#21262D" Margin="6,8" />
+
+                    <Button x:Name="BtnRoomDesigner" Click="BtnRoomDesigner_Click"
+                            Style="{StaticResource ToolBtn}" Tag="info" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Room" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Right side: manual endpoint add -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
                     <TextBox x:Name="TxtManualIp"
-                             Width="140"
+                             Width="150"
                              Text="IP or hostname…"
                              VerticalAlignment="Center"
-                             Margin="4,0,0,0"
-                             Padding="6,4"
-                             Background="#0D1117"
+                             Padding="8,5"
+                             Background="#161B22"
                              Foreground="#484F58"
                              BorderBrush="#30363D"
                              CaretBrush="#58A6FF"
                              FontSize="12"
                              ToolTip="Enter IP or hostname to connect without a DC"
-                             Tag="placeholder"
                              GotFocus="TxtManualIp_GotFocus"
                              LostFocus="TxtManualIp_LostFocus"
                              KeyDown="TxtManualIp_KeyDown">
@@ -184,8 +274,7 @@
                                         <ControlTemplate TargetType="TextBox">
                                             <Border Background="{TemplateBinding Background}"
                                                     BorderBrush="{TemplateBinding BorderBrush}"
-                                                    BorderThickness="1"
-                                                    CornerRadius="4">
+                                                    BorderThickness="1" CornerRadius="4">
                                                 <ScrollViewer x:Name="PART_ContentHost"
                                                               Margin="{TemplateBinding Padding}"
                                                               VerticalAlignment="Center" />
@@ -197,32 +286,52 @@
                         </TextBox.Style>
                     </TextBox>
                     <Button x:Name="BtnAddEndpoint" Click="BtnAddEndpoint_Click"
-                            Style="{StaticResource ToolButton}" Tag="success" Margin="4,0,0,0"
+                            Style="{StaticResource ToolBtn}" Tag="success" Margin="4,0,0,0"
                             ToolTip="Add endpoint manually">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,1,4,0" />
-                            <TextBlock Text="Add" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Add" Margin="6,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
             </DockPanel>
         </Border>
 
-        <!-- WebView2 Dashboard -->
-        <wv2:WebView2 x:Name="DashboardWebView" Grid.Row="1"
+        <!-- ═══ WebView2 Dashboard ════════════════════════════════════ -->
+        <wv2:WebView2 x:Name="DashboardWebView" Grid.Row="2"
                       DefaultBackgroundColor="#0D1117" />
 
-        <!-- Status Bar -->
-        <Border Grid.Row="2" Background="#161B22" BorderBrush="#30363D" BorderThickness="0,1,0,0">
-            <DockPanel Margin="12,0">
-                <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#8B949E"
-                           FontSize="11" VerticalAlignment="Center" DockPanel.Dock="Left" />
-                <TextBlock x:Name="TxtBranding" Text="TAD.RV"
-                           Foreground="#484F58" FontSize="10" FontStyle="Italic"
-                           VerticalAlignment="Center" HorizontalAlignment="Center" />
-                <TextBlock x:Name="TxtConnected" Text="0/50 connected" Foreground="#8B949E"
-                           FontSize="11" VerticalAlignment="Center" DockPanel.Dock="Right"
-                           HorizontalAlignment="Right" />
+        <!-- ═══ VS Code-style Status Bar ══════════════════════════════ -->
+        <Border Grid.Row="3" Background="#1F6FEB" BorderThickness="0">
+            <DockPanel Margin="0,0,0,0">
+                <!-- Left section -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <!-- Connection indicator -->
+                    <Border Background="#1558C0" Padding="8,0" Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE703;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtConnected" Text="0 / 0" Foreground="White"
+                                       FontSize="11" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <!-- Status message -->
+                    <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#FFFFFFCC"
+                               FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <!-- Right section -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <!-- Mode badge -->
+                    <TextBlock x:Name="TxtModeBadge" Text="Production" Foreground="#FFFFFFAA"
+                               FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Border Width="1" Background="#FFFFFF33" Margin="0,5"/>
+                    <!-- Version -->
+                    <TextBlock x:Name="TxtVersionBar" Foreground="#FFFFFFAA"
+                               FontSize="11" VerticalAlignment="Center" Margin="8,0,10,0"/>
+                </StackPanel>
             </DockPanel>
         </Border>
     </Grid>
