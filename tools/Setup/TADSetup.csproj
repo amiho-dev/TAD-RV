@@ -7,7 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>TADSetup</AssemblyName>
+    <!-- Output name changed: installer exe is now TADClientSetup.exe -->
+    <AssemblyName>TADClientSetup</AssemblyName>
     <RootNamespace>TADSetup</RootNamespace>
 
     <!-- Single-file self-contained EXE — no .NET runtime install needed on target -->
@@ -27,6 +28,19 @@
     <None Update="app.manifest">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      TADBridgeService.exe is copied here by build.sh before Setup is compiled.
+      LogicalName "bundled_service" is how Program.cs looks it up at runtime via
+      Assembly.GetManifestResourceStream("bundled_service").
+      The Condition prevents build failure when building Setup in isolation.
+    -->
+    <EmbeddedResource
+      Include="Resources\TADBridgeService.exe"
+      LogicalName="bundled_service"
+      Condition="Exists('Resources\TADBridgeService.exe')" />
   </ItemGroup>
 
 </Project>
