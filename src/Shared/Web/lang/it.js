@@ -223,8 +223,10 @@ const TAD_LANG_IT = {
     'toolbar.message': 'Messaggio',
     'toolbar.filters': 'Filtri',
     'toolbar.searchPlaceholder': 'Cerca studenti...',
+    'toolbar.viewThumb': 'Vista miniature',
+    'toolbar.viewList': 'Vista elenco',
 
-    'ctx.remoteView': 'Vista remota',
+    'ctx.remoteView': 'Vista dal vivo',
     'ctx.details': 'Dettagli',
     'ctx.lock': 'Blocca',
     'ctx.unlock': 'Sblocca',

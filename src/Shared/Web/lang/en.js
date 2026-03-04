@@ -246,9 +246,11 @@ const TAD_LANG_EN = {
     'toolbar.message': 'Message',
     'toolbar.filters': 'Filters',
     'toolbar.searchPlaceholder': 'Search students...',
+    'toolbar.viewThumb': 'Thumbnail View',
+    'toolbar.viewList': 'List View',
 
     // ── Teacher: Context Menu ───────────────────────────────────
-    'ctx.remoteView': 'Remote View',
+    'ctx.remoteView': 'Live View',
     'ctx.details': 'Details',
     'ctx.lock': 'Lock',
     'ctx.unlock': 'Unlock',

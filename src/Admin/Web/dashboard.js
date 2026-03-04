@@ -26,6 +26,7 @@ let currentFilter = '';               // Search filter string
 let appVersion = '26700.192';         // Updated by config message
 let showOffline = true;               // Show offline/connecting tiles by default
 let hideIfAllOffline = false;         // Toggle: show nothing if every PC is offline
+let thumbMode = true;                 // Start in thumbnail view (live previews)
 
 // Per-student block state (tracked teacher-side)
 const internetBlocked = new Set();    // IPs with Web-Lock active
@@ -192,10 +193,11 @@ function renderTile(student) {
     tile.id = `tile-${student.ip.replace(/\./g, '-')}`;
     tile.dataset.ip = student.ip;
     tile.innerHTML = `
-        <div class="tile-preview">
+        <div class="tile-preview" onclick="event.stopPropagation(); startRv('${student.ip}')" style="cursor:pointer" title="${t('ctx.remoteView')}">
             <canvas width="480" height="270"></canvas>
             <div class="preview-placeholder">&#xE7F4;</div>
             <div class="tile-hand-indicator" style="display:none">&#xE768;</div>
+            <div class="preview-play-overlay">&#xE7B3;</div>
         </div>
         <div class="tile-body">
             <div class="tile-status-dot"></div>
@@ -207,6 +209,7 @@ function renderTile(student) {
             </div>
             <div class="tile-indicators"></div>
             <div class="tile-actions">
+                <button class="tile-act-btn act-rv" onclick="event.stopPropagation(); startRv('${student.ip}')" title="${t('ctx.remoteView')}">&#xE7B3;</button>
                 <button class="tile-act-btn act-lock" onclick="event.stopPropagation(); lockStudent('${student.ip}')" title="${t('ctx.lock')}">&#xE72E;</button>
                 <button class="tile-act-btn act-unlock" onclick="event.stopPropagation(); unlockStudent('${student.ip}')" title="${t('ctx.unlock')}">&#xE785;</button>
                 <button class="tile-act-btn act-msg" onclick="event.stopPropagation(); messageStudent('${student.ip}')" title="${t('ctx.sendMessage')}">&#xE8BD;</button>
@@ -1016,8 +1019,9 @@ function closeRv() {
             const rec = activeRecordings.get(activeRvIp);
             if (rec?.isRvFocus) stopRecording(activeRvIp);
         }
+        // Only stop the focus (main-stream 30fps). Keep sub-stream alive
+        // for live grid thumbnails (auto sub-stream).
         sendToHost({ action: 'focus_stop', target: activeRvIp });
-        sendToHost({ action: 'rv_stop', target: activeRvIp });
     }
     document.getElementById('rvModal').style.display = 'none';
 
@@ -1046,6 +1050,37 @@ function freezeFromRv() {
     // Freeze merged into Lock — redirect
     if (activeRvIp) lockStudent(activeRvIp);
 }
+
+// ── View Mode Toggle ─────────────────────────────────────────────────
+
+function toggleViewMode() {
+    thumbMode = !thumbMode;
+    applyViewMode();
+    try { localStorage.setItem('tad_viewMode', thumbMode ? 'thumb' : 'list'); } catch {}
+}
+
+function applyViewMode() {
+    document.body.classList.toggle('thumb-mode', thumbMode);
+    const btn = document.getElementById('viewModeBtn');
+    const icon = document.getElementById('viewModeIcon');
+    if (btn) {
+        btn.classList.toggle('active', thumbMode);
+        btn.title = thumbMode ? t('toolbar.viewList') : t('toolbar.viewThumb');
+    }
+    // E8A9 = GridView (thumb), E8FD = List (compact)
+    if (icon) icon.innerHTML = thumbMode ? '\uE8A9' : '\uE8FD';
+}
+
+// Initialize view mode on DOM ready
+(function initViewMode() {
+    try {
+        const saved = localStorage.getItem('tad_viewMode');
+        if (saved === 'list') thumbMode = false;
+        else if (saved === 'thumb') thumbMode = true;
+        // else default: thumbMode = true
+    } catch {}
+    applyViewMode();
+})();
 
 // ── Student Commands (JS → C#) ──────────────────────────────────────
 

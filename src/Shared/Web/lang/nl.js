@@ -223,8 +223,10 @@ const TAD_LANG_NL = {
     'toolbar.message': 'Bericht',
     'toolbar.filters': 'Filters',
     'toolbar.searchPlaceholder': 'Leerlingen zoeken...',
+    'toolbar.viewThumb': 'Miniatuurweergave',
+    'toolbar.viewList': 'Lijstweergave',
 
-    'ctx.remoteView': 'Extern bekijken',
+    'ctx.remoteView': 'Live weergave',
     'ctx.details': 'Details',
     'ctx.lock': 'Vergrendelen',
     'ctx.unlock': 'Ontgrendelen',
