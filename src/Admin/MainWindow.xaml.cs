@@ -564,6 +564,48 @@ public partial class MainWindow : Window
                         catch { }
                     }
                     break;
+                case "lock_all_confirmed":
+                    if (_isDemoMode) _demoManager!.BroadcastLock();
+                    else _tcpManager!.BroadcastLock();
+                    SetStatus("Locked all screens");
+                    break;
+                case "unlock_all":
+                    if (_isDemoMode) _demoManager!.BroadcastUnlock();
+                    else _tcpManager!.BroadcastUnlock();
+                    _allFrozen = false;
+                    _allBlanked = false;
+                    PostJsonMessage(new { type = "freeze_all", frozen = false });
+                    PostJsonMessage(new { type = "blank_all", blanked = false });
+                    SetStatus("Unlocked all screens");
+                    break;
+                case "freeze_all_confirmed":
+                    _allFrozen = true;
+                    if (_isDemoMode) _demoManager!.BroadcastFreeze(300, "Eyes on the teacher!");
+                    else _tcpManager!.BroadcastFreeze();
+                    PostJsonMessage(new { type = "freeze_all", frozen = true });
+                    SetStatus("Froze all screens");
+                    break;
+                case "unfreeze_all":
+                    _allFrozen = false;
+                    if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
+                    else _tcpManager!.BroadcastUnfreeze();
+                    PostJsonMessage(new { type = "freeze_all", frozen = false });
+                    SetStatus("Unfroze all screens");
+                    break;
+                case "blank_all_confirmed":
+                    _allBlanked = true;
+                    if (_isDemoMode) _demoManager!.BroadcastBlankScreen();
+                    else _tcpManager!.BroadcastBlankScreen();
+                    PostJsonMessage(new { type = "blank_all", blanked = true });
+                    SetStatus("Blanked all screens");
+                    break;
+                case "unblank_all":
+                    _allBlanked = false;
+                    if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
+                    else _tcpManager!.BroadcastUnblankScreen();
+                    PostJsonMessage(new { type = "blank_all", blanked = false });
+                    SetStatus("Restored all screens");
+                    break;
             }
         }
         catch { /* Ignore malformed messages */ }
@@ -635,63 +677,50 @@ public partial class MainWindow : Window
 
     private void BtnLockAll_Click(object sender, RoutedEventArgs e)
     {
-        if (_isDemoMode) _demoManager!.BroadcastLock();
-        else _tcpManager!.BroadcastLock();
-        SetStatus("Locked all screens");
+        PostJsonMessage(new { type = "confirm_action", action = "lock_all" });
     }
 
     private void BtnUnlockAll_Click(object sender, RoutedEventArgs e)
     {
         if (_isDemoMode) _demoManager!.BroadcastUnlock();
         else _tcpManager!.BroadcastUnlock();
+        _allFrozen = false;
+        _allBlanked = false;
+        PostJsonMessage(new { type = "freeze_all", frozen = false });
+        PostJsonMessage(new { type = "blank_all", blanked = false });
         SetStatus("Unlocked all screens");
     }
 
     private void BtnFreezeAll_Click(object sender, RoutedEventArgs e)
     {
-        _allFrozen = !_allFrozen;
         if (_allFrozen)
         {
-            if (_isDemoMode) _demoManager!.BroadcastFreeze(300, "Eyes on the teacher!");
-            else _tcpManager!.BroadcastFreeze();
-            SetStatus("Froze all screens — Eyes on the teacher!");
+            _allFrozen = false;
+            if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
+            else _tcpManager!.BroadcastUnfreeze();
+            PostJsonMessage(new { type = "freeze_all", frozen = false });
+            SetStatus("Unfroze all screens");
         }
         else
         {
-            if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
-            else _tcpManager!.BroadcastUnfreeze();
-            SetStatus("Unfroze all screens");
+            PostJsonMessage(new { type = "confirm_action", action = "freeze_all" });
         }
-
-        PostJsonMessage(new { type = "freeze_all", frozen = _allFrozen });
     }
 
     private void BtnBlankAll_Click(object sender, RoutedEventArgs e)
     {
-        _allBlanked = !_allBlanked;
         if (_allBlanked)
         {
-            if (_isDemoMode) _demoManager!.BroadcastBlankScreen();
-            else _tcpManager!.BroadcastBlankScreen();
-            SetStatus("Blanked all screens — Black screen active");
+            _allBlanked = false;
+            if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
+            else _tcpManager!.BroadcastUnblankScreen();
+            PostJsonMessage(new { type = "blank_all", blanked = false });
+            SetStatus("Restored all screens");
         }
         else
         {
-            if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
-            else _tcpManager!.BroadcastUnblankScreen();
-            SetStatus("Restored all screens");
+            PostJsonMessage(new { type = "confirm_action", action = "blank_all" });
         }
-        PostJsonMessage(new { type = "blank_all", blanked = _allBlanked });
-    }
-
-    private void BtnMessage_Click(object sender, RoutedEventArgs e)
-    {
-        PostJsonMessage(new { type = "show_message_dialog" });
-    }
-
-    private void BtnFilters_Click(object sender, RoutedEventArgs e)
-    {
-        PostJsonMessage(new { type = "show_blocklist_dialog" });
     }
 
     private void BtnRefresh_Click(object sender, RoutedEventArgs e)

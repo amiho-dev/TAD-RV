@@ -101,6 +101,10 @@ window.chrome.webview.addEventListener('message', (event) => {
             openBlocklistModal();
             break;
 
+        case 'confirm_action':
+            handleConfirmAction(msg.action);
+            break;
+
         case 'updateAvailable':
             showUpdateBanner(msg.version, msg.releaseNotes, msg.htmlUrl);
             break;
@@ -1251,8 +1255,12 @@ function showChangelog() {
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        if (document.getElementById('changelogModal')?.style.display !== 'none')
+        if (document.getElementById('confirmModal')?.style.display !== 'none')
+            cancelConfirm();
+        else if (document.getElementById('changelogModal')?.style.display !== 'none')
             document.getElementById('changelogModal').style.display = 'none';
+        else if (document.getElementById('blocklistModal')?.style.display !== 'none')
+            closeBlocklistModal();
         else if (activeRvIp) closeRv();
         else if (document.getElementById('messageModal').style.display !== 'none')
             closeMessageDialog();
@@ -1384,6 +1392,78 @@ function showUpdateBanner(version, releaseNotes, htmlUrl) {
     // Auto-dismiss after 30 seconds
     setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);
 }
-});
+
+// ── Confirmation Dialog ──────────────────────────────────────────────────
+
+let _confirmCallback = null;
+let _confirmHasDuration = false;
+let _activeDurationTimers = [];
+
+function showConfirm(title, message, callback, opts = {}) {
+    const { showDuration = false, confirmText = 'Confirm', danger = false } = opts;
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmDurationRow').style.display = showDuration ? 'flex' : 'none';
+    document.getElementById('confirmDuration').value = '0';
+    const okBtn = document.getElementById('confirmOk');
+    okBtn.textContent = confirmText;
+    okBtn.className = danger ? 'btn btn-danger' : 'btn btn-primary';
+    _confirmCallback = callback;
+    _confirmHasDuration = showDuration;
+    document.getElementById('confirmModal').style.display = 'flex';
+}
+
+function executeConfirm() {
+    const duration = _confirmHasDuration ? parseInt(document.getElementById('confirmDuration').value) : 0;
+    if (_confirmCallback) _confirmCallback(duration);
+    _confirmCallback = null;
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+function cancelConfirm() {
+    _confirmCallback = null;
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+function handleConfirmAction(action) {
+    switch (action) {
+        case 'lock_all':
+            showConfirm('🔒 Lock All Screens',
+                'Lock all student screens? Students will not be able to use their computers.',
+                (duration) => {
+                    sendToHost({ action: 'lock_all_confirmed' });
+                    if (duration > 0) {
+                        const t = setTimeout(() => sendToHost({ action: 'unlock_all' }), duration * 1000);
+                        _activeDurationTimers.push(t);
+                    }
+                },
+                { showDuration: true, confirmText: '🔒 Lock All', danger: true });
+            break;
+        case 'freeze_all':
+            showConfirm('❄ Freeze All Screens',
+                'Freeze all student screens? Students will see a frozen overlay and cannot interact.',
+                (duration) => {
+                    sendToHost({ action: 'freeze_all_confirmed' });
+                    if (duration > 0) {
+                        const t = setTimeout(() => sendToHost({ action: 'unfreeze_all' }), duration * 1000);
+                        _activeDurationTimers.push(t);
+                    }
+                },
+                { showDuration: true, confirmText: '❄ Freeze All' });
+            break;
+        case 'blank_all':
+            showConfirm('⬛ Blank All Screens',
+                'Blank all student screens? All monitors will go black.',
+                (duration) => {
+                    sendToHost({ action: 'blank_all_confirmed' });
+                    if (duration > 0) {
+                        const t = setTimeout(() => sendToHost({ action: 'unblank_all' }), duration * 1000);
+                        _activeDurationTimers.push(t);
+                    }
+                },
+                { showDuration: true, confirmText: '⬛ Blank All' });
+            break;
+    }
+}
 
 console.log('[TAD.RV] Teacher Dashboard initialized');

@@ -43,12 +43,6 @@
                 <span class="stat-value stat-offline" id="statOffline">0</span>
                 <span class="stat-label">Offline</span>
             </div>
-            <div class="stat stat-toggle" id="offlineToggle"
-                 onclick="toggleOfflineVisibility()"
-                 title="Click to show / hide offline computers">
-                <span class="stat-value stat-offline" id="statOffline">0</span>
-                <span class="stat-label">Offline</span>
-            </div>
             <label class="switch-wrapper" title="Show nothing if every PC is offline">
                 <input type="checkbox" id="allOfflineCheckbox" onchange="toggleHideIfAllOffline(this.checked)">
                 <span class="switch-slider"></span>
@@ -56,6 +50,14 @@
             </label>
         </div>
         <div class="stats-right">
+            <div class="stats-actions">
+                <button class="stats-action-btn" onclick="openMessageDialog()" title="Broadcast a message to all students">
+                    <span class="sai">&#xE8BD;</span> Message
+                </button>
+                <button class="stats-action-btn" onclick="openBlocklistModal()" title="Content filters &amp; blocklist">
+                    <span class="sai">&#xE8D7;</span> Filters
+                </button>
+            </div>
             <div class="search-box">
                 <span class="search-icon">&#xE721;</span>
                 <input type="text" id="searchInput" placeholder="Search students..."
@@ -382,6 +384,34 @@
 
                 <div class="changelog-footer">
                     <p>(C) 2026 TAD Europe — https://tad-it.eu</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Action Dialog -->
+    <div class="modal-overlay" id="confirmModal" style="display:none" onclick="if(event.target===this)cancelConfirm()">
+        <div class="modal-content modal-confirm">
+            <div class="modal-header">
+                <span id="confirmTitle">Confirm Action</span>
+                <button class="modal-btn" onclick="cancelConfirm()">&#xE711;</button>
+            </div>
+            <div class="modal-body-form">
+                <p id="confirmMessage" class="confirm-msg"></p>
+                <div id="confirmDurationRow" class="confirm-duration-row" style="display:none">
+                    <label class="confirm-duration-label">Duration</label>
+                    <select id="confirmDuration" class="confirm-select">
+                        <option value="0">Until manually reversed</option>
+                        <option value="300">5 minutes</option>
+                        <option value="600">10 minutes</option>
+                        <option value="900">15 minutes</option>
+                        <option value="1800">30 minutes</option>
+                        <option value="3600">1 hour</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" id="confirmOk" onclick="executeConfirm()">Confirm</button>
+                    <button class="btn btn-secondary" onclick="cancelConfirm()">Cancel</button>
                 </div>
             </div>
         </div>
