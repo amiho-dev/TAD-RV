@@ -24,9 +24,73 @@ using System.Net.Http;
 using System.Text.Json;
 
 // ── Argument parsing ──────────────────────────────────────────────────────────
+//
+// Mode A (download): TAD-Update.exe <url> <dest-path> <caller-pid> [installer-args...]
+//   Downloads a new Setup EXE from URL, replaces dest-path, launches with args.
+//
+// Mode B (apply):    TAD-Update.exe --apply <setup-exe-path> <caller-pid>
+//   Waits for caller to exit, then runs the already-downloaded setup EXE with --install.
+//
+
+PrintBanner();
+
+if (args.Length >= 3 && args[0].Equals("--apply", StringComparison.OrdinalIgnoreCase))
+{
+    // Mode B: apply a pre-downloaded setup EXE
+    string setupExe = args[1];
+    if (!int.TryParse(args[2], out int applyPid))
+    {
+        Console.Error.WriteLine("Invalid caller PID.");
+        return 1;
+    }
+
+    Console.WriteLine($"  Mode:      Apply downloaded installer");
+    Console.WriteLine($"  Installer: {Path.GetFileName(setupExe)}");
+    Console.WriteLine();
+
+    // Wait for caller to exit
+    Console.WriteLine("  [1/2] Waiting for caller process to exit...");
+    try
+    {
+        using var caller = Process.GetProcessById(applyPid);
+        if (!caller.WaitForExit(30_000))
+            Warn("Caller did not exit within 30 s — attempting install anyway.");
+        else
+            Ok("Caller exited.");
+    }
+    catch (ArgumentException) { Ok("Caller already exited."); }
+    Console.WriteLine();
+
+    // Launch the downloaded setup EXE with --install
+    Console.WriteLine("  [2/2] Launching installer...");
+    try
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName        = setupExe,
+            Arguments       = "--install",
+            UseShellExecute = true,  // allow UAC elevation
+        });
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("  Update installer launched.");
+        Console.ResetColor();
+        await Task.Delay(1500);
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Err($"Could not launch installer: {ex.Message}");
+        Pause();
+        return 1;
+    }
+}
+
+// Mode A: download and replace
 if (args.Length < 3)
 {
-    Console.Error.WriteLine("Usage: TADUpdater.exe <url> <dest-path> <caller-pid> [installer-args...]");
+    Console.Error.WriteLine("Usage:");
+    Console.Error.WriteLine("  TAD-Update.exe <url> <dest-path> <caller-pid> [installer-args...]");
+    Console.Error.WriteLine("  TAD-Update.exe --apply <setup-exe-path> <caller-pid>");
     return 1;
 }
 
@@ -40,7 +104,7 @@ if (!int.TryParse(args[2], out int callerPid))
     return 1;
 }
 
-PrintBanner();
+Console.WriteLine($"  Mode:      Download & replace");
 Console.WriteLine($"  Updating:  {Path.GetFileName(destPath)}");
 Console.WriteLine($"  Dest:      {destPath}");
 Console.WriteLine();
@@ -190,7 +254,7 @@ static void PrintBanner()
     Console.WriteLine(@"   |_/_/ \_\___/    \___/| .__/\__,_|\__\___|_| /__/_|  ");
     Console.WriteLine(@"                         |_|                             ");
     Console.ResetColor();
-    Console.WriteLine("  TAD Updater — background installer helper");
+    Console.WriteLine("  TAD-Update — background installer helper");
     Console.WriteLine("  (C) 2026 TAD Europe");
     Console.WriteLine();
 }

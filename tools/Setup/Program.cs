@@ -30,7 +30,7 @@ using Microsoft.Win32;
 // ── Compile-time target configuration ────────────────────────────────────────
 
 #if SETUP_ADMIN
-const string AppDisplayName  = "TAD Admin";
+const string AppDisplayName  = "TAD.RV Admin";
 const string BinaryName      = "TADAdmin.exe";
 const string ResourceName    = "bundled_admin";
 const string SetupBinaryName = "TADAdminSetup.exe";
@@ -38,10 +38,10 @@ const string AssetPrefix     = "TADAdminSetup";       // GitHub release asset pr
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.Admin";
 const bool   IsService       = false;
 const bool   CreateShortcut  = true;
-const string ShortcutName    = "TAD Admin.lnk";
-const string ShortcutDesc    = "TAD Admin Dashboard";
+const string ShortcutName    = "TAD.RV Admin.lnk";
+const string ShortcutDesc    = "TAD.RV Admin Dashboard";
 #elif SETUP_DC
-const string AppDisplayName  = "TAD Domain Controller";
+const string AppDisplayName  = "TAD.RV Domain Controller";
 const string BinaryName      = "TADDomainController.exe";
 const string ResourceName    = "bundled_dc";
 const string SetupBinaryName = "TADDomainControllerSetup.exe";
@@ -49,10 +49,10 @@ const string AssetPrefix     = "TADDomainControllerSetup"; // GitHub release ass
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.DomainController";
 const bool   IsService       = false;
 const bool   CreateShortcut  = true;
-const string ShortcutName    = "TAD Domain Controller.lnk";
-const string ShortcutDesc    = "TAD Domain Controller Console";
+const string ShortcutName    = "TAD.RV Domain Controller.lnk";
+const string ShortcutDesc    = "TAD.RV Domain Controller Console";
 #else  // SETUP_CLIENT (default)
-const string AppDisplayName  = "TAD Client";
+const string AppDisplayName  = "TAD.RV Client";
 const string BinaryName      = "TADBridgeService.exe";
 const string ResourceName    = "bundled_service";
 const string SetupBinaryName = "TADClientSetup.exe";
@@ -70,7 +70,7 @@ const string ServiceDisplay  = "TAD Endpoint Service";
 const string ServiceDesc     = "TAD endpoint agent — remote view, screen capture and policy enforcement.";
 const string VirtualAccount  = @"NT SERVICE\TADBridgeService";
 const string ServiceRegKey   = @"SOFTWARE\TAD_RV";
-const string StartMenuFolder = "TAD";
+const string StartMenuFolder = "TAD.RV";
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 static string InstallDir() =>
@@ -225,10 +225,10 @@ static bool RunUpdate()
         Console.ResetColor();
         Console.WriteLine();
 
-        // ── Extract TADUpdater.exe from embedded resources ─────────────────
+        // ── Extract TAD-Update.exe from embedded resources ──────────────────
         string tmpDir      = Path.Combine(Path.GetTempPath(), "TAD_Update");
         Directory.CreateDirectory(tmpDir);
-        string updaterPath = Path.Combine(tmpDir, "TADUpdater.exe");
+        string updaterPath = Path.Combine(tmpDir, "TAD-Update.exe");
         string destPath    = InstallBin(SetupBinaryName);
 
         var asm = System.Reflection.Assembly.GetExecutingAssembly();
@@ -237,7 +237,7 @@ static bool RunUpdate()
 
         if (rname is null)
         {
-            Err("TADUpdater.exe is not embedded in this installer (resource 'bundled_updater' missing).");
+            Err("TAD-Update.exe is not embedded in this installer (resource 'bundled_updater' missing).");
             Err("This build may be incomplete. Please re-download the Setup EXE.");
             return false;
         }
@@ -248,12 +248,12 @@ static bool RunUpdate()
         Ok($"Updater extracted  →  {updaterPath}");
         Console.WriteLine();
 
-        // ── Spawn TADUpdater and EXIT immediately ──────────────────────────
-        // TADUpdater waits for our PID to disappear, then downloads the new
+        // ── Spawn TAD-Update and EXIT immediately ──────────────────────────
+        // TAD-Update waits for our PID to disappear, then downloads the new
         // EXE, replaces the installed copy, and launches it with --install.
         // We MUST exit so we release any hold on the installed Setup file.
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"  Launching TADUpdater — will download {assetName}");
+        Console.WriteLine($"  Launching TAD-Update — will download {assetName}");
         Console.WriteLine($"  This window will close and the update will install automatically.");
         Console.ResetColor();
         Console.WriteLine();
@@ -293,6 +293,7 @@ static bool RunInstall()
     Step(1, totalSteps, $"Extracting  {BinaryName}  →  {InstallDir()}");
     if (!ExtractBinary()) return false;
     CopySelf();
+    ExtractUpdater();
 
     Step(2, totalSteps, "Registering in Programs & Features (Add/Remove Programs)...");
     WriteUninstallEntry();
@@ -466,6 +467,25 @@ static void CopySelf()
         }
     }
     catch (Exception ex) { Warn($"Could not copy installer for uninstall: {ex.Message}"); }
+}
+
+/// <summary>Extract TAD-Update.exe from embedded resources into the install directory.</summary>
+static void ExtractUpdater()
+{
+    try
+    {
+        var asm = Assembly.GetExecutingAssembly();
+        string? rname = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n.Equals("bundled_updater", StringComparison.OrdinalIgnoreCase));
+        if (rname is null) { Warn("TAD-Update.exe not embedded — skipping."); return; }
+
+        string dest = InstallBin("TAD-Update.exe");
+        using var src = asm.GetManifestResourceStream(rname)!;
+        using var dst = File.Create(dest);
+        src.CopyTo(dst);
+        Ok($"TAD-Update.exe  →  {dest}");
+    }
+    catch (Exception ex) { Warn($"Could not extract updater: {ex.Message}"); }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

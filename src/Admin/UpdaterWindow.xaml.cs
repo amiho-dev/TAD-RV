@@ -92,7 +92,7 @@ public partial class UpdaterWindow : Window
             PrgFill.Width = _progressBarMaxWidth;
             TxtProgressPct.Text = "100 %";
             TxtStatus.Text = $"Downloaded to: {_downloadedPath}";
-            BtnDownload.Content = "✔  Apply Update & Restart";
+            BtnDownload.Content = "✔  Install Update & Restart";
             SetDownloadingState(false);
         }
         finally { _manager.OnDownloadProgress -= OnProgress; }
@@ -102,32 +102,39 @@ public partial class UpdaterWindow : Window
     {
         if (_downloadedPath == null) return;
 
-        TxtStatus.Text = "Applying update…";
+        TxtStatus.Text = "Launching updater…";
         BtnDownload.IsEnabled = false;
         BtnLater.IsEnabled    = false;
 
-        bool ok = UpdateManager.ApplyUpdate(_downloadedPath);
-        if (ok)
-        {
-            var res = MessageBox.Show(
-                "Update applied successfully!\n\nRestart TAD.RV Admin now?",
-                "TAD.RV Update", MessageBoxButton.YesNo, MessageBoxImage.Information);
+        // Spawn the external TAD-Update.exe process which waits for us to exit,
+        // then runs the downloaded Setup EXE with --install.
+        // This avoids the "file in use" problem when overwriting running binaries.
+        string updaterExe = System.IO.Path.Combine(AppContext.BaseDirectory, "TAD-Update.exe");
 
-            if (res == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    var exe = Environment.ProcessPath;
-                    if (!string.IsNullOrEmpty(exe))
-                        Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
-                }
-                catch { }
-                Application.Current.Shutdown();
-            }
-        }
-        else
+        if (!System.IO.File.Exists(updaterExe))
         {
-            TxtStatus.Text = "⚠  Could not apply update — the binary may be in use. Try restarting manually.";
+            TxtStatus.Text = "⚠  TAD-Update.exe not found in install directory. Please update manually.";
+            BtnDownload.IsEnabled = true;
+            BtnLater.IsEnabled    = true;
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName        = updaterExe,
+                Arguments       = $"--apply \"{_downloadedPath}\" {Environment.ProcessId}",
+                UseShellExecute = false,
+                CreateNoWindow  = false,
+            });
+
+            // Exit the app so the updater can replace our binaries
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            TxtStatus.Text = $"⚠  Could not launch updater: {ex.Message}";
             BtnDownload.IsEnabled = true;
             BtnLater.IsEnabled    = true;
         }

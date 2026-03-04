@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <AssemblyName>TADUpdater</AssemblyName>
+    <AssemblyName>TAD-Update</AssemblyName>
     <RootNamespace>TADUpdater</RootNamespace>
 
     <!-- Tiny self-contained single-file EXE, no .NET runtime on target -->

@@ -60,9 +60,9 @@
       Condition="Exists('Resources\TADDomainController.exe') And '$(SetupTarget)'=='DomainController'" />
     <!-- Updater helper — always embedded in every Setup variant -->
     <EmbeddedResource
-      Include="Resources\TADUpdater.exe"
+      Include="Resources\TAD-Update.exe"
       LogicalName="bundled_updater"
-      Condition="Exists('Resources\TADUpdater.exe')" />
+      Condition="Exists('Resources\TAD-Update.exe')" />
   </ItemGroup>
 
 </Project>

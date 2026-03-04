@@ -25,7 +25,7 @@ rm -rf build/results/*.exe build/results/*.pdb build/results/*.dll \
 rm -f tools/Setup/Resources/TADBridgeService.exe \
       tools/Setup/Resources/TADAdmin.exe \
       tools/Setup/Resources/TADDomainController.exe \
-      tools/Setup/Resources/TADUpdater.exe
+      tools/Setup/Resources/TAD-Update.exe
 
 mkdir -p build/results build/release-addc tools/Setup/Resources tools/Setup/publish
 
@@ -50,7 +50,7 @@ dotnet publish tools/Bootstrap/TADBootstrap.csproj -c Release -r win-x64 \
 echo ""
 
 # ── [3/10] Updater ────────────────────────────────────────────────────
-echo "[3/10] Publishing TADUpdater (Single File Exe)..."
+echo "[3/10] Publishing TAD-Update (Single File Exe)..."
 dotnet publish tools/Updater/TADUpdater.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:PublishReadyToRun=false --no-restore
@@ -91,10 +91,10 @@ cp "$DC_BIN"  build/results/TADDomainController.exe
 cp tools/Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TADBootstrap.exe \
    build/results/TADBootstrap.exe
 
-# Stage TADUpdater into Setup resources (same binary for all 3 Setup variants)
-UPD_BIN=tools/Updater/bin/Release/net8.0-windows/win-x64/publish/TADUpdater.exe
-cp "$UPD_BIN" tools/Setup/Resources/TADUpdater.exe
-echo "   TADUpdater.exe staged  $(du -h tools/Setup/Resources/TADUpdater.exe | cut -f1)"
+# Stage TAD-Update into Setup resources (same binary for all 3 Setup variants)
+UPD_BIN=tools/Updater/bin/Release/net8.0-windows/win-x64/publish/TAD-Update.exe
+cp "$UPD_BIN" tools/Setup/Resources/TAD-Update.exe
+echo "   TAD-Update.exe staged  $(du -h tools/Setup/Resources/TAD-Update.exe | cut -f1)"
 echo ""
 
 # ── [7/10] TADClientSetup — bundles TADBridgeService ────────────────────────
@@ -143,7 +143,7 @@ echo ""
 
 # Clean staged resources
 rm -f tools/Setup/Resources/TADDomainController.exe \
-      tools/Setup/Resources/TADUpdater.exe
+      tools/Setup/Resources/TAD-Update.exe
 
 # ── [10/10] Package release artifacts ─────────────────────────────────────────────────
 echo "[10/10] Packaging release artifacts..."
@@ -175,4 +175,4 @@ echo "    Installs: TADAdmin (dashboard app + Start Menu shortcut)"
 echo "  TADDomainControllerSetup-$VERSION-win-x64.exe"
 echo "    Installs: TADDomainController (DC console + Start Menu shortcut)"
 echo ""
-echo "  All Setup EXEs embed TADUpdater.exe for background self-update."
+echo "  All Setup EXEs embed TAD-Update.exe for background self-update."
