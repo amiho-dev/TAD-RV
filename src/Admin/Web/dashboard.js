@@ -77,6 +77,10 @@ window.chrome.webview.addEventListener('message', (event) => {
             msg.ips.forEach(ip => ensureStudentTile(ip));
             break;
 
+        case 'remove_student':
+            removeStudentTile(msg.ip);
+            break;
+
         case 'freeze_all':
             showAnnouncement(msg.frozen
                 ? 'All screens frozen — Eyes on the teacher!'
@@ -91,6 +95,10 @@ window.chrome.webview.addEventListener('message', (event) => {
 
         case 'show_message_dialog':
             openMessageDialog();
+            break;
+
+        case 'show_blocklist_dialog':
+            openBlocklistModal();
             break;
 
         case 'updateAvailable':
@@ -113,6 +121,9 @@ function handleStatusUpdate(ip, data) {
     student.lastSeen = Date.now();
     updateTileUI(student);
     updateStats();
+
+    // Auto-refresh device details panel if it's open for this student
+    if (devicePanelIp === ip) refreshDevicePanel();
 }
 
 function createStudentEntry(ip) {
@@ -151,6 +162,7 @@ function renderTile(student) {
             <button class="tile-btn danger" onclick="event.stopPropagation(); lockStudent('${student.ip}')" title="Lock">&#xE72E;</button>
             <button class="tile-btn success" onclick="event.stopPropagation(); unlockStudent('${student.ip}')" title="Unlock">&#xE785;</button>
             <button class="tile-btn" onclick="event.stopPropagation(); freezeStudent('${student.ip}')" title="Freeze">&#xE7AD;</button>
+            <button class="tile-btn" onclick="event.stopPropagation(); openDevicePanel('${student.ip}')" title="Details">&#xE946;</button>
         </div>
         <div class="tile-info">
             <span class="tile-hostname">${student.ip}</span>
@@ -269,6 +281,16 @@ function ensureStudentTile(ip) {
         const student = createStudentEntry(ip);
         students.set(ip, student);
         renderTile(student);
+    }
+}
+
+function removeStudentTile(ip) {
+    const student = students.get(ip);
+    if (student) {
+        if (student.tileEl) student.tileEl.remove();
+        if (student.decoder) try { student.decoder.close(); } catch {}
+        students.delete(ip);
+        updateStats();
     }
 }
 
@@ -936,6 +958,190 @@ function sendToHost(msg) {
     if (window.chrome?.webview) {
         window.chrome.webview.postMessage(JSON.stringify(msg));
     }
+}
+
+// ── Device Details Panel ─────────────────────────────────────────────
+
+let devicePanelIp = null;
+
+function openDevicePanel(ip) {
+    devicePanelIp = ip;
+    const panel = document.getElementById('devicePanel');
+    panel.classList.add('open');
+    refreshDevicePanel();
+}
+
+function closeDevicePanel() {
+    devicePanelIp = null;
+    document.getElementById('devicePanel').classList.remove('open');
+}
+
+function refreshDevicePanel() {
+    if (!devicePanelIp) return;
+    const student = students.get(devicePanelIp);
+    if (!student || !student.status) return;
+    const s = student.status;
+
+    document.getElementById('dpHostname').textContent = s.Hostname || devicePanelIp;
+    document.getElementById('dpHost').textContent = s.Hostname || '—';
+    document.getElementById('dpUser').textContent = s.Username || '—';
+    document.getElementById('dpIp').textContent = s.IpAddress || devicePanelIp;
+
+    // CPU bar
+    const cpuPct = Math.round(s.CpuUsage || 0);
+    document.getElementById('dpCpuPct').textContent = cpuPct + '%';
+    const cpuBar = document.getElementById('dpCpuBar');
+    cpuBar.style.width = cpuPct + '%';
+    cpuBar.className = 'dp-bar-fill ' + barColor(cpuPct);
+
+    // RAM bar
+    const ramUsed = s.RamUsedMb || 0;
+    const ramTotal = s.RamTotalMb || 1;
+    const ramPct = Math.round((ramUsed / ramTotal) * 100);
+    document.getElementById('dpRamPct').textContent =
+        `${(ramUsed / 1024).toFixed(1)} / ${(ramTotal / 1024).toFixed(1)} GB (${ramPct}%)`;
+    const ramBar = document.getElementById('dpRamBar');
+    ramBar.style.width = ramPct + '%';
+    ramBar.className = 'dp-bar-fill ' + barColor(ramPct);
+
+    // Disk bar
+    const diskUsed = s.DiskUsedGb || 0;
+    const diskTotal = s.DiskTotalGb || 1;
+    const diskPct = Math.round((diskUsed / diskTotal) * 100);
+    document.getElementById('dpDiskLabel').textContent = `Disk (C:)`;
+    document.getElementById('dpDiskPct').textContent =
+        `${diskUsed} / ${diskTotal} GB (${diskPct}%)`;
+    const diskBar = document.getElementById('dpDiskBar');
+    diskBar.style.width = diskPct + '%';
+    diskBar.className = 'dp-bar-fill ' + barColor(diskPct);
+
+    // Windows list
+    const winList = document.getElementById('dpWindowList');
+    const windows = s.OpenWindows || [];
+    if (windows.length === 0) {
+        winList.innerHTML = '<li style="color:var(--text-secondary);font-size:12px">No windows detected</li>';
+    } else {
+        winList.innerHTML = windows.map(w => `
+            <li class="dp-window-item">
+                <span class="dp-window-title" title="${escapeHtml(w.Title)}">${escapeHtml(w.Title)}</span>
+                <span class="dp-window-proc">${escapeHtml(w.ProcessName)}</span>
+                <button class="dp-kill-btn" onclick="killProcess('${devicePanelIp}', ${w.ProcessId})"
+                        title="Close ${escapeHtml(w.ProcessName)}">✕</button>
+            </li>
+        `).join('');
+    }
+}
+
+function barColor(pct) {
+    if (pct >= 85) return 'red';
+    if (pct >= 60) return 'orange';
+    return 'green';
+}
+
+function killProcess(ip, pid) {
+    sendToHost({ action: 'kill_process', target: ip, payload: String(pid) });
+}
+
+function escapeHtml(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Blocklist (Content Filters) ─────────────────────────────────────
+
+let blockedPrograms = [];
+let blockedWebsites = [];
+
+function openBlocklistModal() {
+    document.getElementById('blocklistModal').style.display = 'flex';
+    renderBlocklistLists();
+    // Enter key support
+    document.getElementById('blockProgInput').onkeydown = (e) => { if (e.key === 'Enter') addBlockedProgram(); };
+    document.getElementById('blockSiteInput').onkeydown = (e) => { if (e.key === 'Enter') addBlockedWebsite(); };
+}
+
+function closeBlocklistModal() {
+    document.getElementById('blocklistModal').style.display = 'none';
+}
+
+function renderBlocklistLists() {
+    const progList = document.getElementById('blockedProgramsList');
+    const siteList = document.getElementById('blockedWebsitesList');
+
+    progList.innerHTML = blockedPrograms.length === 0
+        ? '<li class="blocklist-empty">No programs blocked</li>'
+        : blockedPrograms.map((p, i) =>
+            `<li class="blocklist-item"><span>${escapeHtml(p)}</span><button class="blocklist-remove" onclick="removeBlockedProgram(${i})">&#xE74D;</button></li>`
+        ).join('');
+
+    siteList.innerHTML = blockedWebsites.length === 0
+        ? '<li class="blocklist-empty">No websites blocked</li>'
+        : blockedWebsites.map((s, i) =>
+            `<li class="blocklist-item"><span>${escapeHtml(s)}</span><button class="blocklist-remove" onclick="removeBlockedWebsite(${i})">&#xE74D;</button></li>`
+        ).join('');
+}
+
+function addBlockedProgram() {
+    const input = document.getElementById('blockProgInput');
+    const val = input.value.trim().replace(/\.exe$/i, '');
+    if (val && !blockedPrograms.includes(val)) {
+        blockedPrograms.push(val);
+        renderBlocklistLists();
+    }
+    input.value = '';
+    input.focus();
+}
+
+function addBlockedWebsite() {
+    const input = document.getElementById('blockSiteInput');
+    const val = input.value.trim().toLowerCase();
+    if (val && !blockedWebsites.includes(val)) {
+        blockedWebsites.push(val);
+        renderBlocklistLists();
+    }
+    input.value = '';
+    input.focus();
+}
+
+function addPresetProgram(name) {
+    if (!blockedPrograms.includes(name)) {
+        blockedPrograms.push(name);
+        renderBlocklistLists();
+    }
+}
+
+function addPresetWebsite(domain) {
+    if (!blockedWebsites.includes(domain)) {
+        blockedWebsites.push(domain);
+        renderBlocklistLists();
+    }
+}
+
+function removeBlockedProgram(index) {
+    blockedPrograms.splice(index, 1);
+    renderBlocklistLists();
+}
+
+function removeBlockedWebsite(index) {
+    blockedWebsites.splice(index, 1);
+    renderBlocklistLists();
+}
+
+function applyBlocklist() {
+    const payload = JSON.stringify({
+        BlockedPrograms: blockedPrograms,
+        BlockedWebsites: blockedWebsites
+    });
+    sendToHost({ action: 'set_blocklist', target: '', payload: payload });
+    closeBlocklistModal();
+}
+
+function clearBlocklist() {
+    blockedPrograms = [];
+    blockedWebsites = [];
+    renderBlocklistLists();
+    // Also send empty blocklist to remove restrictions
+    const payload = JSON.stringify({ BlockedPrograms: [], BlockedWebsites: [] });
+    sendToHost({ action: 'set_blocklist', target: '', payload: payload });
 }
 
 // ── Announcement Banner ──────────────────────────────────────────────

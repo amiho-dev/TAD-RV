@@ -44,6 +44,10 @@ public sealed class TadTcpListener : BackgroundService
     private Process? _lockOverlayProcess;
     private Process? _blankOverlayProcess;
 
+    // Blocklist enforcement
+    private BlocklistUpdate _blocklist = new();
+    private readonly object _blocklistLock = new();
+
     public TadTcpListener(
         ILogger<TadTcpListener> log,
         DriverBridge driver,
@@ -244,10 +248,59 @@ public sealed class TadTcpListener : BackgroundService
                     _log.LogWarning(ex, "Bad PushMessage payload");
                 }
                 break;
+
+            case TadCommand.KillProcess:
+                try
+                {
+                    var req = JsonSerializer.Deserialize<KillProcessRequest>(payload.Span);
+                    if (req != null && req.ProcessId > 0) ExecuteKillProcess(req.ProcessId);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogWarning(ex, "Bad KillProcess payload");
+                }
+                break;
+
+            case TadCommand.SetBlocklist:
+                try
+                {
+                    var bl = JsonSerializer.Deserialize<BlocklistUpdate>(payload.Span);
+                    if (bl != null)
+                    {
+                        lock (_blocklistLock) _blocklist = bl;
+                        _log.LogInformation("Blocklist updated: {Progs} programs, {Sites} websites",
+                            bl.BlockedPrograms.Count, bl.BlockedWebsites.Count);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log.LogWarning(ex, "Bad SetBlocklist payload");
+                }
+                break;
         }
     }
 
     // ─── Blank Screen ─────────────────────────────────────────────────
+
+    private void ExecuteKillProcess(int pid)
+    {
+        try
+        {
+            var proc = Process.GetProcessById(pid);
+            string name = proc.ProcessName;
+            proc.Kill();
+            proc.WaitForExit(3000);
+            _log.LogInformation("Killed process {Name} (PID {Pid}) by teacher request", name, pid);
+        }
+        catch (ArgumentException)
+        {
+            _log.LogWarning("KillProcess: PID {Pid} not found", pid);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to kill PID {Pid}", pid);
+        }
+    }
 
     private void ExecuteBlankScreen()
     {
@@ -617,6 +670,52 @@ public sealed class TadTcpListener : BackgroundService
     private StudentStatus BuildStatus()
     {
         var heartbeat = _driver.Heartbeat();
+
+        // Collect open windows from visible top-level processes
+        var openWindows = new List<OpenWindowInfo>();
+        try
+        {
+            foreach (var proc in Process.GetProcesses())
+            {
+                try
+                {
+                    if (!string.IsNullOrEmpty(proc.MainWindowTitle) && proc.MainWindowHandle != IntPtr.Zero)
+                    {
+                        openWindows.Add(new OpenWindowInfo
+                        {
+                            Title = proc.MainWindowTitle,
+                            ProcessId = proc.Id,
+                            ProcessName = proc.ProcessName
+                        });
+                    }
+                }
+                catch { /* access denied for some processes */ }
+            }
+        }
+        catch { }
+
+        // Disk usage (system drive)
+        long diskUsedGb = 0, diskTotalGb = 0;
+        try
+        {
+            var sysDrive = new DriveInfo(Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\");
+            diskTotalGb = sysDrive.TotalSize / (1024 * 1024 * 1024);
+            diskUsedGb = (sysDrive.TotalSize - sysDrive.AvailableFreeSpace) / (1024 * 1024 * 1024);
+        }
+        catch { }
+
+        // RAM total (via GC or WMI-free approach)
+        long ramTotalMb = 0;
+        try
+        {
+            var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
+            ramTotalMb = (long)(ci.TotalPhysicalMemory / (1024 * 1024));
+        }
+        catch
+        {
+            ramTotalMb = Environment.WorkingSet / (1024 * 1024) * 4; // rough fallback
+        }
+
         return new StudentStatus
         {
             Hostname      = Environment.MachineName,
@@ -629,6 +728,10 @@ public sealed class TadTcpListener : BackgroundService
             ActiveWindow  = GetForegroundWindowTitle(),
             CpuUsage      = 0,
             RamUsedMb     = Environment.WorkingSet / (1024 * 1024),
+            RamTotalMb    = ramTotalMb,
+            DiskUsedGb    = diskUsedGb,
+            DiskTotalGb   = diskTotalGb,
+            OpenWindows   = openWindows,
             Timestamp     = DateTime.UtcNow
         };
     }
@@ -646,7 +749,61 @@ public sealed class TadTcpListener : BackgroundService
             try { SendFrame(TadCommand.Status, JsonSerializer.SerializeToUtf8Bytes(BuildStatus())); }
             catch { /* Best effort */ }
 
+            // Enforce blocklist — kill blocked programs and browsers showing blocked sites
+            try { EnforceBlocklist(); }
+            catch { /* best effort */ }
+
             await Task.Delay(3000, ct);
+        }
+    }
+
+    /// <summary>Kill processes that match the teacher's blocklist (programs by name, websites by browser title).</summary>
+    private void EnforceBlocklist()
+    {
+        BlocklistUpdate bl;
+        lock (_blocklistLock) bl = _blocklist;
+
+        if (bl.BlockedPrograms.Count == 0 && bl.BlockedWebsites.Count == 0) return;
+
+        var browserNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "chrome", "msedge", "firefox", "opera", "brave", "iexplore", "ApplicationFrameHost" };
+
+        foreach (var proc in Process.GetProcesses())
+        {
+            try
+            {
+                string name = proc.ProcessName;
+
+                // Check blocked programs (match process name without .exe)
+                foreach (var blocked in bl.BlockedPrograms)
+                {
+                    if (name.Equals(blocked, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _log.LogInformation("Blocklist: killing {Name} (PID {Pid}) — blocked program", name, proc.Id);
+                        proc.Kill();
+                        break;
+                    }
+                }
+
+                // Check blocked websites (match in browser window titles)
+                if (bl.BlockedWebsites.Count > 0 && browserNames.Contains(name))
+                {
+                    string title = proc.MainWindowTitle ?? "";
+                    if (string.IsNullOrEmpty(title)) continue;
+
+                    foreach (var site in bl.BlockedWebsites)
+                    {
+                        if (title.Contains(site, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _log.LogInformation("Blocklist: killing {Name} (PID {Pid}) — blocked site '{Site}' in title '{Title}'",
+                                name, proc.Id, site, title);
+                            proc.Kill();
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { /* access denied or already exited */ }
         }
     }
 

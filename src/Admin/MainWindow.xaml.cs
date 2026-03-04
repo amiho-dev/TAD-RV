@@ -56,6 +56,10 @@ public partial class MainWindow : Window
     private bool _exitRequested;  // true only when "Exit" from tray — X button hides to tray
     private DateTime? _statusMessageExpiry;
 
+    // Room filter: tracks discovered room IDs → student IPs
+    private readonly Dictionary<string, string> _ipToRoom = new();  // ip → roomId
+    private string _selectedRoom = "";  // "" = all rooms
+
     // JSON options for camelCase deserialization
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -246,14 +250,87 @@ public partial class MainWindow : Window
     {
         Dispatcher.InvokeAsync(() =>
         {
+            // Track the room this IP belongs to
+            if (!string.IsNullOrEmpty(roomId))
+            {
+                _ipToRoom[ip] = roomId;
+                UpdateRoomDropdown();
+            }
+
+            // If a room filter is active, skip students not in that room
+            if (!string.IsNullOrEmpty(_selectedRoom) &&
+                !roomId.Equals(_selectedRoom, StringComparison.OrdinalIgnoreCase))
+                return;
+
             _tcpManager?.AddStudent(ip, port);
-            SetStatus($"Discovered: {hostname} ({ip})");
+            SetStatus($"Discovered: {hostname} ({ip}){(string.IsNullOrEmpty(roomId) ? "" : $" [{roomId}]")}");
 
             // Notify the WebView immediately so a tile appears even before the
             // first status beacon (fired every 3 s) has time to arrive.
             if (_webViewReady)
                 PostJsonMessage(new { type = "add_students", ips = new[] { ip } });
         });
+    }
+
+    private void UpdateRoomDropdown()
+    {
+        var rooms = _ipToRoom.Values.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(r => r).ToList();
+        var currentItems = new HashSet<string>();
+        foreach (System.Windows.Controls.ComboBoxItem item in CmbRoomFilter.Items)
+        {
+            var s = item.Content?.ToString() ?? "";
+            if (s != "All Rooms") currentItems.Add(s);
+        }
+
+        foreach (var room in rooms)
+        {
+            if (!currentItems.Contains(room))
+                CmbRoomFilter.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = room });
+        }
+    }
+
+    private void CmbRoomFilter_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (CmbRoomFilter.SelectedItem is System.Windows.Controls.ComboBoxItem item)
+        {
+            var selected = item.Content?.ToString() ?? "";
+            _selectedRoom = (selected == "All Rooms") ? "" : selected;
+            ApplyRoomFilter();
+        }
+    }
+
+    private void ApplyRoomFilter()
+    {
+        if (_isDemoMode || _tcpManager == null) return;
+
+        // Remove students that don't match the new filter
+        foreach (var ip in _tcpManager.GetAllEndpointIps())
+        {
+            if (string.IsNullOrEmpty(_selectedRoom)) continue; // show all
+            if (_ipToRoom.TryGetValue(ip, out var room) &&
+                !room.Equals(_selectedRoom, StringComparison.OrdinalIgnoreCase))
+            {
+                _tcpManager.RemoveStudent(ip);
+                if (_webViewReady)
+                    PostJsonMessage(new { type = "remove_student", ip });
+            }
+        }
+
+        // Re-add students that match the filter but were previously filtered out
+        foreach (var (ip, room) in _ipToRoom)
+        {
+            if (string.IsNullOrEmpty(_selectedRoom) ||
+                room.Equals(_selectedRoom, StringComparison.OrdinalIgnoreCase))
+            {
+                _tcpManager.AddStudent(ip); // AddStudent is idempotent
+                if (_webViewReady)
+                    PostJsonMessage(new { type = "add_students", ips = new[] { ip } });
+            }
+        }
+
+        SetStatus(string.IsNullOrEmpty(_selectedRoom)
+            ? "Showing all rooms"
+            : $"Filtering room: {_selectedRoom}");
     }
 
     // ─── WebView2 Initialization ──────────────────────────────────────
@@ -465,6 +542,28 @@ public partial class MainWindow : Window
                         SetStatus($"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"");;
                     }
                     break;
+                case "kill_process":
+                    if (!_isDemoMode && int.TryParse(msg.Payload, out int pid))
+                    {
+                        _tcpManager!.KillProcessOnStudent(msg.Target, pid);
+                        SetStatus($"Killed process (PID {pid}) on {msg.Target}");
+                    }
+                    break;
+                case "set_blocklist":
+                    if (!_isDemoMode && !string.IsNullOrWhiteSpace(msg.Payload))
+                    {
+                        try
+                        {
+                            var bl = System.Text.Json.JsonSerializer.Deserialize<TADBridge.Shared.BlocklistUpdate>(msg.Payload);
+                            if (bl != null)
+                            {
+                                _tcpManager!.BroadcastBlocklist(bl);
+                                SetStatus($"Blocklist sent: {bl.BlockedPrograms.Count} programs, {bl.BlockedWebsites.Count} websites");
+                            }
+                        }
+                        catch { }
+                    }
+                    break;
             }
         }
         catch { /* Ignore malformed messages */ }
@@ -588,6 +687,11 @@ public partial class MainWindow : Window
     private void BtnMessage_Click(object sender, RoutedEventArgs e)
     {
         PostJsonMessage(new { type = "show_message_dialog" });
+    }
+
+    private void BtnFilters_Click(object sender, RoutedEventArgs e)
+    {
+        PostJsonMessage(new { type = "show_blocklist_dialog" });
     }
 
     private void BtnRefresh_Click(object sender, RoutedEventArgs e)

@@ -116,6 +116,18 @@ public sealed class TcpClientManager : IDisposable
     }
     public void PingAll() => BroadcastCommand(TadCommand.Ping);
 
+    public void KillProcessOnStudent(string ip, int pid)
+    {
+        var frame = TadFrameCodec.EncodeJson(TadCommand.KillProcess, new KillProcessRequest { ProcessId = pid });
+        SendRaw(ip, frame);
+    }
+
+    public void BroadcastBlocklist(BlocklistUpdate blocklist)
+    {
+        var frame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist, blocklist);
+        BroadcastRaw(frame);
+    }
+
     // ─── Networking Core ──────────────────────────────────────────────
 
     private async Task ConnectLoopAsync(StudentConnection conn, CancellationToken ct)
@@ -272,6 +284,13 @@ public sealed class TcpClientManager : IDisposable
                 conn.IsConnected = false;
             }
         }
+    }
+
+    private void SendRaw(string ip, byte[] frame)
+    {
+        if (!_connections.TryGetValue(ip, out var conn) || !conn.IsConnected) return;
+        try { conn.Client?.GetStream().Write(frame); }
+        catch { conn.IsConnected = false; }
     }
 
     public void Dispose()

@@ -122,6 +122,104 @@
         </div>
     </div>
 
+    <!-- Device Details Side Panel -->
+    <div class="device-panel-overlay" id="devicePanel">
+        <div class="device-panel-backdrop" onclick="closeDevicePanel()"></div>
+        <div class="device-panel">
+            <div class="dp-header">
+                <h3 id="dpHostname">Device Details</h3>
+                <button class="dp-close" onclick="closeDevicePanel()">&#xE711;</button>
+            </div>
+            <div class="dp-section">
+                <div class="dp-section-title">Identity</div>
+                <div class="dp-row"><span class="label">Host</span><span class="value" id="dpHost">—</span></div>
+                <div class="dp-row"><span class="label">User</span><span class="value" id="dpUser">—</span></div>
+                <div class="dp-row"><span class="label">IP</span><span class="value" id="dpIp">—</span></div>
+            </div>
+            <div class="dp-section">
+                <div class="dp-section-title">Storage</div>
+                <div class="dp-bar-container">
+                    <div class="dp-bar-label"><span id="dpDiskLabel">Disk</span><span id="dpDiskPct">—</span></div>
+                    <div class="dp-bar-track"><div class="dp-bar-fill green" id="dpDiskBar" style="width:0%"></div></div>
+                </div>
+            </div>
+            <div class="dp-section">
+                <div class="dp-section-title">Performance</div>
+                <div class="dp-bar-container">
+                    <div class="dp-bar-label"><span>CPU</span><span id="dpCpuPct">—</span></div>
+                    <div class="dp-bar-track"><div class="dp-bar-fill green" id="dpCpuBar" style="width:0%"></div></div>
+                </div>
+                <div class="dp-bar-container" style="margin-top:12px">
+                    <div class="dp-bar-label"><span>RAM</span><span id="dpRamPct">—</span></div>
+                    <div class="dp-bar-track"><div class="dp-bar-fill green" id="dpRamBar" style="width:0%"></div></div>
+                </div>
+            </div>
+            <div class="dp-section">
+                <div class="dp-section-title">Open Windows</div>
+                <ul class="dp-window-list" id="dpWindowList">
+                    <li style="color:var(--text-secondary);font-size:12px">No data yet</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blocklist Filter Modal -->
+    <div class="modal-overlay" id="blocklistModal" style="display:none" onclick="if(event.target===this)closeBlocklistModal()">
+        <div class="modal-content modal-blocklist">
+            <div class="modal-header">
+                <span>&#xE8D7; Content Filters</span>
+                <button class="modal-btn" onclick="closeBlocklistModal()">&#xE711;</button>
+            </div>
+            <div class="modal-body-form blocklist-body">
+                <div class="blocklist-section">
+                    <h4>&#xE74C; Blocked Programs</h4>
+                    <p class="blocklist-hint">Process names without .exe (e.g. "fortnite", "steam", "minecraft")</p>
+                    <div class="blocklist-add-row">
+                        <input type="text" id="blockProgInput" placeholder="Add program name..." />
+                        <button class="btn btn-primary btn-sm" onclick="addBlockedProgram()">&#xE710; Add</button>
+                    </div>
+                    <div class="blocklist-presets">
+                        <button class="preset-chip" onclick="addPresetProgram('steam')">Steam</button>
+                        <button class="preset-chip" onclick="addPresetProgram('EpicGamesLauncher')">Epic Games</button>
+                        <button class="preset-chip" onclick="addPresetProgram('discord')">Discord</button>
+                        <button class="preset-chip" onclick="addPresetProgram('Spotify')">Spotify</button>
+                        <button class="preset-chip" onclick="addPresetProgram('minecraft')">Minecraft</button>
+                        <button class="preset-chip" onclick="addPresetProgram('Roblox')">Roblox</button>
+                        <button class="preset-chip" onclick="addPresetProgram('vlc')">VLC</button>
+                    </div>
+                    <ul class="blocklist-items" id="blockedProgramsList"></ul>
+                </div>
+                <div class="blocklist-section">
+                    <h4>&#xE774; Blocked Websites</h4>
+                    <p class="blocklist-hint">Domain names matched in browser titles (e.g. "youtube.com", "tiktok.com")</p>
+                    <div class="blocklist-add-row">
+                        <input type="text" id="blockSiteInput" placeholder="Add website domain..." />
+                        <button class="btn btn-primary btn-sm" onclick="addBlockedWebsite()">&#xE710; Add</button>
+                    </div>
+                    <div class="blocklist-presets">
+                        <button class="preset-chip" onclick="addPresetWebsite('youtube.com')">YouTube</button>
+                        <button class="preset-chip" onclick="addPresetWebsite('tiktok.com')">TikTok</button>
+                        <button class="preset-chip" onclick="addPresetWebsite('instagram.com')">Instagram</button>
+                        <button class="preset-chip" onclick="addPresetWebsite('facebook.com')">Facebook</button>
+                        <button class="preset-chip" onclick="addPresetWebsite('twitter.com')">Twitter/X</button>
+                        <button class="preset-chip" onclick="addPresetWebsite('reddit.com')">Reddit</button>
+                        <button class="preset-chip" onclick="addPresetWebsite('twitch.tv')">Twitch</button>
+                    </div>
+                    <ul class="blocklist-items" id="blockedWebsitesList"></ul>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="applyBlocklist()">
+                        &#xE724; Apply to All Students
+                    </button>
+                    <button class="btn btn-danger" onclick="clearBlocklist()">
+                        &#xE74D; Clear All
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeBlocklistModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- About Modal -->
     <div class="modal-overlay" id="aboutModal" style="display:none" onclick="closeAbout(event)">
         <div class="modal-content modal-about">

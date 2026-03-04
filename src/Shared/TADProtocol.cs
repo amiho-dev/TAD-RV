@@ -37,6 +37,8 @@ public enum TadCommand : byte
     LaunchApp       = 0x42,     // Launch application on student
     LaunchUrl       = 0x43,     // Open URL on student browser
     Snapshot        = 0x50,     // Request a JPEG screenshot from the endpoint
+    KillProcess     = 0x51,     // Kill a process on student by PID
+    SetBlocklist    = 0x52,     // Set blocked programs/websites list
 
     // Student → Teacher
     Pong            = 0x81,
@@ -73,8 +75,37 @@ public sealed class StudentStatus
     public string ActiveWindow { get; set; } = "";
     public double CpuUsage { get; set; }
     public long RamUsedMb { get; set; }
+    public long RamTotalMb { get; set; }
+    public long DiskUsedGb { get; set; }
+    public long DiskTotalGb { get; set; }
+    public List<OpenWindowInfo> OpenWindows { get; set; } = new();
     public string Role { get; set; } = "Student";
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class OpenWindowInfo
+{
+    public string Title { get; set; } = "";
+    public int ProcessId { get; set; }
+    public string ProcessName { get; set; } = "";
+}
+
+public sealed class KillProcessRequest
+{
+    public int ProcessId { get; set; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Blocklist — blocked programs & websites sent from teacher to students
+// ═══════════════════════════════════════════════════════════════════════════
+
+public sealed class BlocklistUpdate
+{
+    /// <summary>Process names to block (without .exe). Case-insensitive match.</summary>
+    public List<string> BlockedPrograms { get; set; } = new();
+
+    /// <summary>Website hostnames to block (e.g. "youtube.com"). Matched as substring in browser title bars.</summary>
+    public List<string> BlockedWebsites { get; set; } = new();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

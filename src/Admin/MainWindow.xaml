@@ -223,6 +223,15 @@
                         </StackPanel>
                     </Button>
 
+                    <Button x:Name="BtnFilters" Click="BtnFilters_Click"
+                            Style="{StaticResource ToolBtn}" Tag="info" Margin="2,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8D7;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
+                                       FontSize="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="Filters" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <Button x:Name="BtnRefresh" Click="BtnRefresh_Click"
                             Style="{StaticResource ToolBtn}" Margin="2,0,0,0">
                         <StackPanel Orientation="Horizontal">
@@ -242,6 +251,21 @@
                             <TextBlock Text="Room" Margin="6,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
+
+                    <Border Width="1" Background="#21262D" Margin="6,8" />
+
+                    <!-- Room filter dropdown -->
+                    <TextBlock Text="Room:" Foreground="#8B949E" FontSize="12"
+                               VerticalAlignment="Center" Margin="4,0,4,0"/>
+                    <ComboBox x:Name="CmbRoomFilter"
+                              Width="130" Height="28"
+                              VerticalAlignment="Center"
+                              SelectionChanged="CmbRoomFilter_SelectionChanged"
+                              Background="#161B22" Foreground="#C9D1D9"
+                              BorderBrush="#30363D" FontSize="12"
+                              ToolTip="Filter students by room — 'All Rooms' shows everyone">
+                        <ComboBoxItem Content="All Rooms" IsSelected="True"/>
+                    </ComboBox>
                 </StackPanel>
 
                 <!-- Right side: manual endpoint add -->

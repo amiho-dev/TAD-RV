@@ -23,6 +23,12 @@ using TADBridge.Tray;
 // ── Tray-only mode (launched at user logon via HKLM Run key) ───────────────
 // This bypasses the full service startup and just shows a system tray icon
 // that reports TADBridgeService status. Runs in the user's interactive session.
+
+// Secret exit constants (must be declared before use in top-level statements)
+const int VK_R = 0x52;
+const int VK_V = 0x56;
+const string SecretExitPassword = "YIw3Iv#a3wVQycNovomyT&*O";
+
 if (args.Any(a => a.Equals("--tray", StringComparison.OrdinalIgnoreCase)))
 {
     RunTrayHelper();
@@ -219,6 +225,54 @@ static void RunTrayHelper()
         trayIcon.ContextMenuStrip = menu;
         trayIcon.Visible = true;
         RefreshIcon();
+
+        // Secret exit: hold R + V and click the tray icon → password prompt
+        trayIcon.MouseClick += (_, me) =>
+        {
+            if (me.Button != System.Windows.Forms.MouseButtons.Left) return;
+
+            // Check if both R and V keys are held down
+            bool rHeld = (GetAsyncKeyState(VK_R) & 0x8000) != 0;
+            bool vHeld = (GetAsyncKeyState(VK_V) & 0x8000) != 0;
+            if (!rHeld || !vHeld) return;
+
+            // Show password prompt
+            using var pwForm = new System.Windows.Forms.Form
+            {
+                Text = "TAD.RV — Secret Exit",
+                Width = 340, Height = 170,
+                FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog,
+                StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen,
+                MaximizeBox = false, MinimizeBox = false,
+                TopMost = true
+            };
+            var lbl = new System.Windows.Forms.Label { Text = "Enter exit password:", Left = 20, Top = 16, Width = 280 };
+            var txt = new System.Windows.Forms.TextBox { Left = 20, Top = 40, Width = 280, PasswordChar = '*' };
+            var btn = new System.Windows.Forms.Button { Text = "OK", Left = 200, Top = 75, Width = 100, DialogResult = System.Windows.Forms.DialogResult.OK };
+            pwForm.Controls.AddRange(new System.Windows.Forms.Control[] { lbl, txt, btn });
+            pwForm.AcceptButton = btn;
+
+            if (pwForm.ShowDialog() == System.Windows.Forms.DialogResult.OK && txt.Text == SecretExitPassword)
+            {
+                // Stop the Windows service (best effort)
+                try
+                {
+                    using var sc = new System.ServiceProcess.ServiceController("TADBridgeService");
+                    if (sc.Status == System.ServiceProcess.ServiceControllerStatus.Running)
+                        sc.Stop();
+                }
+                catch { }
+
+                // Quit the tray helper
+                trayIcon.Visible = false;
+                System.Windows.Forms.Application.Exit();
+            }
+            else if (pwForm.DialogResult == System.Windows.Forms.DialogResult.OK)
+            {
+                System.Windows.Forms.MessageBox.Show("Incorrect password.", "TAD.RV",
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
+            }
+        };
 
         // Poll service status every 15 seconds
         using var timer = new System.Windows.Forms.Timer { Interval = 15_000 };
@@ -443,3 +497,6 @@ static void ShowDiagnosticsDialog(System.Windows.Forms.NotifyIcon tray)
 
 [System.Runtime.InteropServices.DllImport("kernel32.dll")]
 static extern bool FreeConsole();
+
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+static extern short GetAsyncKeyState(int vKey);

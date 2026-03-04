@@ -309,6 +309,7 @@ static bool RunInstall()
 
     Step(6, totalSteps, "Configuring Windows Firewall rules...");
     RegisterFirewallRules();
+    EnableNetworkDiscovery();
 
     Step(7, totalSteps, "Registering tray icon (auto-start at login)...");
     AddTrayRunKey();
@@ -323,6 +324,7 @@ static bool RunInstall()
     AddAppRunKey();
     Step(CreateShortcut ? 5 : 4, totalSteps, "Configuring Windows Firewall rules...");
     RegisterAdminFirewallRules();
+    EnableNetworkDiscovery();
 #endif
 
     Console.WriteLine();
@@ -604,6 +606,33 @@ static void AddTrayRunKey()
     catch (Exception ex) { Warn($"Tray Run key (non-fatal): {ex.Message}"); }
 }
 #endif
+
+// ═════════════════════════════════════════════════════════════════════════════
+// NETWORK DISCOVERY  (shared by all targets)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Enable Windows Network Discovery and File & Printer Sharing firewall
+/// groups so that UDP multicast / broadcast on port 17421 works
+/// out-of-the-box on Domain, Private, and Public profiles.
+/// </summary>
+static void EnableNetworkDiscovery()
+{
+    string[] groups =
+    [
+        "Network Discovery",
+        "File and Printer Sharing"
+    ];
+
+    foreach (var group in groups)
+    {
+        int rc = RunVerbose("netsh", $"advfirewall firewall set rule group=\"{group}\" new enable=yes");
+        if (rc == 0)
+            Ok($"Firewall group enabled: {group}");
+        else
+            Warn($"Could not enable '{group}' (exit {rc}) — may need manual configuration");
+    }
+}
 
 
 #if !SETUP_CLIENT
