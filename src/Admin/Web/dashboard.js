@@ -113,6 +113,10 @@ window.chrome.webview.addEventListener('message', (event) => {
             handleConfirmAction(msg.action);
             break;
 
+        case 'toast':
+            showToast(msg.message, msg.level || 'info', msg.duration || 3000);
+            break;
+
         case 'updateAvailable':
             showUpdateBanner(msg.version, msg.releaseNotes, msg.htmlUrl);
             break;
@@ -978,31 +982,42 @@ function freezeFromRv() {
 function lockStudent(ip) {
     sendToHost({ action: 'lock', target: ip });
     closeAllContextMenus();
+    showToast(`Lock command sent to ${getStudentName(ip)}`, 'success');
 }
 
 function unlockStudent(ip) {
     sendToHost({ action: 'unlock', target: ip });
     closeAllContextMenus();
+    showToast(`Unlock command sent to ${getStudentName(ip)}`, 'success');
 }
 
 function freezeStudent(ip) {
     sendToHost({ action: 'freeze', target: ip });
     closeAllContextMenus();
+    showToast(`Freeze command sent to ${getStudentName(ip)}`, 'success');
 }
 
 function unfreezeStudent(ip) {
     sendToHost({ action: 'unfreeze', target: ip });
     closeAllContextMenus();
+    showToast(`Unfreeze command sent to ${getStudentName(ip)}`, 'success');
 }
 
 function blankStudent(ip) {
     sendToHost({ action: 'blank', target: ip });
     closeAllContextMenus();
+    showToast(`Blank screen sent to ${getStudentName(ip)}`, 'success');
 }
 
 function unblankStudent(ip) {
     sendToHost({ action: 'unblank', target: ip });
     closeAllContextMenus();
+    showToast(`Screen restored for ${getStudentName(ip)}`, 'success');
+}
+
+function getStudentName(ip) {
+    const s = students.get(ip);
+    return (s && s.status && s.status.Hostname) ? s.status.Hostname : ip;
 }
 
 function messageStudent(ip) {
@@ -1526,8 +1541,12 @@ function handleConfirmAction(action) {
                 'Lock all student screens? Students will not be able to use their computers.',
                 (duration) => {
                     sendToHost({ action: 'lock_all_confirmed' });
+                    showToast('Lock All command sent', 'success');
                     if (duration > 0) {
-                        const t = setTimeout(() => sendToHost({ action: 'unlock_all' }), duration * 1000);
+                        const t = setTimeout(() => {
+                            sendToHost({ action: 'unlock_all' });
+                            showToast('Auto-unlock: duration expired', 'info');
+                        }, duration * 1000);
                         _activeDurationTimers.push(t);
                     }
                 },
@@ -1538,8 +1557,12 @@ function handleConfirmAction(action) {
                 'Freeze all student screens? Students will see a frozen overlay and cannot interact.',
                 (duration) => {
                     sendToHost({ action: 'freeze_all_confirmed' });
+                    showToast('Freeze All command sent', 'success');
                     if (duration > 0) {
-                        const t = setTimeout(() => sendToHost({ action: 'unfreeze_all' }), duration * 1000);
+                        const t = setTimeout(() => {
+                            sendToHost({ action: 'unfreeze_all' });
+                            showToast('Auto-unfreeze: duration expired', 'info');
+                        }, duration * 1000);
                         _activeDurationTimers.push(t);
                     }
                 },
@@ -1550,8 +1573,12 @@ function handleConfirmAction(action) {
                 'Blank all student screens? All monitors will go black.',
                 (duration) => {
                     sendToHost({ action: 'blank_all_confirmed' });
+                    showToast('Blank All command sent', 'success');
                     if (duration > 0) {
-                        const t = setTimeout(() => sendToHost({ action: 'unblank_all' }), duration * 1000);
+                        const t = setTimeout(() => {
+                            sendToHost({ action: 'unblank_all' });
+                            showToast('Auto-unblank: duration expired', 'info');
+                        }, duration * 1000);
                         _activeDurationTimers.push(t);
                     }
                 },
@@ -1559,5 +1586,45 @@ function handleConfirmAction(action) {
             break;
     }
 }
+
+// ── Toast Notification System ────────────────────────────────────────
+
+function showToast(message, type = 'info', durationMs = 3000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const icons = { success: '\uE73E', warning: '\uE7BA', error: '\uE783', info: '\uE946' };
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('toast-out');
+        setTimeout(() => toast.remove(), 200);
+    }, durationMs);
+}
+
+// ── Connection Badge Update ──────────────────────────────────────────
+
+function updateConnectionBadge() {
+    const badge = document.getElementById('connBadge');
+    const text = document.getElementById('connText');
+    if (!badge || !text) return;
+
+    let online = 0;
+    const now = Date.now();
+    students.forEach(s => {
+        if (s.lastSeen > 0 && (now - s.lastSeen) < 10000) online++;
+    });
+
+    text.textContent = `${online} connected`;
+    if (online > 0) {
+        badge.className = 'conn-badge connected';
+    } else {
+        badge.className = 'conn-badge disconnected';
+    }
+}
+
+// Keep badge in sync with status updates
+setInterval(updateConnectionBadge, 2000);
 
 console.log('[TAD.RV] Teacher Dashboard initialized');

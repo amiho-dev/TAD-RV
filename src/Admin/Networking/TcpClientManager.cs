@@ -280,30 +280,45 @@ public sealed class TcpClientManager : IDisposable
         BroadcastRaw(frame);
     }
 
+    /// <summary>Broadcast a command and return how many students received it.</summary>
+    public int BroadcastCommandCounted(TadCommand cmd)
+    {
+        var frame = TadFrameCodec.Encode(cmd);
+        return BroadcastRawCounted(frame);
+    }
+
     private void BroadcastRaw(byte[] frame)
     {
+        BroadcastRawCounted(frame);
+    }
+
+    private int BroadcastRawCounted(byte[] frame)
+    {
+        int sent = 0;
         foreach (var conn in _connections.Values.Where(c => c.IsConnected))
         {
             try
             {
                 conn.Client?.GetStream().Write(frame);
+                sent++;
             }
             catch
             {
                 conn.IsConnected = false;
             }
         }
+        return sent;
     }
 
-    private void SendRaw(string ip, byte[] frame)
+    private bool SendRaw(string ip, byte[] frame)
     {
-        if (!_connections.TryGetValue(ip, out var conn) || !conn.IsConnected) return;
-        try { conn.Client?.GetStream().Write(frame); }
-        catch { conn.IsConnected = false; }
+        if (!_connections.TryGetValue(ip, out var conn) || !conn.IsConnected) return false;
+        try { conn.Client?.GetStream().Write(frame); return true; }
+        catch { conn.IsConnected = false; return false; }
     }
 
     /// <summary>Send a pre-encoded frame to a specific student (public access for per-student commands).</summary>
-    public void SendCommandToStudent(string ip, byte[] frame) => SendRaw(ip, frame);
+    public bool SendCommandToStudent(string ip, byte[] frame) => SendRaw(ip, frame);
 
     public void Dispose()
     {

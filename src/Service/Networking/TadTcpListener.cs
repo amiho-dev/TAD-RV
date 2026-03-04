@@ -179,7 +179,7 @@ public sealed class TadTcpListener : BackgroundService
 
         if (offset > 0)
         {
-            var remaining = data.AsSpan(offset);
+            var remaining = data.AsSpan(offset, length - offset);
             accumulator.SetLength(0);
             accumulator.Write(remaining);
         }

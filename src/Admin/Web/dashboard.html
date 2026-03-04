@@ -15,8 +15,15 @@
     </div>
 
     <!-- Header Stats Bar -->
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <div class="stats-bar">
         <div class="stats-left">
+            <span class="conn-badge disconnected" id="connBadge">
+                <span class="conn-dot"></span>
+                <span id="connText">0 connected</span>
+            </span>
             <div class="stat">
                 <span class="stat-value" id="statOnline">0</span>
                 <span class="stat-label">Online</span>
@@ -54,19 +61,19 @@
                 <button class="stats-action-btn" onclick="handleConfirmAction('lock_all')" title="Lock all student screens">
                     <span class="sai">&#xE72E;</span> Lock All
                 </button>
-                <button class="stats-action-btn" onclick="sendToHost({action:'unlock_all'})" title="Unlock all screens">
+                <button class="stats-action-btn" onclick="sendToHost({action:'unlock_all'}); showToast('Unlock All sent','success')" title="Unlock all screens">
                     <span class="sai">&#xE785;</span> Unlock All
                 </button>
                 <button class="stats-action-btn" onclick="handleConfirmAction('freeze_all')" title="Freeze all student screens">
                     <span class="sai">&#xE7AD;</span> Freeze All
                 </button>
-                <button class="stats-action-btn" onclick="sendToHost({action:'unfreeze_all'})" title="Unfreeze all screens">
+                <button class="stats-action-btn" onclick="sendToHost({action:'unfreeze_all'}); showToast('Unfreeze All sent','success')" title="Unfreeze all screens">
                     <span class="sai">&#xE77A;</span> Unfreeze All
                 </button>
                 <button class="stats-action-btn" onclick="handleConfirmAction('blank_all')" title="Blank all student screens">
                     <span class="sai">&#xE747;</span> Blank All
                 </button>
-                <button class="stats-action-btn" onclick="sendToHost({action:'unblank_all'})" title="Restore all screens">
+                <button class="stats-action-btn" onclick="sendToHost({action:'unblank_all'}); showToast('Unblank All sent','success')" title="Restore all screens">
                     <span class="sai">&#xE793;</span> Unblank All
                 </button>
                 <button class="stats-action-btn" onclick="openMessageDialog()" title="Broadcast a message to all students">

@@ -343,7 +343,7 @@ internal sealed class EndpointAgent : IDisposable
 
         if (offset > 0)
         {
-            var remaining = data.AsSpan(offset);
+            var remaining = data.AsSpan(offset, len - offset);
             acc.SetLength(0);
             acc.Write(remaining);
         }

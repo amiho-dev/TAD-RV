@@ -197,8 +197,24 @@ public partial class MainWindow : Window
         var menu = new ContextMenuStrip();
         menu.Items.Add("Show TAD.RV", null, (_, _) => ShowFromTray());
         menu.Items.Add("-");
-        menu.Items.Add("Lock All Screens", null, (_, _) => Dispatcher.InvokeAsync(() => BtnLockAll_Click(this, new RoutedEventArgs())));
-        menu.Items.Add("Unlock All Screens", null, (_, _) => Dispatcher.InvokeAsync(() => BtnUnlockAll_Click(this, new RoutedEventArgs())));
+        menu.Items.Add("Lock All Screens", null, (_, _) => Dispatcher.InvokeAsync(() =>
+        {
+            PostJsonMessage(new { type = "confirm_action", action = "lock_all" });
+        }));
+        menu.Items.Add("Unlock All Screens", null, (_, _) => Dispatcher.InvokeAsync(() =>
+        {
+            if (_isDemoMode) _demoManager!.BroadcastUnlock();
+            else
+            {
+                int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
+                ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+            }
+            _allFrozen = false;
+            _allBlanked = false;
+            PostJsonMessage(new { type = "freeze_all", frozen = false });
+            PostJsonMessage(new { type = "blank_all", blanked = false });
+            SetStatus("Unlocked all screens");
+        }));
         menu.Items.Add("-");
         menu.Items.Add("Diagnostics", null, (_, _) => Dispatcher.InvokeAsync(ShowDiagnostics));
         menu.Items.Add("-");
@@ -462,6 +478,12 @@ public partial class MainWindow : Window
         catch { /* WebView2 may be closing */ }
     }
 
+    /// <summary>Send a toast notification to the WebView2 dashboard.</summary>
+    private void ShowToast(string message, string level = "info")
+    {
+        PostJsonMessage(new { type = "toast", message, level });
+    }
+
     /// <summary>Returns the InformationalVersion from the running assembly (e.g. v26.3.02.003-admin).</summary>
     private static string GetRunningVersion()
     {
@@ -554,7 +576,8 @@ public partial class MainWindow : Window
                     if (!_isDemoMode)
                     {
                         var blFrame = TadFrameCodec.Encode(TadCommand.BlankScreen);
-                        _tcpManager!.SendCommandToStudent(msg.Target, blFrame);
+                        bool blSent = _tcpManager!.SendCommandToStudent(msg.Target, blFrame);
+                        if (!blSent) ShowToast($"Failed: {msg.Target} not reachable", "error");
                     }
                     SetStatus($"Blanked screen: {msg.Target}");
                     break;
@@ -562,7 +585,8 @@ public partial class MainWindow : Window
                     if (!_isDemoMode)
                     {
                         var ubFrame = TadFrameCodec.Encode(TadCommand.UnblankScreen);
-                        _tcpManager!.SendCommandToStudent(msg.Target, ubFrame);
+                        bool ubSent = _tcpManager!.SendCommandToStudent(msg.Target, ubFrame);
+                        if (!ubSent) ShowToast($"Failed: {msg.Target} not reachable", "error");
                     }
                     SetStatus($"Restored screen: {msg.Target}");
                     break;
@@ -571,6 +595,7 @@ public partial class MainWindow : Window
                     {
                         if (_isDemoMode) _demoManager!.BroadcastPushMessage(msg.Payload);
                         else _tcpManager!.BroadcastPushMessage(msg.Payload);
+                        ShowToast("Message broadcast sent", "success");
                         SetStatus($"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"");
                     }
                     break;
@@ -581,7 +606,8 @@ public partial class MainWindow : Window
                         {
                             var pmFrame = TadFrameCodec.EncodeJson(TadCommand.PushMessage,
                                 new PushMessageRequest { Message = msg.Payload });
-                            _tcpManager!.SendCommandToStudent(msg.Target, pmFrame);
+                            bool pmSent = _tcpManager!.SendCommandToStudent(msg.Target, pmFrame);
+                            if (!pmSent) ShowToast($"Failed: {msg.Target} not reachable", "error");
                         }
                         SetStatus($"Message sent to {msg.Target}");
                     }
@@ -609,46 +635,82 @@ public partial class MainWindow : Window
                     }
                     break;
                 case "lock_all_confirmed":
-                    if (_isDemoMode) _demoManager!.BroadcastLock();
-                    else _tcpManager!.BroadcastLock();
-                    SetStatus("Locked all screens");
+                    {
+                        if (_isDemoMode) _demoManager!.BroadcastLock();
+                        else
+                        {
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Lock);
+                            ShowToast(n > 0 ? $"Lock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        }
+                        SetStatus("Locked all screens");
+                    }
                     break;
                 case "unlock_all":
-                    if (_isDemoMode) _demoManager!.BroadcastUnlock();
-                    else _tcpManager!.BroadcastUnlock();
-                    _allFrozen = false;
-                    _allBlanked = false;
-                    PostJsonMessage(new { type = "freeze_all", frozen = false });
-                    PostJsonMessage(new { type = "blank_all", blanked = false });
-                    SetStatus("Unlocked all screens");
+                    {
+                        if (_isDemoMode) _demoManager!.BroadcastUnlock();
+                        else
+                        {
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
+                            ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        }
+                        _allFrozen = false;
+                        _allBlanked = false;
+                        PostJsonMessage(new { type = "freeze_all", frozen = false });
+                        PostJsonMessage(new { type = "blank_all", blanked = false });
+                        SetStatus("Unlocked all screens");
+                    }
                     break;
                 case "freeze_all_confirmed":
-                    _allFrozen = true;
-                    if (_isDemoMode) _demoManager!.BroadcastFreeze(300, "Eyes on the teacher!");
-                    else _tcpManager!.BroadcastFreeze();
-                    PostJsonMessage(new { type = "freeze_all", frozen = true });
-                    SetStatus("Froze all screens");
+                    {
+                        _allFrozen = true;
+                        if (_isDemoMode) _demoManager!.BroadcastFreeze(300, "Eyes on the teacher!");
+                        else
+                        {
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Freeze);
+                            ShowToast(n > 0 ? $"Freeze sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        }
+                        PostJsonMessage(new { type = "freeze_all", frozen = true });
+                        SetStatus("Froze all screens");
+                    }
                     break;
                 case "unfreeze_all":
-                    _allFrozen = false;
-                    if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
-                    else _tcpManager!.BroadcastUnfreeze();
-                    PostJsonMessage(new { type = "freeze_all", frozen = false });
-                    SetStatus("Unfroze all screens");
+                    {
+                        _allFrozen = false;
+                        if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
+                        else
+                        {
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unfreeze);
+                            ShowToast(n > 0 ? $"Unfreeze sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        }
+                        PostJsonMessage(new { type = "freeze_all", frozen = false });
+                        SetStatus("Unfroze all screens");
+                    }
                     break;
                 case "blank_all_confirmed":
-                    _allBlanked = true;
-                    if (_isDemoMode) _demoManager!.BroadcastBlankScreen();
-                    else _tcpManager!.BroadcastBlankScreen();
-                    PostJsonMessage(new { type = "blank_all", blanked = true });
-                    SetStatus("Blanked all screens");
+                    {
+                        _allBlanked = true;
+                        if (_isDemoMode) _demoManager!.BroadcastBlankScreen();
+                        else
+                        {
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.BlankScreen);
+                            ShowToast(n > 0 ? $"Blank sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        }
+                        PostJsonMessage(new { type = "blank_all", blanked = true });
+                        SetStatus("Blanked all screens");
+                    }
                     break;
                 case "unblank_all":
-                    _allBlanked = false;
-                    if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
-                    else _tcpManager!.BroadcastUnblankScreen();
-                    PostJsonMessage(new { type = "blank_all", blanked = false });
-                    SetStatus("Restored all screens");
+                    {
+                        _allBlanked = false;
+                        if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
+                        else
+                        {
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.UnblankScreen);
+                            ShowToast(n > 0 ? $"Unblank sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        }
+                        PostJsonMessage(new { type = "blank_all", blanked = false });
+                        SetStatus("Restored all screens");
+                    }
                     break;
 
                 // ── Per-student Internetsperre / Programmsperre ───────────
@@ -774,54 +836,6 @@ public partial class MainWindow : Window
     }
 
     // ─── Toolbar Buttons ──────────────────────────────────────────────
-
-    private void BtnLockAll_Click(object sender, RoutedEventArgs e)
-    {
-        PostJsonMessage(new { type = "confirm_action", action = "lock_all" });
-    }
-
-    private void BtnUnlockAll_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isDemoMode) _demoManager!.BroadcastUnlock();
-        else _tcpManager!.BroadcastUnlock();
-        _allFrozen = false;
-        _allBlanked = false;
-        PostJsonMessage(new { type = "freeze_all", frozen = false });
-        PostJsonMessage(new { type = "blank_all", blanked = false });
-        SetStatus("Unlocked all screens");
-    }
-
-    private void BtnFreezeAll_Click(object sender, RoutedEventArgs e)
-    {
-        if (_allFrozen)
-        {
-            _allFrozen = false;
-            if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
-            else _tcpManager!.BroadcastUnfreeze();
-            PostJsonMessage(new { type = "freeze_all", frozen = false });
-            SetStatus("Unfroze all screens");
-        }
-        else
-        {
-            PostJsonMessage(new { type = "confirm_action", action = "freeze_all" });
-        }
-    }
-
-    private void BtnBlankAll_Click(object sender, RoutedEventArgs e)
-    {
-        if (_allBlanked)
-        {
-            _allBlanked = false;
-            if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
-            else _tcpManager!.BroadcastUnblankScreen();
-            PostJsonMessage(new { type = "blank_all", blanked = false });
-            SetStatus("Restored all screens");
-        }
-        else
-        {
-            PostJsonMessage(new { type = "confirm_action", action = "blank_all" });
-        }
-    }
 
     private void BtnRefresh_Click(object sender, RoutedEventArgs e)
     {
