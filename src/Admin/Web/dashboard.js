@@ -4,13 +4,13 @@
 // TAD.RV — The Greater Brother of the mighty te.comp NET.FX
 //
 // Receives student status/video from the C# host via window.chrome.webview.
-// Renders a live grid of student tiles with thumbnail previews.
+// Renders a live grid of compact student tiles.
 // Uses the WebCodecs API for hardware-accelerated H.264 decoding on
 // the teacher's iGPU (i5-12400 UHD 730).
 //
 // Features: Remote View, Lock/Unlock, Freeze, Blank Screen, Hand Raise,
 //           Broadcast Message, Search/Filter, Main-Stream focus decoding,
-//           Per-tile CPU/RAM, Demo mode support.
+//           Per-student Internetsperre/Programmsperre, Context menus.
 // ═══════════════════════════════════════════════════════════════════════
 
 'use strict';
@@ -26,6 +26,10 @@ let currentFilter = '';               // Search filter string
 let appVersion = '26700.192';         // Updated by config message
 let showOffline = true;               // Show offline/connecting tiles by default
 let hideIfAllOffline = false;         // Toggle: show nothing if every PC is offline
+
+// Per-student block state (tracked teacher-side)
+const internetBlocked = new Set();    // IPs with Internetsperre active
+const programBlocked = new Set();     // IPs with Programmsperre active
 
 // ── Message Bridge (C# → JS) ────────────────────────────────────────
 
@@ -155,37 +159,59 @@ function renderTile(student) {
     tile.id = `tile-${student.ip.replace(/\./g, '-')}`;
     tile.dataset.ip = student.ip;
     tile.innerHTML = `
-        <div class="tile-thumb">
+        <div class="tile-preview">
             <canvas width="480" height="270"></canvas>
-            <div class="placeholder">&#xE7F4;</div>
-            <div class="tile-badges"></div>
+            <div class="preview-placeholder">&#xE7F4;</div>
             <div class="tile-hand-indicator" style="display:none">&#xE768;</div>
         </div>
-        <div class="tile-actions">
-            <button class="tile-btn" onclick="event.stopPropagation(); startRv('${student.ip}')" title="Remote View">&#xE7B3;</button>
-            <button class="tile-btn danger" onclick="event.stopPropagation(); lockStudent('${student.ip}')" title="Lock">&#xE72E;</button>
-            <button class="tile-btn success" onclick="event.stopPropagation(); unlockStudent('${student.ip}')" title="Unlock">&#xE785;</button>
-            <button class="tile-btn" onclick="event.stopPropagation(); freezeStudent('${student.ip}')" title="Freeze">&#xE7AD;</button>
-            <button class="tile-btn" onclick="event.stopPropagation(); openDevicePanel('${student.ip}')" title="Details">&#xE946;</button>
+        <div class="tile-body">
+            <div class="tile-main-row">
+                <div class="tile-identity">
+                    <span class="tile-hostname">${student.ip}</span>
+                    <span class="tile-user">—</span>
+                </div>
+                <div class="tile-status-dot"></div>
+            </div>
+            <div class="tile-indicators"></div>
         </div>
-        <div class="tile-info">
-            <span class="tile-hostname">${student.ip}</span>
-            <span class="tile-user">—</span>
+        <div class="tile-ctx-menu" style="display:none">
+            <button onclick="event.stopPropagation(); startRv('${student.ip}')">&#xE7B3; Remote View</button>
+            <button onclick="event.stopPropagation(); openDevicePanel('${student.ip}')">&#xE946; Details</button>
+            <div class="ctx-sep"></div>
+            <button onclick="event.stopPropagation(); lockStudent('${student.ip}')">&#xE72E; Lock</button>
+            <button onclick="event.stopPropagation(); unlockStudent('${student.ip}')">&#xE785; Unlock</button>
+            <button onclick="event.stopPropagation(); freezeStudent('${student.ip}')">&#xE7AD; Freeze</button>
+            <button onclick="event.stopPropagation(); unfreezeStudent('${student.ip}')">&#xE77A; Unfreeze</button>
+            <div class="ctx-sep"></div>
+            <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; Internetsperre</button>
+            <button onclick="event.stopPropagation(); toggleProgramBlock('${student.ip}')">&#xE74C; Programmsperre</button>
         </div>
-        <div class="tile-metrics">
-            <span class="tile-cpu">CPU —</span>
-            <span class="tile-ram">RAM —</span>
-        </div>
-        <div class="tile-window"></div>
     `;
 
-    tile.addEventListener('click', () => startRv(student.ip));
+    // Double-click opens RV
+    tile.addEventListener('dblclick', () => startRv(student.ip));
+    // Right-click opens context menu
+    tile.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        closeAllContextMenus();
+        const menu = tile.querySelector('.tile-ctx-menu');
+        menu.style.display = 'block';
+    });
+    // Click closes context menu on this tile
+    tile.addEventListener('click', () => {
+        tile.querySelector('.tile-ctx-menu').style.display = 'none';
+    });
 
     grid.appendChild(tile);
     student.tileEl = tile;
     student.canvas = tile.querySelector('canvas');
     student.ctx = student.canvas.getContext('2d');
 }
+
+function closeAllContextMenus() {
+    document.querySelectorAll('.tile-ctx-menu').forEach(m => m.style.display = 'none');
+}
+document.addEventListener('click', closeAllContextMenus);
 
 function updateTileUI(student) {
     if (!student.tileEl || !student.status) return;
@@ -195,19 +221,6 @@ function updateTileUI(student) {
     // Update text
     tile.querySelector('.tile-hostname').textContent = s.Hostname || student.ip;
     tile.querySelector('.tile-user').textContent = s.Username || '—';
-    tile.querySelector('.tile-window').textContent = s.ActiveWindow || '';
-
-    // CPU / RAM metrics
-    const cpu = tile.querySelector('.tile-cpu');
-    const ram = tile.querySelector('.tile-ram');
-    if (s.CpuUsage !== undefined) {
-        cpu.textContent = `CPU ${Math.round(s.CpuUsage)}%`;
-        cpu.className = 'tile-cpu' + (s.CpuUsage > 80 ? ' high' : '');
-    }
-    if (s.RamUsedMb !== undefined) {
-        const gb = (s.RamUsedMb / 1024).toFixed(1);
-        ram.textContent = `RAM ${gb} GB`;
-    }
 
     // Hand raise indicator
     const handEl = tile.querySelector('.tile-hand-indicator');
@@ -217,63 +230,44 @@ function updateTileUI(student) {
         else tile.classList.remove('hand-raised');
     }
 
-    // Update badges
-    const badges = tile.querySelector('.tile-badges');
-    let html = '';
+    // State classes
+    if (s.IsLocked) tile.classList.add('locked'); else tile.classList.remove('locked');
+    if (s.IsFrozen) tile.classList.add('frozen'); else tile.classList.remove('frozen');
 
-    if (s.IsLocked) {
-        html += '<span class="badge badge-locked">Locked</span>';
-        tile.classList.add('locked');
-    } else {
-        tile.classList.remove('locked');
-    }
-
-    if (s.IsFrozen) {
-        html += '<span class="badge badge-frozen">Frozen</span>';
-        tile.classList.add('frozen');
-    } else {
-        tile.classList.remove('frozen');
-    }
-
-    if (s.IsBlankScreen) {
-        html += '<span class="badge badge-blank">Blank</span>';
-    }
-
-    if (s.IsStreaming) html += '<span class="badge badge-streaming">RV</span>';
-
-    if (s.IsHandRaised) html += '<span class="badge badge-hand">Hand</span>';
-
-    // Determine real connectivity: "online" = received status within the last 10s
+    // Determine real connectivity
     const now = Date.now();
     const neverSeen = student.lastSeen === 0;
     const recentlySeen = !neverSeen && (now - student.lastSeen < 10000);
-    if (recentlySeen) {
-        html += '<span class="badge badge-online">Online</span>';
-        tile.classList.remove('offline');
-    } else if (neverSeen) {
-        html += '<span class="badge badge-connecting">Connecting…</span>';
-        tile.classList.remove('offline');
-    } else {
-        html += '<span class="badge badge-offline">Offline</span>';
-        tile.classList.add('offline');
-    }
 
-    badges.innerHTML = html;
+    // Status dot
+    const dot = tile.querySelector('.tile-status-dot');
+    dot.className = 'tile-status-dot';
+    if (s.IsLocked) dot.classList.add('dot-locked');
+    else if (s.IsFrozen) dot.classList.add('dot-frozen');
+    else if (recentlySeen) dot.classList.add('dot-online');
+    else if (neverSeen) dot.classList.add('dot-connecting');
+    else dot.classList.add('dot-offline');
 
-    // Frozen overlay on thumbnail
-    const thumb = tile.querySelector('.tile-thumb');
-    let frozenOverlay = thumb.querySelector('.frozen-overlay');
-    if (s.IsFrozen && !frozenOverlay) {
-        frozenOverlay = document.createElement('div');
-        frozenOverlay.className = 'frozen-overlay';
-        frozenOverlay.innerHTML = '&#xE7AD; Frozen';
-        thumb.appendChild(frozenOverlay);
-    } else if (!s.IsFrozen && frozenOverlay) {
-        frozenOverlay.remove();
-    }
+    if (recentlySeen) tile.classList.remove('offline');
+    else if (!neverSeen) tile.classList.add('offline');
+    else tile.classList.remove('offline');
+
+    // Build indicator badges
+    const indicators = tile.querySelector('.tile-indicators');
+    let html = '';
+
+    if (s.IsLocked) html += '<span class="ind ind-locked" title="Locked">&#xE72E;</span>';
+    if (s.IsFrozen) html += '<span class="ind ind-frozen" title="Frozen">&#xE7AD;</span>';
+    if (s.IsBlankScreen) html += '<span class="ind ind-blank" title="Blanked">&#xE7B3;</span>';
+    if (internetBlocked.has(student.ip)) html += '<span class="ind ind-inet" title="Internetsperre">&#xE774;</span>';
+    if (programBlocked.has(student.ip)) html += '<span class="ind ind-prog" title="Programmsperre">&#xE74C;</span>';
+    if (s.IsStreaming) html += '<span class="ind ind-stream" title="Streaming">&#xE714;</span>';
+    if (s.IsHandRaised) html += '<span class="ind ind-hand" title="Hand Raised">&#xE768;</span>';
+
+    indicators.innerHTML = html;
 
     // Hide placeholder if we have video
-    const placeholder = tile.querySelector('.placeholder');
+    const placeholder = tile.querySelector('.preview-placeholder');
     if (student.hasReceivedFrame && placeholder) placeholder.style.display = 'none';
 
     // Apply search filter visibility
@@ -391,7 +385,7 @@ function handleDemoFrame(ip, frame) {
 
     // Mark as having frames so placeholder hides
     student.hasReceivedFrame = true;
-    const placeholder = student.tileEl?.querySelector('.placeholder');
+    const placeholder = student.tileEl?.querySelector('.preview-placeholder');
     if (placeholder) placeholder.style.display = 'none';
 
     // Render synthetic desktop on the tile canvas
@@ -956,6 +950,33 @@ function freezeStudent(ip) {
 
 function unfreezeStudent(ip) {
     sendToHost({ action: 'unfreeze', target: ip });
+}
+
+function toggleInternetBlock(ip) {
+    if (internetBlocked.has(ip)) {
+        internetBlocked.delete(ip);
+        sendToHost({ action: 'internet_unblock', target: ip });
+    } else {
+        internetBlocked.add(ip);
+        sendToHost({ action: 'internet_block', target: ip });
+    }
+    // Refresh tile indicators
+    const student = students.get(ip);
+    if (student) updateTileUI(student);
+    closeAllContextMenus();
+}
+
+function toggleProgramBlock(ip) {
+    if (programBlocked.has(ip)) {
+        programBlocked.delete(ip);
+        sendToHost({ action: 'program_unblock', target: ip });
+    } else {
+        programBlocked.add(ip);
+        sendToHost({ action: 'program_block', target: ip });
+    }
+    const student = students.get(ip);
+    if (student) updateTileUI(student);
+    closeAllContextMenus();
 }
 
 function sendToHost(msg) {

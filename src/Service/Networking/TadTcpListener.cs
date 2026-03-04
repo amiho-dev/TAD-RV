@@ -48,6 +48,11 @@ public sealed class TadTcpListener : BackgroundService
     private BlocklistUpdate _blocklist = new();
     private readonly object _blocklistLock = new();
 
+    // CPU usage tracking via PerformanceCounter-free approach
+    private TimeSpan _prevCpuTotal;
+    private DateTime _prevCpuTime = DateTime.UtcNow;
+    private double _lastCpuUsage;
+
     public TadTcpListener(
         ILogger<TadTcpListener> log,
         DriverBridge driver,
@@ -671,7 +676,10 @@ public sealed class TadTcpListener : BackgroundService
     {
         var heartbeat = _driver.Heartbeat();
 
-        // Collect open windows from visible top-level processes
+        // ── Logged-in user (from interactive session, NOT this service account) ──
+        string loggedInUser = GetConsoleSessionUser();
+
+        // ── Collect open windows from the interactive session ──
         var openWindows = new List<OpenWindowInfo>();
         try
         {
@@ -694,7 +702,7 @@ public sealed class TadTcpListener : BackgroundService
         }
         catch { }
 
-        // Disk usage (system drive)
+        // ── Disk usage (system drive) ──
         long diskUsedGb = 0, diskTotalGb = 0;
         try
         {
@@ -704,36 +712,128 @@ public sealed class TadTcpListener : BackgroundService
         }
         catch { }
 
-        // RAM total (via GC or WMI-free approach)
+        // ── RAM: system-wide usage (not just this process) ──
         long ramTotalMb = 0;
+        long ramUsedMb = 0;
         try
         {
             var ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
             ramTotalMb = (long)(ci.TotalPhysicalMemory / (1024 * 1024));
+            long ramAvailMb = (long)(ci.AvailablePhysicalMemory / (1024 * 1024));
+            ramUsedMb = ramTotalMb - ramAvailMb;
         }
         catch
         {
             ramTotalMb = Environment.WorkingSet / (1024 * 1024) * 4; // rough fallback
+            ramUsedMb = Environment.WorkingSet / (1024 * 1024);
         }
+
+        // ── CPU: system-wide usage via process time delta ──
+        double cpuUsage = MeasureCpuUsage();
 
         return new StudentStatus
         {
             Hostname      = Environment.MachineName,
-            Username      = Environment.UserName,
+            Username      = loggedInUser,
             IpAddress     = GetLocalIp(),
             DriverLoaded  = heartbeat != null,
             IsLocked      = _isLocked,
             IsStreaming   = _isStreaming,
             IsBlankScreen = _isBlanked,
             ActiveWindow  = GetForegroundWindowTitle(),
-            CpuUsage      = 0,
-            RamUsedMb     = Environment.WorkingSet / (1024 * 1024),
+            CpuUsage      = cpuUsage,
+            RamUsedMb     = ramUsedMb,
             RamTotalMb    = ramTotalMb,
             DiskUsedGb    = diskUsedGb,
             DiskTotalGb   = diskTotalGb,
             OpenWindows   = openWindows,
             Timestamp     = DateTime.UtcNow
         };
+    }
+
+    /// <summary>
+    /// Get the username of the interactively logged-in user (console session).
+    /// The service runs as SYSTEM so Environment.UserName returns the service account.
+    /// </summary>
+    private string GetConsoleSessionUser()
+    {
+        try
+        {
+            int sessionId = WTSGetActiveConsoleSessionId();
+            if (sessionId == unchecked((int)0xFFFFFFFF)) return Environment.MachineName;
+
+            if (WTSQuerySessionInformation(IntPtr.Zero, sessionId, WTS_INFO_CLASS.WTSUserName,
+                    out IntPtr buffer, out int bytesReturned) && bytesReturned > 1)
+            {
+                string user = Marshal.PtrToStringUni(buffer) ?? "";
+                WTSFreeMemory(buffer);
+                if (!string.IsNullOrEmpty(user)) return user;
+            }
+        }
+        catch { /* P/Invoke may fail on older Windows */ }
+
+        // Fallback: query explorer.exe owner
+        try
+        {
+            var explorer = Process.GetProcessesByName("explorer").FirstOrDefault();
+            if (explorer != null)
+            {
+                // The explorer.exe process runs under the logged-in user
+                return GetProcessOwner(explorer.Id) ?? Environment.MachineName;
+            }
+        }
+        catch { }
+
+        return Environment.MachineName;
+    }
+
+    private static string? GetProcessOwner(int pid)
+    {
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                $"SELECT * FROM Win32_Process WHERE ProcessId = {pid}");
+            foreach (System.Management.ManagementObject obj in searcher.Get())
+            {
+                var args = new object[] { "", "" };
+                if ((uint)obj.InvokeMethod("GetOwner", args) == 0)
+                    return args[0]?.ToString();
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    /// <summary>
+    /// Measure system-wide CPU usage by summing all process times over a time delta.
+    /// This avoids PerformanceCounter which requires special setup.
+    /// </summary>
+    private double MeasureCpuUsage()
+    {
+        try
+        {
+            TimeSpan totalCpu = TimeSpan.Zero;
+            foreach (var proc in Process.GetProcesses())
+            {
+                try { totalCpu += proc.TotalProcessorTime; }
+                catch { /* access denied */ }
+            }
+
+            var now = DateTime.UtcNow;
+            var elapsed = now - _prevCpuTime;
+            if (elapsed.TotalMilliseconds > 500)
+            {
+                var cpuDelta = totalCpu - _prevCpuTotal;
+                int cores = Environment.ProcessorCount;
+                _lastCpuUsage = Math.Clamp(
+                    cpuDelta.TotalMilliseconds / elapsed.TotalMilliseconds / cores * 100.0,
+                    0, 100);
+                _prevCpuTotal = totalCpu;
+                _prevCpuTime = now;
+            }
+            return Math.Round(_lastCpuUsage, 1);
+        }
+        catch { return 0; }
     }
 
     private void SendStatusNow()
@@ -848,6 +948,16 @@ public sealed class TadTcpListener : BackgroundService
     }
 
     // ─── WTS P/Invoke — message box in the active user session ───────
+
+    private enum WTS_INFO_CLASS { WTSUserName = 5, WTSDomainName = 7 }
+
+    [DllImport("Wtsapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool WTSQuerySessionInformation(
+        IntPtr hServer, int sessionId, WTS_INFO_CLASS wtsInfoClass,
+        out IntPtr ppBuffer, out int pBytesReturned);
+
+    [DllImport("Wtsapi32.dll")]
+    private static extern void WTSFreeMemory(IntPtr pMemory);
 
     [DllImport("Wtsapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool WTSSendMessage(

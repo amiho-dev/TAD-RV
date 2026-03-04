@@ -293,6 +293,9 @@ public sealed class TcpClientManager : IDisposable
         catch { conn.IsConnected = false; }
     }
 
+    /// <summary>Send a pre-encoded frame to a specific student (public access for per-student commands).</summary>
+    public void SendCommandToStudent(string ip, byte[] frame) => SendRaw(ip, frame);
+
     public void Dispose()
     {
         _cts.Cancel();

@@ -16,8 +16,8 @@
     --accent-red: #F85149;
     --accent-orange: #D29922;
     --accent-purple: #BC8CFF;
-    --tile-width: 280px;
-    --tile-height: 200px;
+    --tile-width: 170px;
+    --tile-height: auto;
 }
 
 * {
@@ -221,8 +221,8 @@ body {
 .student-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(var(--tile-width), 1fr));
-    gap: 16px;
-    padding: 20px 24px;
+    gap: 10px;
+    padding: 16px 20px;
     min-height: calc(100vh - 100px);
 }
 
@@ -245,25 +245,25 @@ body {
 .empty-state p  { font-size: 14px; }
 .empty-hint     { font-size: 12px; color: var(--accent-orange); margin-top: 8px; }
 
-/* ── Student Tile ─────────────────────────────────────────────────────── */
+/* ── Compact Student Tile ─────────────────────────────────────────────── */
 
 .student-tile {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
     overflow: hidden;
-    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
-    cursor: pointer;
+    transition: border-color 0.2s, transform 0.12s, box-shadow 0.2s;
+    cursor: default;
     position: relative;
 }
 .student-tile:hover {
     border-color: var(--accent-blue);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(88, 166, 255, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 12px rgba(88, 166, 255, 0.08);
 }
 .student-tile.locked  { border-color: var(--accent-red); }
 .student-tile.frozen  { border-color: var(--accent-orange); }
-.student-tile.offline { opacity: 0.5; }
+.student-tile.offline { opacity: 0.45; }
 .student-tile.hand-raised {
     border-color: var(--accent-purple);
     animation: handPulse 2s ease-in-out infinite;
@@ -271,13 +271,13 @@ body {
 
 @keyframes handPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(188, 140, 255, 0.3); }
-    50%      { box-shadow: 0 0 12px 4px rgba(188, 140, 255, 0.15); }
+    50%      { box-shadow: 0 0 8px 3px rgba(188, 140, 255, 0.12); }
 }
 
-/* Thumbnail area */
-.tile-thumb {
+/* Tiny preview area */
+.tile-preview {
     width: 100%;
-    height: 140px;
+    height: 90px;
     background: var(--bg-tertiary);
     display: flex;
     align-items: center;
@@ -285,30 +285,31 @@ body {
     position: relative;
     overflow: hidden;
 }
-.tile-thumb canvas {
+.tile-preview canvas {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-.tile-thumb .placeholder {
+.preview-placeholder {
     font-family: 'Segoe MDL2 Assets';
-    font-size: 36px;
+    font-size: 24px;
     color: var(--text-secondary);
-    opacity: 0.3;
+    opacity: 0.25;
+    position: absolute;
 }
 
 /* Hand raise indicator */
 .tile-hand-indicator {
     position: absolute;
-    top: 8px;
-    left: 8px;
-    width: 28px;
-    height: 28px;
+    top: 4px;
+    left: 4px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: var(--accent-purple);
     color: #fff;
     font-family: 'Segoe MDL2 Assets';
-    font-size: 14px;
+    font-size: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -318,127 +319,130 @@ body {
 
 @keyframes handBounce {
     0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-4px); }
+    50%      { transform: translateY(-3px); }
 }
 
-/* Frozen overlay */
-.frozen-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(210, 153, 34, 0.5);
-    color: #fff;
-    font-family: 'Segoe MDL2 Assets', 'Segoe UI', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
+/* Tile body */
+.tile-body {
+    padding: 6px 8px 4px;
+}
+
+.tile-main-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    backdrop-filter: blur(2px);
-    z-index: 4;
-}
-
-/* Status badges */
-.tile-badges {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    max-width: 70%;
-    justify-content: flex-end;
-    z-index: 5;
-}
-.badge {
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.badge-online    { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
-.badge-locked    { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
-.badge-frozen    { background: rgba(210, 153, 34, 0.2); color: var(--accent-orange); }
-.badge-blank     { background: rgba(139, 148, 158, 0.3); color: var(--text-primary); }
-.badge-streaming { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
-.badge-hand      { background: rgba(188, 140, 255, 0.2); color: var(--accent-purple); }
-.badge-offline   { background: rgba(139, 148, 158, 0.2); color: var(--text-secondary); }
-.badge-connecting { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); animation: pulse 1.5s ease-in-out infinite; }
-
-/* Tile info bar */
-.tile-info {
-    padding: 8px 12px 2px;
-    display: flex;
     justify-content: space-between;
-    align-items: center;
+    gap: 6px;
 }
+
+.tile-identity {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
 .tile-hostname {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 60%;
-}
-.tile-user {
-    font-size: 11px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
-/* Tile metrics (CPU / RAM) */
-.tile-metrics {
-    padding: 2px 12px;
-    display: flex;
-    gap: 12px;
-}
-.tile-cpu, .tile-ram {
+.tile-user {
     font-size: 10px;
     color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
 }
-.tile-cpu.high { color: var(--accent-red); font-weight: 600; }
 
-/* Tile action buttons (shown on hover) */
-.tile-actions {
-    position: absolute;
-    bottom: 60px;
-    left: 0;
-    right: 0;
+/* Status dot */
+.tile-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-secondary);
+}
+.dot-online     { background: var(--accent-green); box-shadow: 0 0 4px var(--accent-green); }
+.dot-locked     { background: var(--accent-red); box-shadow: 0 0 4px var(--accent-red); }
+.dot-frozen     { background: var(--accent-orange); box-shadow: 0 0 4px var(--accent-orange); }
+.dot-connecting { background: var(--accent-blue); animation: pulse 1.5s ease-in-out infinite; }
+.dot-offline    { background: #484F58; }
+
+/* Indicator icons row */
+.tile-indicators {
     display: flex;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px;
-    background: linear-gradient(transparent, rgba(13, 17, 23, 0.9));
-    opacity: 0;
-    transition: opacity 0.2s;
-    z-index: 6;
+    gap: 3px;
+    padding-top: 3px;
+    flex-wrap: wrap;
+    min-height: 16px;
 }
-.student-tile:hover .tile-actions { opacity: 1; }
 
-.tile-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+.ind {
     font-family: 'Segoe MDL2 Assets';
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
+    font-size: 10px;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s;
 }
-.tile-btn:hover { background: var(--accent-blue); color: #fff; }
-.tile-btn.danger:hover { background: var(--accent-red); }
-.tile-btn.success:hover { background: var(--accent-green); }
+
+.ind-locked  { background: rgba(248,81,73,0.2); color: var(--accent-red); }
+.ind-frozen  { background: rgba(210,153,34,0.2); color: var(--accent-orange); }
+.ind-blank   { background: rgba(139,148,158,0.25); color: var(--text-primary); }
+.ind-inet    { background: rgba(248,81,73,0.15); color: #FF6B6B; border: 1px solid rgba(248,81,73,0.3); }
+.ind-prog    { background: rgba(210,153,34,0.15); color: #FFAA33; border: 1px solid rgba(210,153,34,0.3); }
+.ind-stream  { background: rgba(88,166,255,0.2); color: var(--accent-blue); }
+.ind-hand    { background: rgba(188,140,255,0.2); color: var(--accent-purple); }
+
+/* ── Context Menu (right-click) ──────────────────────────────────────── */
+
+.tile-ctx-menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 0;
+    min-width: 180px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.tile-ctx-menu button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 14px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-family: 'Segoe MDL2 Assets', 'Segoe UI', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.tile-ctx-menu button:hover {
+    background: var(--accent-blue);
+    color: #fff;
+}
+
+.ctx-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 8px;
+}
 
 /* ── Remote View Modal ────────────────────────────────────────────────── */
 
@@ -737,16 +741,6 @@ body {
 .changelog-footer p:last-child {
     font-style: italic;
     color: var(--accent-orange);
-}
-
-/* ── Active Window Tooltip ────────────────────────────────────────────── */
-.tile-window {
-    padding: 0 12px 8px;
-    font-size: 10px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 /* ── Scrollbar Styling ────────────────────────────────────────────────── */

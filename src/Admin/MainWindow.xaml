@@ -389,21 +389,21 @@
                       DefaultBackgroundColor="#0D1117" />
 
         <!-- ═══ VS Code-style Status Bar ══════════════════════════════ -->
-        <Border Grid.Row="3" Background="#1F6FEB" BorderThickness="0">
+        <Border Grid.Row="3" Background="#1B1F23" BorderThickness="0,1,0,0" BorderBrush="#30363D">
             <DockPanel Margin="0,0,0,0">
                 <!-- Left section -->
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                     <!-- Connection indicator -->
-                    <Border Background="#1558C0" Padding="8,0" Cursor="Hand">
+                    <Border Background="#21262D" Padding="8,0" Cursor="Hand" CornerRadius="0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="&#xE703;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                       FontSize="12" Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtConnected" Text="0 / 0" Foreground="White"
+                                       FontSize="12" Foreground="#3FB950" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtConnected" Text="0 / 0" Foreground="#C9D1D9"
                                        FontSize="11" Margin="5,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
                     <!-- Status message -->
-                    <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#FFFFFFCC"
+                    <TextBlock x:Name="TxtStatus" Text="Ready" Foreground="#8B949E"
                                FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 </StackPanel>
 
@@ -411,11 +411,11 @@
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
                     <!-- Mode badge -->
-                    <TextBlock x:Name="TxtModeBadge" Text="Production" Foreground="#FFFFFFAA"
+                    <TextBlock x:Name="TxtModeBadge" Text="Production" Foreground="#8B949E"
                                FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <Border Width="1" Background="#FFFFFF33" Margin="0,5"/>
+                    <Border Width="1" Background="#30363D" Margin="0,5"/>
                     <!-- Version -->
-                    <TextBlock x:Name="TxtVersionBar" Foreground="#FFFFFFAA"
+                    <TextBlock x:Name="TxtVersionBar" Foreground="#58A6FF"
                                FontSize="11" VerticalAlignment="Center" Margin="8,0,10,0"/>
                 </StackPanel>
             </DockPanel>

@@ -27,6 +27,7 @@ using System.Windows;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using TADAdmin.Networking;
+using TADBridge.Shared;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
@@ -554,7 +555,7 @@ public partial class MainWindow : Window
                     {
                         try
                         {
-                            var bl = System.Text.Json.JsonSerializer.Deserialize<TADBridge.Shared.BlocklistUpdate>(msg.Payload);
+                            var bl = System.Text.Json.JsonSerializer.Deserialize<BlocklistUpdate>(msg.Payload);
                             if (bl != null)
                             {
                                 _tcpManager!.BroadcastBlocklist(bl);
@@ -605,6 +606,44 @@ public partial class MainWindow : Window
                     else _tcpManager!.BroadcastUnblankScreen();
                     PostJsonMessage(new { type = "blank_all", blanked = false });
                     SetStatus("Restored all screens");
+                    break;
+
+                // ── Per-student Internetsperre / Programmsperre ───────────
+                case "internet_block":
+                    if (!_isDemoMode)
+                    {
+                        var ibFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
+                            new BlocklistUpdate { BlockedWebsites = new List<string> { "*" } });
+                        _tcpManager!.SendCommandToStudent(msg.Target, ibFrame);
+                    }
+                    SetStatus($"Internet blocked for {msg.Target}");
+                    break;
+                case "internet_unblock":
+                    if (!_isDemoMode)
+                    {
+                        var iuFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
+                            new BlocklistUpdate { BlockedWebsites = new List<string>() });
+                        _tcpManager!.SendCommandToStudent(msg.Target, iuFrame);
+                    }
+                    SetStatus($"Internet unblocked for {msg.Target}");
+                    break;
+                case "program_block":
+                    if (!_isDemoMode)
+                    {
+                        var pbFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
+                            new BlocklistUpdate { BlockedPrograms = new List<string> { "*" } });
+                        _tcpManager!.SendCommandToStudent(msg.Target, pbFrame);
+                    }
+                    SetStatus($"Programs blocked for {msg.Target}");
+                    break;
+                case "program_unblock":
+                    if (!_isDemoMode)
+                    {
+                        var puFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
+                            new BlocklistUpdate { BlockedPrograms = new List<string>() });
+                        _tcpManager!.SendCommandToStudent(msg.Target, puFrame);
+                    }
+                    SetStatus($"Programs unblocked for {msg.Target}");
                     break;
             }
         }
