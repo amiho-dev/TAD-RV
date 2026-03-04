@@ -52,6 +52,9 @@ public partial class MainWindow : Window
     // Periodic thumbnail snapshot counter (every 5th status tick = 15s)
     private int _snapshotTickCounter;
 
+    // Auto sub-stream: track which students already have a sub-stream running
+    private readonly HashSet<string> _autoStreamStarted = new();
+
     // System tray icon
     private NotifyIcon? _trayIcon;
 
@@ -140,11 +143,13 @@ public partial class MainWindow : Window
             // within 3 seconds without waiting for the next multicast heartbeat.
             FlushStudentsToWebView();
 
-            // Request thumbnail snapshots every 5th tick (~15 seconds) in production mode
+            // Request thumbnail snapshots every 10th tick (~30 seconds) as fallback
+            // for students where DXGI capture isn't available (Session 0).
+            // Primary thumbnails come from the auto sub-stream (1fps H.264).
             if (!_isDemoMode && _tcpManager != null)
             {
                 _snapshotTickCounter++;
-                if (_snapshotTickCounter >= 5)
+                if (_snapshotTickCounter >= 10)
                 {
                     _snapshotTickCounter = 0;
                     _tcpManager.BroadcastRequestSnapshot();
@@ -791,6 +796,13 @@ public partial class MainWindow : Window
     private void OnStudentStatusUpdated(string ip, TADBridge.Shared.StudentStatus status)
     {
         if (!_webViewReady) return;
+
+        // Auto-start sub-stream on first valid status beacon (live thumbnails)
+        if (!_isDemoMode && _tcpManager != null && _autoStreamStarted.Add(ip))
+        {
+            _tcpManager.StartRemoteView(ip);
+        }
+
         Dispatcher.InvokeAsync(() =>
         {
             PostJsonMessage(new { type = "status", ip, data = status });

@@ -234,6 +234,8 @@ const TAD_LANG_IT = {
     'ctx.logoff': 'Disconnetti utente',
     'ctx.reboot': 'Riavvia dispositivo',
     'ctx.shutdown': 'Spegni dispositivo',
+    'ctx.record': 'Registra schermo',
+    'ctx.stopRecord': 'Interrompi registrazione',
 
     'ind.locked': 'Bloccato',
     'ind.disconnected': 'Disconnesso',
@@ -242,6 +244,7 @@ const TAD_LANG_IT = {
     'ind.programLock': 'Blocco programmi',
     'ind.streaming': 'In streaming',
     'ind.handRaised': 'Mano alzata',
+    'ind.recording': 'Registrazione',
 
     'blocklist.title': 'Filtri contenuti',
     'blocklist.blockedPrograms': 'Programmi bloccati',
@@ -280,6 +283,10 @@ const TAD_LANG_IT = {
     'toast.rebootSent': 'Comando di riavvio inviato a {name}',
     'toast.shutdownSent': 'Comando di spegnimento inviato a {name}',
     'toast.messageSentTo': 'Messaggio inviato a {name}',
+    'toast.recordStarted': 'Registrazione avviata per {name}',
+    'toast.recordSaved': 'Registrazione salvata per {name}',
+    'toast.recordFailed': 'Impossibile avviare la registrazione',
+    'toast.recordNoCanvas': 'Nessun flusso video disponibile per registrare',
 
     'message.title': 'Invia messaggio',
     'message.placeholder': 'Digita un messaggio da inviare a tutti gli studenti…',

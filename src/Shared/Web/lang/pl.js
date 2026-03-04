@@ -234,6 +234,8 @@ const TAD_LANG_PL = {
     'ctx.logoff': 'Wyloguj użytkownika',
     'ctx.reboot': 'Uruchom ponownie',
     'ctx.shutdown': 'Wyłącz urządzenie',
+    'ctx.record': 'Nagraj ekran',
+    'ctx.stopRecord': 'Zatrzymaj nagrywanie',
 
     'ind.locked': 'Zablokowany',
     'ind.disconnected': 'Rozłączony',
@@ -242,6 +244,7 @@ const TAD_LANG_PL = {
     'ind.programLock': 'Blokada programów',
     'ind.streaming': 'Transmisja',
     'ind.handRaised': 'Podniesiona ręka',
+    'ind.recording': 'Nagrywanie',
 
     'blocklist.title': 'Filtry treści',
     'blocklist.blockedPrograms': 'Zablokowane programy',
@@ -280,6 +283,10 @@ const TAD_LANG_PL = {
     'toast.rebootSent': 'Polecenie restartu wysłane do {name}',
     'toast.shutdownSent': 'Polecenie wyłączenia wysłane do {name}',
     'toast.messageSentTo': 'Wiadomość wysłana do {name}',
+    'toast.recordStarted': 'Nagrywanie rozpoczęte dla {name}',
+    'toast.recordSaved': 'Nagrywanie zapisane dla {name}',
+    'toast.recordFailed': 'Nie udało się rozpocząć nagrywania',
+    'toast.recordNoCanvas': 'Brak dostępnego strumienia wideo do nagrania',
 
     'message.title': 'Wyślij wiadomość',
     'message.placeholder': 'Wpisz wiadomość do wysłania wszystkim uczniom…',

@@ -248,6 +248,8 @@ const TAD_LANG_DE = {
     'ctx.logoff': 'Benutzer abmelden',
     'ctx.reboot': 'Gerät neustarten',
     'ctx.shutdown': 'Gerät herunterfahren',
+    'ctx.record': 'Bildschirm aufnehmen',
+    'ctx.stopRecord': 'Aufnahme stoppen',
 
     'ind.locked': 'Gesperrt',
     'ind.disconnected': 'Getrennt',
@@ -256,6 +258,7 @@ const TAD_LANG_DE = {
     'ind.programLock': 'Programmsperre',
     'ind.streaming': 'Streaming',
     'ind.handRaised': 'Hand gehoben',
+    'ind.recording': 'Aufnahme',
 
     'blocklist.title': 'Inhaltsfilter',
     'blocklist.blockedPrograms': 'Gesperrte Programme',
@@ -294,6 +297,10 @@ const TAD_LANG_DE = {
     'toast.rebootSent': 'Neustartbefehl an {name} gesendet',
     'toast.shutdownSent': 'Herunterfahrbefehl an {name} gesendet',
     'toast.messageSentTo': 'Nachricht an {name} gesendet',
+    'toast.recordStarted': 'Aufnahme gestartet für {name}',
+    'toast.recordSaved': 'Aufnahme gespeichert für {name}',
+    'toast.recordFailed': 'Aufnahme konnte nicht gestartet werden',
+    'toast.recordNoCanvas': 'Kein Videostream zum Aufnehmen verfügbar',
 
     'message.title': 'Nachricht senden',
     'message.placeholder': 'Nachricht an alle Schüler eingeben…',

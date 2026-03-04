@@ -258,6 +258,8 @@ const TAD_LANG_EN = {
     'ctx.logoff': 'Log Off User',
     'ctx.reboot': 'Reboot Device',
     'ctx.shutdown': 'Shutdown Device',
+    'ctx.record': 'Record Screen',
+    'ctx.stopRecord': 'Stop Recording',
 
     // ── Teacher: Tile Indicators ────────────────────────────────
     'ind.locked': 'Locked',
@@ -267,6 +269,7 @@ const TAD_LANG_EN = {
     'ind.programLock': 'Program-Lock',
     'ind.streaming': 'Streaming',
     'ind.handRaised': 'Hand Raised',
+    'ind.recording': 'Recording',
 
     // ── Teacher: Blocklist / Content Filters ────────────────────
     'blocklist.title': 'Content Filters',
@@ -309,6 +312,10 @@ const TAD_LANG_EN = {
     'toast.rebootSent': 'Reboot command sent to {name}',
     'toast.shutdownSent': 'Shutdown command sent to {name}',
     'toast.messageSentTo': 'Message sent to {name}',
+    'toast.recordStarted': 'Recording started for {name}',
+    'toast.recordSaved': 'Recording saved for {name}',
+    'toast.recordFailed': 'Failed to start recording',
+    'toast.recordNoCanvas': 'No video stream available to record',
 
     // ── Teacher: Message Dialog ─────────────────────────────────
     'message.title': 'Broadcast Message',

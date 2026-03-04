@@ -31,6 +31,9 @@ let hideIfAllOffline = false;         // Toggle: show nothing if every PC is off
 const internetBlocked = new Set();    // IPs with Web-Lock active
 const programBlocked = new Set();     // IPs with Program-Lock active
 
+// Per-student screen recording state
+const activeRecordings = new Map();   // ip → { recorder, chunks, startTime, canvas }
+
 // ── i18n helper (delegates to TAD_I18N if loaded, else returns key) ──
 function t(key, replacements) {
     if (typeof TAD_I18N !== 'undefined') return TAD_I18N.t(key, replacements);
@@ -212,6 +215,7 @@ function renderTile(student) {
         </div>
         <div class="tile-ctx-menu" style="display:none">
             <button onclick="event.stopPropagation(); startRv('${student.ip}')">&#xE7B3; ${t('ctx.remoteView')}</button>
+            <button class="ctx-record-btn" onclick="event.stopPropagation(); toggleRecording('${student.ip}')">&#xE7C8; ${t('ctx.record')}</button>
             <button onclick="event.stopPropagation(); openDevicePanel('${student.ip}')">&#xE946; ${t('ctx.details')}</button>
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); lockStudent('${student.ip}')">&#xE72E; ${t('ctx.lock')}</button>
@@ -993,10 +997,25 @@ function startRv(ip) {
     // rv_start must arrive before focus_start so _isStreaming is set
     sendToHost({ action: 'rv_start', target: ip });
     sendToHost({ action: 'focus_start', target: ip });
+
+    // Update record button state if already recording
+    const rvRecBtn = document.getElementById('rvRecordBtn');
+    if (rvRecBtn) {
+        const isRec = activeRecordings.has(ip);
+        rvRecBtn.classList.toggle('recording', isRec);
+        rvRecBtn.title = isRec ? t('ctx.stopRecord') : t('ctx.record');
+    }
 }
 
 function closeRv() {
+    const wasRecording = activeRvIp && activeRecordings.has(activeRvIp);
+
     if (activeRvIp) {
+        // If recording from the RV canvas, stop recording first (saves the file)
+        if (wasRecording) {
+            const rec = activeRecordings.get(activeRvIp);
+            if (rec?.isRvFocus) stopRecording(activeRvIp);
+        }
         sendToHost({ action: 'focus_stop', target: activeRvIp });
         sendToHost({ action: 'rv_stop', target: activeRvIp });
     }
@@ -1012,6 +1031,11 @@ function closeRv() {
 function toggleRvCensored() {
     const canvas = document.getElementById('rvCanvas');
     canvas.classList.toggle('censored');
+}
+
+function toggleRvRecording() {
+    if (!activeRvIp) return;
+    toggleRecording(activeRvIp);
 }
 
 function lockFromRv() {
@@ -1140,6 +1164,161 @@ function sendToHost(msg) {
     if (window.chrome?.webview) {
         window.chrome.webview.postMessage(JSON.stringify(msg));
     }
+}
+
+// ── Screen Recording (canvas.captureStream → MediaRecorder → WebM) ──
+
+function startRecording(ip) {
+    if (activeRecordings.has(ip)) return; // Already recording
+    const student = students.get(ip);
+    if (!student || !student.canvas) {
+        showToast(t('toast.recordNoCanvas'), 'warning');
+        return;
+    }
+
+    // If not the focused RV student, request main-stream for better quality
+    const isRvFocus = (activeRvIp === ip);
+    const canvas = isRvFocus ? document.getElementById('rvCanvas') : student.canvas;
+    const fps = isRvFocus ? 30 : 1; // Match stream fps
+
+    // If not focused, request focus stream for better recording quality
+    if (!isRvFocus) {
+        sendToHost({ action: 'focus_start', target: ip });
+    }
+
+    try {
+        const stream = canvas.captureStream(fps);
+        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+            ? 'video/webm;codecs=vp9'
+            : 'video/webm;codecs=vp8';
+
+        const recorder = new MediaRecorder(stream, {
+            mimeType,
+            videoBitsPerSecond: isRvFocus ? 3_000_000 : 500_000
+        });
+
+        const chunks = [];
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: mimeType });
+            const name = getStudentName(ip);
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+            const filename = `TAD-Recording_${name}_${ts}.webm`;
+            downloadBlob(blob, filename);
+
+            // Stop focus stream if we started it
+            if (!isRvFocus) {
+                sendToHost({ action: 'focus_stop', target: ip });
+            }
+
+            activeRecordings.delete(ip);
+            updateRecordingUI(ip, false);
+            showToast(t('toast.recordSaved', { name }), 'success');
+        };
+
+        recorder.start(1000); // Collect data every second
+
+        activeRecordings.set(ip, {
+            recorder,
+            chunks,
+            startTime: Date.now(),
+            canvas,
+            isRvFocus
+        });
+
+        updateRecordingUI(ip, true);
+        showToast(t('toast.recordStarted', { name: getStudentName(ip) }), 'info');
+    } catch (e) {
+        console.error('Recording start failed:', e);
+        showToast(t('toast.recordFailed'), 'error');
+    }
+}
+
+function stopRecording(ip) {
+    const rec = activeRecordings.get(ip);
+    if (!rec) return;
+    try {
+        if (rec.recorder.state !== 'inactive') {
+            rec.recorder.stop();
+        }
+    } catch (e) {
+        console.error('Recording stop error:', e);
+        activeRecordings.delete(ip);
+        updateRecordingUI(ip, false);
+    }
+}
+
+function toggleRecording(ip) {
+    if (activeRecordings.has(ip)) {
+        stopRecording(ip);
+    } else {
+        startRecording(ip);
+    }
+    closeAllContextMenus();
+}
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+}
+
+function updateRecordingUI(ip, isRecording) {
+    const student = students.get(ip);
+    if (!student?.tileEl) return;
+
+    // Toggle recording class on tile
+    student.tileEl.classList.toggle('recording', isRecording);
+
+    // Update recording indicator badge
+    const indicators = student.tileEl.querySelector('.tile-indicators');
+    if (indicators) {
+        const existing = indicators.querySelector('.ind-recording');
+        if (isRecording && !existing) {
+            const badge = document.createElement('span');
+            badge.className = 'tile-indicator ind-recording';
+            badge.innerHTML = '&#xE7C8; ' + t('ind.recording');
+            indicators.appendChild(badge);
+        } else if (!isRecording && existing) {
+            existing.remove();
+        }
+    }
+
+    // Update context menu button text if visible
+    const ctxBtn = student.tileEl.querySelector('.ctx-record-btn');
+    if (ctxBtn) {
+        ctxBtn.innerHTML = isRecording
+            ? `&#xE71A; ${t('ctx.stopRecord')}`
+            : `&#xE7C8; ${t('ctx.record')}`;
+    }
+
+    // Update RV modal record button if this student is focused
+    if (activeRvIp === ip) {
+        const rvRecBtn = document.getElementById('rvRecordBtn');
+        if (rvRecBtn) {
+            rvRecBtn.classList.toggle('recording', isRecording);
+            rvRecBtn.title = isRecording ? t('ctx.stopRecord') : t('ctx.record');
+        }
+    }
+}
+
+function getRecordingDuration(ip) {
+    const rec = activeRecordings.get(ip);
+    if (!rec) return '';
+    const sec = Math.floor((Date.now() - rec.startTime) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 // ── Device Details Panel ─────────────────────────────────────────────

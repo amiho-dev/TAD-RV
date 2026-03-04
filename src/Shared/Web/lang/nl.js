@@ -234,6 +234,8 @@ const TAD_LANG_NL = {
     'ctx.logoff': 'Gebruiker afmelden',
     'ctx.reboot': 'Apparaat herstarten',
     'ctx.shutdown': 'Apparaat afsluiten',
+    'ctx.record': 'Scherm opnemen',
+    'ctx.stopRecord': 'Opname stoppen',
 
     'ind.locked': 'Vergrendeld',
     'ind.disconnected': 'Niet verbonden',
@@ -242,6 +244,7 @@ const TAD_LANG_NL = {
     'ind.programLock': 'Programmablokkade',
     'ind.streaming': 'Streaming',
     'ind.handRaised': 'Hand opgestoken',
+    'ind.recording': 'Opname',
 
     'blocklist.title': 'Inhoudsfilters',
     'blocklist.blockedPrograms': 'Geblokkeerde programma\'s',
@@ -280,6 +283,10 @@ const TAD_LANG_NL = {
     'toast.rebootSent': 'Herstartcommando verzonden naar {name}',
     'toast.shutdownSent': 'Afsluitcommando verzonden naar {name}',
     'toast.messageSentTo': 'Bericht verzonden naar {name}',
+    'toast.recordStarted': 'Opname gestart voor {name}',
+    'toast.recordSaved': 'Opname opgeslagen voor {name}',
+    'toast.recordFailed': 'Opname starten mislukt',
+    'toast.recordNoCanvas': 'Geen videostream beschikbaar om op te nemen',
 
     'message.title': 'Bericht uitzenden',
     'message.placeholder': 'Typ een bericht om naar alle leerlingen te sturen…',

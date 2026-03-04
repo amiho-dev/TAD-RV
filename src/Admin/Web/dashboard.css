@@ -194,6 +194,14 @@ body {
     0%, 100% { box-shadow: 0 0 0 0 rgba(188, 140, 255, 0.3); }
     50%      { box-shadow: 0 0 8px 3px rgba(188, 140, 255, 0.12); }
 }
+.student-tile.recording {
+    border-color: #e74c3c;
+    animation: recordPulse 1.5s ease-in-out infinite;
+}
+@keyframes recordPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.3); }
+    50%      { box-shadow: 0 0 10px 4px rgba(231, 76, 60, 0.15); }
+}
 
 /* Hidden — no preview in compact tiles */
 .tile-preview {
@@ -342,6 +350,11 @@ body {
 .ind-prog    { background: rgba(210,153,34,0.15); color: #FFAA33; border: 1px solid rgba(210,153,34,0.3); }
 .ind-stream  { background: rgba(88,166,255,0.2); color: var(--accent-blue); }
 .ind-hand    { background: rgba(188,140,255,0.2); color: var(--accent-purple); }
+.ind-recording { background: rgba(231,76,60,0.2); color: #e74c3c; animation: recBadgePulse 1s ease-in-out infinite; }
+@keyframes recBadgePulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+}
 
 /* ── Context Menu (right-click) ──────────────────────────────────────── */
 
@@ -434,6 +447,12 @@ body {
 }
 .modal-btn:hover { background: var(--bg-primary); }
 .modal-btn.danger:hover { background: var(--accent-red); color: #fff; }
+.modal-btn.recording { color: #e74c3c; animation: recBtnPulse 1s ease-in-out infinite; }
+.modal-btn.recording:hover { background: #e74c3c; color: #fff; }
+@keyframes recBtnPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
 
 .modal-body {
     padding: 0;
