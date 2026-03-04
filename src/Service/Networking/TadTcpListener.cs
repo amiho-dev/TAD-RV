@@ -330,7 +330,7 @@ public sealed class TadTcpListener : BackgroundService
         try
         {
             // Fullscreen black form in the USER'S session via CreateProcessAsUser
-            var cmd = "powershell.exe -WindowStyle Hidden -Command \"" +
+            var cmd = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
                 "Add-Type -AssemblyName System.Windows.Forms; " +
                 "$f=New-Object System.Windows.Forms.Form; " +
                 "$f.BackColor='Black'; $f.FormBorderStyle='None'; " +
@@ -351,7 +351,7 @@ public sealed class TadTcpListener : BackgroundService
                 _blankOverlayProcess = Process.Start(new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = "-WindowStyle Hidden -Command \"" +
+                    Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
                         "Add-Type -AssemblyName System.Windows.Forms; " +
                         "$f=New-Object System.Windows.Forms.Form; " +
                         "$f.BackColor='Black'; $f.FormBorderStyle='None'; " +
@@ -465,7 +465,7 @@ public sealed class TadTcpListener : BackgroundService
         // Launch semi-transparent freeze overlay in the USER'S session
         try
         {
-            var cmd = "powershell.exe -WindowStyle Hidden -Command \"" +
+            var cmd = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
                 "Add-Type -AssemblyName System.Windows.Forms; " +
                 "$f=New-Object System.Windows.Forms.Form; " +
                 "$f.BackColor=[System.Drawing.Color]::FromArgb(30,60,100); " +
@@ -493,7 +493,7 @@ public sealed class TadTcpListener : BackgroundService
                 _freezeOverlayProcess = Process.Start(new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = "-WindowStyle Hidden -Command \"" +
+                    Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
                         "Add-Type -AssemblyName System.Windows.Forms; " +
                         "$f=New-Object System.Windows.Forms.Form; " +
                         "$f.BackColor=[System.Drawing.Color]::FromArgb(30,60,100); " +
@@ -561,7 +561,7 @@ public sealed class TadTcpListener : BackgroundService
         // 2. Launch fullscreen lock overlay in the USER'S session via CreateProcessAsUser
         try
         {
-            var cmd = "powershell.exe -WindowStyle Hidden -Command \"" +
+            var cmd = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
                 "Add-Type -AssemblyName System.Windows.Forms; " +
                 "$f=New-Object System.Windows.Forms.Form; " +
                 "$f.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
@@ -590,7 +590,7 @@ public sealed class TadTcpListener : BackgroundService
                 _lockOverlayProcess = Process.Start(new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
-                    Arguments = "-WindowStyle Hidden -Command \"" +
+                    Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
                         "Add-Type -AssemblyName System.Windows.Forms; " +
                         "$f=New-Object System.Windows.Forms.Form; " +
                         "$f.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +

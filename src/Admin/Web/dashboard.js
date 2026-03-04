@@ -216,12 +216,21 @@ function renderTile(student) {
 
     // Double-click opens RV
     tile.addEventListener('dblclick', () => startRv(student.ip));
-    // Right-click opens context menu
+    // Right-click opens context menu at cursor position
     tile.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         closeAllContextMenus();
         const menu = tile.querySelector('.tile-ctx-menu');
+        menu.style.left = e.clientX + 'px';
+        menu.style.top = e.clientY + 'px';
         menu.style.display = 'block';
+        // Ensure menu doesn't go off-screen
+        requestAnimationFrame(() => {
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 4) + 'px';
+            if (rect.bottom > window.innerHeight) menu.style.top = (window.innerHeight - rect.height - 4) + 'px';
+        });
     });
     // Click closes context menu on this tile
     tile.addEventListener('click', () => {
@@ -238,6 +247,10 @@ function closeAllContextMenus() {
     document.querySelectorAll('.tile-ctx-menu').forEach(m => m.style.display = 'none');
 }
 document.addEventListener('click', closeAllContextMenus);
+// Suppress default browser context menu on empty space
+document.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+});
 
 function updateTileUI(student) {
     if (!student.tileEl || !student.status) return;

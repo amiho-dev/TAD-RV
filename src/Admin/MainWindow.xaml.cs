@@ -387,6 +387,9 @@ public partial class MainWindow : Window
             await DashboardWebView.EnsureCoreWebView2Async(env);
             TADLogger.Info("EnsureCoreWebView2Async completed — CoreWebView2 is ready");
 
+            // Suppress the default Edge context menu (right-click)
+            DashboardWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+
             // Wire up readiness gate — NavigationCompleted fires after the page is fully loaded
             DashboardWebView.CoreWebView2.NavigationCompleted += (_, args) =>
             {
