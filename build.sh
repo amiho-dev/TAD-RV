@@ -8,6 +8,7 @@ echo ""
 echo "[0/10] Cleaning old build artifacts..."
 rm -rf tools/Bootstrap/bin tools/Bootstrap/obj \
        tools/Updater/bin tools/Updater/obj \
+       tools/Overlay/bin tools/Overlay/obj \
        tools/Setup/bin tools/Setup/obj tools/Setup/publish \
        src/Service/bin src/Service/obj \
        src/DomainController/bin src/DomainController/obj \
@@ -25,7 +26,8 @@ rm -rf build/results/*.exe build/results/*.pdb build/results/*.dll \
 rm -f tools/Setup/Resources/TADBridgeService.exe \
       tools/Setup/Resources/TADAdmin.exe \
       tools/Setup/Resources/TADDomainController.exe \
-      tools/Setup/Resources/TAD-Update.exe
+      tools/Setup/Resources/TAD-Update.exe \
+      tools/Setup/Resources/TadOverlay.exe
 
 mkdir -p build/results build/release-addc tools/Setup/Resources tools/Setup/publish
 
@@ -39,6 +41,7 @@ echo ""
 # ── [1/10] Restore ──────────────────────────────────────────────────────
 echo "[1/10] Restoring NuGet packages..."
 dotnet restore TAD-RV.sln -r win-x64
+dotnet restore tools/Overlay/TadOverlay.csproj -r win-x64
 echo ""
 
 # ── [2/10] Bootstrap ──────────────────────────────────────────────────
@@ -53,6 +56,13 @@ echo ""
 echo "[3/10] Publishing TAD-Update (Single File Exe)..."
 dotnet publish tools/Updater/TADUpdater.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
+  -p:PublishReadyToRun=false --no-restore
+echo ""
+
+# ── [3b] Overlay ──────────────────────────────────────────────────────
+echo "[3b] Publishing TadOverlay (framework-dependent)..."
+dotnet publish tools/Overlay/TadOverlay.csproj -c Release -r win-x64 \
+  -p:PublishSingleFile=true -p:SelfContained=false \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
@@ -95,6 +105,16 @@ cp tools/Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TADBootstrap.exe \
 UPD_BIN=tools/Updater/bin/Release/net8.0-windows/win-x64/publish/TAD-Update.exe
 cp "$UPD_BIN" tools/Setup/Resources/TAD-Update.exe
 echo "   TAD-Update.exe staged  $(du -h tools/Setup/Resources/TAD-Update.exe | cut -f1)"
+
+# Stage TadOverlay
+OVL_BIN=tools/Overlay/bin/Release/net8.0-windows/win-x64/publish/TadOverlay.exe
+if [ -f "$OVL_BIN" ]; then
+  cp "$OVL_BIN" tools/Setup/Resources/TadOverlay.exe
+  cp "$OVL_BIN" build/results/TadOverlay.exe
+  echo "   TadOverlay.exe staged  $(du -h tools/Setup/Resources/TadOverlay.exe | cut -f1)"
+else
+  echo "   WARNING: TadOverlay.exe not found at $OVL_BIN"
+fi
 echo ""
 
 # ── [7/10] TADClientSetup — bundles TADBridgeService ────────────────────────

@@ -215,7 +215,7 @@ internal static class ClientWindow
     // ── Check for Updates ────────────────────────────────────────────────
     public static void ShowCheckForUpdates()
     {
-        var win = CreateWindow("TAD.RV — Check for Updates", 420, 280);
+        var win = CreateWindow("TAD.RV — Check for Updates", 440, 320);
 
         var root = new StackPanel { Margin = new Thickness(24), VerticalAlignment = VerticalAlignment.Center };
 
@@ -264,18 +264,65 @@ internal static class ClientWindow
                     statusText.Foreground = AccentBlue;
                     resultPanel.Children.Add(MakeRow("Installed", $"v{currentVersion}"));
                     resultPanel.Children.Add(MakeRow("Available", $"v{update.Version}"));
+                    // ── Action buttons row ──
+                    var btnPanel = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Margin = new Thickness(0, 12, 0, 0)
+                    };
+
+                    // Update Now button
+                    var updateBtn = MakeButton("Update Now", AccentGreen);
+                    updateBtn.Click += async (_, _) =>
+                    {
+                        updateBtn.IsEnabled = false;
+                        updateBtn.Content = "Downloading…";
+                        statusText.Text = "Downloading update…";
+                        statusText.Foreground = TextSecondary;
+
+                        try
+                        {
+                            var mgr = new TADBridge.Shared.UpdateManager("TADBridgeService");
+                            mgr.OnDownloadProgress += (downloaded, total) =>
+                            {
+                                int pct = total > 0 ? (int)(downloaded * 100 / total) : 0;
+                                win.Dispatcher.Invoke(() =>
+                                {
+                                    updateBtn.Content = $"Downloading… {pct}%";
+                                    statusText.Text = $"Downloading update… {pct}%";
+                                });
+                            };
+                            await mgr.DownloadAndRunSetupAsync(update);
+                            statusText.Text = "Installer launched — this app will close.";
+                            statusText.Foreground = AccentGreen;
+                            updateBtn.Content = "Installing…";
+                        }
+                        catch (Exception ex2)
+                        {
+                            statusText.Text = "Update failed";
+                            statusText.Foreground = AccentRed;
+                            resultPanel.Children.Add(MakeRow("Error", ex2.Message));
+                            updateBtn.Content = "Update Now";
+                            updateBtn.IsEnabled = true;
+                        }
+                    };
+                    btnPanel.Children.Add(updateBtn);
+
+                    // View on GitHub link
                     if (!string.IsNullOrEmpty(update.HtmlUrl))
                     {
-                        var linkBtn = MakeButton("View on GitHub", AccentBlue);
-                        linkBtn.Margin = new Thickness(0, 12, 0, 0);
-                        linkBtn.HorizontalAlignment = HorizontalAlignment.Center;
+                        var linkBtn = MakeButton("View on GitHub", BgTertiary);
+                        linkBtn.Margin = new Thickness(8, 0, 0, 0);
                         linkBtn.Click += (_, _) =>
                         {
                             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(update.HtmlUrl) { UseShellExecute = true }); }
                             catch { }
                         };
-                        resultPanel.Children.Add(linkBtn);
+                        btnPanel.Children.Add(linkBtn);
                     }
+
+                    resultPanel.Children.Add(btnPanel);
                 }
             }
             catch (Exception ex)

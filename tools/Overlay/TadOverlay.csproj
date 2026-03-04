@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\version-client.props" Condition="Exists('..\..\version-client.props')" />
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>TADOverlay</RootNamespace>
+    <AssemblyName>TadOverlay</AssemblyName>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <Company>TAD Europe</Company>
+    <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
+    <Product>TAD.RV Screen Overlay</Product>
+    <Description>Fullscreen overlay for lock, freeze and blank screen commands. Launched by TADBridgeService in the user's desktop session.</Description>
+  </PropertyGroup>
+
+</Project>

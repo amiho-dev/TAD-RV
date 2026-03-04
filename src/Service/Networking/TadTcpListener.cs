@@ -329,42 +329,11 @@ public sealed class TadTcpListener : BackgroundService
         _isBlanked = true;
         try
         {
-            // Fullscreen black form in the USER'S session via CreateProcessAsUser
-            var cmd = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
-                "Add-Type -AssemblyName System.Windows.Forms; " +
-                "$f=New-Object System.Windows.Forms.Form; " +
-                "$f.BackColor='Black'; $f.FormBorderStyle='None'; " +
-                "$f.WindowState='Maximized'; $f.TopMost=$true; " +
-                "$f.ShowInTaskbar=$false; " +
-                "$f.Add_FormClosing({$_.Cancel=$true}); " +
-                "$f.ShowDialog()\"";
-
-            _blankOverlayProcess = LaunchInUserSession(cmd);
+            _blankOverlayProcess = LaunchOverlay("--blank");
             if (_blankOverlayProcess != null)
-            {
-                _log.LogInformation("Blank screen activated in user session (PID {Pid})", _blankOverlayProcess.Id);
-            }
+                _log.LogInformation("Blank screen activated (PID {Pid})", _blankOverlayProcess.Id);
             else
-            {
-                // Fallback: direct launch (emulation mode)
-                _log.LogWarning("CreateProcessAsUser unavailable — trying direct launch");
-                _blankOverlayProcess = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
-                        "Add-Type -AssemblyName System.Windows.Forms; " +
-                        "$f=New-Object System.Windows.Forms.Form; " +
-                        "$f.BackColor='Black'; $f.FormBorderStyle='None'; " +
-                        "$f.WindowState='Maximized'; $f.TopMost=$true; " +
-                        "$f.ShowInTaskbar=$false; " +
-                        "$f.Add_FormClosing({$_.Cancel=$true}); " +
-                        "$f.ShowDialog()\"",
-                    UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                });
-                _log.LogInformation("Blank screen activated via direct launch (PID {Pid})",
-                    _blankOverlayProcess?.Id);
-            }
+                _log.LogWarning("Failed to launch blank overlay — TadOverlay.exe not found or CreateProcessAsUser failed");
         }
         catch (Exception ex)
         {
@@ -462,56 +431,13 @@ public sealed class TadTcpListener : BackgroundService
         if (_isFrozen) return;
         _isFrozen = true;
 
-        // Launch semi-transparent freeze overlay in the USER'S session
         try
         {
-            var cmd = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
-                "Add-Type -AssemblyName System.Windows.Forms; " +
-                "$f=New-Object System.Windows.Forms.Form; " +
-                "$f.BackColor=[System.Drawing.Color]::FromArgb(30,60,100); " +
-                "$f.Opacity=0.55; " +
-                "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
-                "$f.ShowInTaskbar=$false; " +
-                "$f.Add_FormClosing({$_.Cancel=$true}); " +
-                "$lbl=New-Object System.Windows.Forms.Label; " +
-                "$lbl.Text=[char]0x2744+' Screen frozen by the teacher'; " +
-                "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',20); " +
-                "$lbl.AutoSize=$true; $lbl.BackColor='Transparent'; " +
-                "$f.Controls.Add($lbl); " +
-                "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
-                "$f.ShowDialog()\"";
-
-            _freezeOverlayProcess = LaunchInUserSession(cmd);
+            _freezeOverlayProcess = LaunchOverlay("--freeze");
             if (_freezeOverlayProcess != null)
-            {
-                _log.LogInformation("Freeze overlay launched in user session (PID {Pid})", _freezeOverlayProcess.Id);
-            }
+                _log.LogInformation("Freeze overlay launched (PID {Pid})", _freezeOverlayProcess.Id);
             else
-            {
-                // Fallback: direct launch (emulation mode)
-                _log.LogWarning("CreateProcessAsUser unavailable — trying direct launch for freeze");
-                _freezeOverlayProcess = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
-                        "Add-Type -AssemblyName System.Windows.Forms; " +
-                        "$f=New-Object System.Windows.Forms.Form; " +
-                        "$f.BackColor=[System.Drawing.Color]::FromArgb(30,60,100); " +
-                        "$f.Opacity=0.55; " +
-                        "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
-                        "$f.ShowInTaskbar=$false; " +
-                        "$f.Add_FormClosing({$_.Cancel=$true}); " +
-                        "$lbl=New-Object System.Windows.Forms.Label; " +
-                        "$lbl.Text=[char]0x2744+' Screen frozen by the teacher'; " +
-                        "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',20); " +
-                        "$lbl.AutoSize=$true; $lbl.BackColor='Transparent'; " +
-                        "$f.Controls.Add($lbl); " +
-                        "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
-                        "$f.ShowDialog()\"",
-                    UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                });
-            }
+                _log.LogWarning("Failed to launch freeze overlay — TadOverlay.exe not found or CreateProcessAsUser failed");
         }
         catch (Exception ex)
         {
@@ -558,55 +484,19 @@ public sealed class TadTcpListener : BackgroundService
             _log.LogWarning(ex, "Kernel hard-lock unavailable — overlay lock only");
         }
 
-        // 2. Launch fullscreen lock overlay in the USER'S session via CreateProcessAsUser
+        // 2. Launch fullscreen lock overlay in the USER'S session
         try
         {
-            var cmd = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
-                "Add-Type -AssemblyName System.Windows.Forms; " +
-                "$f=New-Object System.Windows.Forms.Form; " +
-                "$f.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
-                "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
-                "$f.ShowInTaskbar=$false; " +
-                "$f.Add_FormClosing({$_.Cancel=$true}); " +
-                "$lbl=New-Object System.Windows.Forms.Label; " +
-                "$lbl.Text=[char]0x1F512+' This workstation is locked by the teacher'; " +
-                "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',24); " +
-                "$lbl.AutoSize=$true; $lbl.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
-                "$f.Controls.Add($lbl); " +
-                "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
-                "$f.ShowDialog()\"";
-
-            _lockOverlayProcess = LaunchInUserSession(cmd);
+            _lockOverlayProcess = LaunchOverlay("--lock");
             if (_lockOverlayProcess != null)
             {
-                _log.LogInformation("Lock overlay launched in user session (PID {Pid})", _lockOverlayProcess.Id);
+                _log.LogInformation("Lock overlay launched (PID {Pid})", _lockOverlayProcess.Id);
                 try { _driver.ProtectPid((uint)_lockOverlayProcess.Id); }
                 catch { /* Driver may not be loaded */ }
             }
             else
             {
-                // Fallback: direct launch (emulation mode where service runs interactively)
-                _log.LogWarning("CreateProcessAsUser unavailable — trying direct launch");
-                _lockOverlayProcess = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -Command \"" +
-                        "Add-Type -AssemblyName System.Windows.Forms; " +
-                        "$f=New-Object System.Windows.Forms.Form; " +
-                        "$f.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
-                        "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
-                        "$f.ShowInTaskbar=$false; " +
-                        "$f.Add_FormClosing({$_.Cancel=$true}); " +
-                        "$lbl=New-Object System.Windows.Forms.Label; " +
-                        "$lbl.Text=[char]0x1F512+' This workstation is locked by the teacher'; " +
-                        "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',24); " +
-                        "$lbl.AutoSize=$true; $lbl.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
-                        "$f.Controls.Add($lbl); " +
-                        "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
-                        "$f.ShowDialog()\"",
-                    UseShellExecute = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                });
+                _log.LogWarning("Failed to launch lock overlay — TadOverlay.exe not found or CreateProcessAsUser failed");
             }
         }
         catch (Exception ex)
@@ -1274,6 +1164,48 @@ public sealed class TadTcpListener : BackgroundService
         public IntPtr hThread;
         public int dwProcessId;
         public int dwThreadId;
+    }
+
+    /// <summary>
+    /// Resolve and launch TadOverlay.exe with the given mode argument.
+    /// Tries CreateProcessAsUser first (for Session 0 service), falls back to direct launch.
+    /// </summary>
+    private Process? LaunchOverlay(string modeArg)
+    {
+        // Locate TadOverlay.exe next to the service binary
+        string overlayPath = Path.Combine(AppContext.BaseDirectory, "TadOverlay.exe");
+        if (!File.Exists(overlayPath))
+        {
+            _log.LogWarning("TadOverlay.exe not found at {Path} — overlay unavailable", overlayPath);
+            return null;
+        }
+
+        string cmdLine = $"\"{overlayPath}\" {modeArg}";
+
+        // Primary: launch in user session via CreateProcessAsUser
+        var proc = LaunchInUserSession(cmdLine);
+        if (proc != null)
+        {
+            _log.LogInformation("Overlay {Mode} launched via CreateProcessAsUser (PID {Pid})", modeArg, proc.Id);
+            return proc;
+        }
+
+        // Fallback: direct start (works in emulation mode / interactive service)
+        _log.LogWarning("CreateProcessAsUser unavailable — launching overlay directly");
+        try
+        {
+            return Process.Start(new ProcessStartInfo
+            {
+                FileName = overlayPath,
+                Arguments = modeArg,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Direct overlay launch also failed");
+            return null;
+        }
     }
 
     /// <summary>
