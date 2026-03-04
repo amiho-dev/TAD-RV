@@ -107,13 +107,13 @@ window.chrome.webview.addEventListener('message', (event) => {
 
         case 'freeze_all':
             showAnnouncement(msg.frozen
-                ? 'All screens frozen — Eyes on the teacher!'
+                ? t('announce.frozen')
                 : null);
             break;
 
         case 'blank_all':
             showAnnouncement(msg.blanked
-                ? 'All screens blanked — Attention mode active'
+                ? t('announce.blanked')
                 : null);
             break;
 
@@ -970,9 +970,9 @@ function startRv(ip) {
 
     const name = student?.status?.Hostname || ip;
     const user = student?.status?.Username || '';
-    title.textContent = `Remote View — ${name}`;
+    title.textContent = t('rv.title', { name: name });
     info.textContent = user ? `${user} @ ${ip}` : ip;
-    streamInfo.textContent = isDemoMode ? 'Demo stream (synthetic)' : 'Sub-stream 480p';
+    streamInfo.textContent = isDemoMode ? t('rv.demoStream') : t('rv.subStream');
     modal.style.display = 'flex';
 
     // In demo mode, the demo_frame handler will paint the RV canvas directly
@@ -983,9 +983,10 @@ function startRv(ip) {
         rvMainDecoder = null;
     }
 
-    // Tell C# to start focus (main-stream) + RV
-    sendToHost({ action: 'focus_start', target: ip });
+    // Tell C# to start sub-stream first, THEN focus (main-stream)
+    // rv_start must arrive before focus_start so _isStreaming is set
     sendToHost({ action: 'rv_start', target: ip });
+    sendToHost({ action: 'focus_start', target: ip });
 }
 
 function closeRv() {
@@ -1020,37 +1021,37 @@ function freezeFromRv() {
 function lockStudent(ip) {
     sendToHost({ action: 'lock', target: ip });
     closeAllContextMenus();
-    showToast(`Lock command sent to ${getStudentName(ip)}`, 'success');
+    showToast(t('toast.lockSent', { name: getStudentName(ip) }), 'success');
 }
 
 function unlockStudent(ip) {
     sendToHost({ action: 'unlock', target: ip });
     closeAllContextMenus();
-    showToast(`Unlock command sent to ${getStudentName(ip)}`, 'success');
+    showToast(t('toast.unlockSent', { name: getStudentName(ip) }), 'success');
 }
 
 function freezeStudent(ip) {
     sendToHost({ action: 'freeze', target: ip });
     closeAllContextMenus();
-    showToast(`Freeze command sent to ${getStudentName(ip)}`, 'success');
+    showToast(t('toast.freezeSent', { name: getStudentName(ip) }), 'success');
 }
 
 function unfreezeStudent(ip) {
     sendToHost({ action: 'unfreeze', target: ip });
     closeAllContextMenus();
-    showToast(`Unfreeze command sent to ${getStudentName(ip)}`, 'success');
+    showToast(t('toast.unfreezeSent', { name: getStudentName(ip) }), 'success');
 }
 
 function blankStudent(ip) {
     sendToHost({ action: 'blank', target: ip });
     closeAllContextMenus();
-    showToast(`Blank screen sent to ${getStudentName(ip)}`, 'success');
+    showToast(t('toast.blankSent', { name: getStudentName(ip) }), 'success');
 }
 
 function unblankStudent(ip) {
     sendToHost({ action: 'unblank', target: ip });
     closeAllContextMenus();
-    showToast(`Screen restored for ${getStudentName(ip)}`, 'success');
+    showToast(t('toast.unblankSent', { name: getStudentName(ip) }), 'success');
 }
 
 function getStudentName(ip) {
@@ -1570,36 +1571,36 @@ function cancelConfirm() {
 function handleConfirmAction(action) {
     switch (action) {
         case 'lock_all':
-            showConfirm('🔒 Lock All Screens',
-                'Lock all student screens? Students will not be able to use their computers.',
+            showConfirm(t('confirm.lockAllTitle'),
+                t('confirm.lockAllDesc'),
                 (duration) => {
                     sendToHost({ action: 'lock_all_confirmed' });
-                    showToast('Lock All command sent', 'success');
+                    showToast(t('toast.lockAllSent'), 'success');
                     if (duration > 0) {
-                        const t = setTimeout(() => {
+                        const tmr = setTimeout(() => {
                             sendToHost({ action: 'unlock_all' });
-                            showToast('Auto-unlock: duration expired', 'info');
+                            showToast(t('toast.autoUnlock'), 'info');
                         }, duration * 1000);
-                        _activeDurationTimers.push(t);
+                        _activeDurationTimers.push(tmr);
                     }
                 },
-                { showDuration: true, confirmText: '🔒 Lock All', danger: true });
+                { showDuration: true, confirmText: t('confirm.lockAllBtn'), danger: true });
             break;
         case 'freeze_all':
-            showConfirm('❄ Freeze All Screens',
-                'Freeze all student screens? Students will see a frozen overlay and cannot interact.',
+            showConfirm(t('confirm.freezeAllTitle'),
+                t('confirm.freezeAllDesc'),
                 (duration) => {
                     sendToHost({ action: 'freeze_all_confirmed' });
-                    showToast('Freeze All command sent', 'success');
+                    showToast(t('toast.freezeAllSent'), 'success');
                     if (duration > 0) {
-                        const t = setTimeout(() => {
+                        const tmr = setTimeout(() => {
                             sendToHost({ action: 'unfreeze_all' });
-                            showToast('Auto-unfreeze: duration expired', 'info');
+                            showToast(t('toast.autoUnfreeze'), 'info');
                         }, duration * 1000);
-                        _activeDurationTimers.push(t);
+                        _activeDurationTimers.push(tmr);
                     }
                 },
-                { showDuration: true, confirmText: '❄ Freeze All' });
+                { showDuration: true, confirmText: t('confirm.freezeAllBtn') });
             break;
         case 'blank_all':
             // Blanking merged into Lock — no longer a separate action

@@ -32,13 +32,13 @@
                 <button class="stats-action-btn" onclick="handleConfirmAction('lock_all')" title="Lock all student screens">
                     <span class="sai">&#xE72E;</span> <span data-i18n="toolbar.lockAll">Lock All</span>
                 </button>
-                <button class="stats-action-btn" onclick="sendToHost({action:'unlock_all'}); showToast('Unlock All sent','success')" title="Unlock all screens">
+                <button class="stats-action-btn" onclick="sendToHost({action:'unlock_all'}); showToast(t('toast.unlockAllSent'),'success')" title="Unlock all screens">
                     <span class="sai">&#xE785;</span> <span data-i18n="toolbar.unlockAll">Unlock All</span>
                 </button>
                 <button class="stats-action-btn" onclick="handleConfirmAction('freeze_all')" title="Freeze all student screens">
                     <span class="sai">&#xE7AD;</span> <span data-i18n="toolbar.freezeAll">Freeze All</span>
                 </button>
-                <button class="stats-action-btn" onclick="sendToHost({action:'unfreeze_all'}); showToast('Unfreeze All sent','success')" title="Unfreeze all screens">
+                <button class="stats-action-btn" onclick="sendToHost({action:'unfreeze_all'}); showToast(t('toast.unfreezeAllSent'),'success')" title="Unfreeze all screens">
                     <span class="sai">&#xE77A;</span> <span data-i18n="toolbar.unfreezeAll">Unfreeze All</span>
                 </button>
                 <button class="stats-action-btn" onclick="openMessageDialog()" title="Broadcast a message to all students">
@@ -113,17 +113,17 @@
     <div class="modal-overlay" id="messageModal" style="display:none">
         <div class="modal-content modal-small">
             <div class="modal-header">
-                <span>&#xE8BD; Broadcast Message</span>
+                <span>&#xE8BD; <span data-i18n="message.title">Broadcast Message</span></span>
                 <button class="modal-btn" onclick="closeMessageDialog()">&#xE711;</button>
             </div>
             <div class="modal-body-form">
-                <textarea id="messageText" placeholder="Type a message to send to all students..."
+                <textarea id="messageText" data-i18n-placeholder="message.placeholder" placeholder="Type a message to send to all students..."
                           rows="4" maxlength="500"></textarea>
                 <div class="form-actions">
                     <button class="btn btn-primary" onclick="sendBroadcastMessage()">
-                        &#xE724; Send to All
+                        &#xE724; <span data-i18n="message.sendAll">Send to All</span>
                     </button>
-                    <button class="btn btn-secondary" onclick="closeMessageDialog()">Cancel</button>
+                    <button class="btn btn-secondary" onclick="closeMessageDialog()"><span data-i18n="common.cancel">Cancel</span></button>
                 </div>
             </div>
         </div>
@@ -134,38 +134,38 @@
         <div class="device-panel-backdrop" onclick="closeDevicePanel()"></div>
         <div class="device-panel">
             <div class="dp-header">
-                <h3 id="dpHostname">Device Details</h3>
+                <h3 id="dpHostname" data-i18n="device.title">Device Details</h3>
                 <button class="dp-close" onclick="closeDevicePanel()">&#xE711;</button>
             </div>
             <div class="dp-section">
-                <div class="dp-section-title">Identity</div>
-                <div class="dp-row"><span class="label">Host</span><span class="value" id="dpHost">—</span></div>
-                <div class="dp-row"><span class="label">User</span><span class="value" id="dpUser">—</span></div>
-                <div class="dp-row"><span class="label">IP</span><span class="value" id="dpIp">—</span></div>
-                <div class="dp-row"><span class="label">Version</span><span class="value" id="dpVersion">—</span></div>
+                <div class="dp-section-title" data-i18n="device.identity">Identity</div>
+                <div class="dp-row"><span class="label" data-i18n="device.host">Host</span><span class="value" id="dpHost">—</span></div>
+                <div class="dp-row"><span class="label" data-i18n="device.user">User</span><span class="value" id="dpUser">—</span></div>
+                <div class="dp-row"><span class="label" data-i18n="device.ip">IP</span><span class="value" id="dpIp">—</span></div>
+                <div class="dp-row"><span class="label" data-i18n="device.version">Version</span><span class="value" id="dpVersion">—</span></div>
             </div>
             <div class="dp-section">
-                <div class="dp-section-title">Storage</div>
+                <div class="dp-section-title" data-i18n="device.storage">Storage</div>
                 <div class="dp-bar-container">
-                    <div class="dp-bar-label"><span id="dpDiskLabel">Disk</span><span id="dpDiskPct">—</span></div>
+                    <div class="dp-bar-label"><span id="dpDiskLabel" data-i18n="device.disk">Disk</span><span id="dpDiskPct">—</span></div>
                     <div class="dp-bar-track"><div class="dp-bar-fill green" id="dpDiskBar" style="width:0%"></div></div>
                 </div>
             </div>
             <div class="dp-section">
-                <div class="dp-section-title">Performance</div>
+                <div class="dp-section-title" data-i18n="device.performance">Performance</div>
                 <div class="dp-bar-container">
-                    <div class="dp-bar-label"><span>CPU</span><span id="dpCpuPct">—</span></div>
+                    <div class="dp-bar-label"><span data-i18n="device.cpu">CPU</span><span id="dpCpuPct">—</span></div>
                     <div class="dp-bar-track"><div class="dp-bar-fill green" id="dpCpuBar" style="width:0%"></div></div>
                 </div>
                 <div class="dp-bar-container" style="margin-top:12px">
-                    <div class="dp-bar-label"><span>RAM</span><span id="dpRamPct">—</span></div>
+                    <div class="dp-bar-label"><span data-i18n="device.ram">RAM</span><span id="dpRamPct">—</span></div>
                     <div class="dp-bar-track"><div class="dp-bar-fill green" id="dpRamBar" style="width:0%"></div></div>
                 </div>
             </div>
             <div class="dp-section">
-                <div class="dp-section-title">Open Windows</div>
+                <div class="dp-section-title" data-i18n="device.openWindows">Open Windows</div>
                 <ul class="dp-window-list" id="dpWindowList">
-                    <li style="color:var(--text-secondary);font-size:12px">No data yet</li>
+                    <li style="color:var(--text-secondary);font-size:12px" data-i18n="device.noData">No data yet</li>
                 </ul>
             </div>
         </div>

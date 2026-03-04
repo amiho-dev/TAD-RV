@@ -4,6 +4,8 @@
   <PropertyGroup>
     <Company>TAD Europe</Company>
     <Copyright>(C) 2026 TAD Europe — https://tad-it.eu</Copyright>
+    <!-- Prevent .NET SDK from appending +commitHash to InformationalVersion -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
 </Project>

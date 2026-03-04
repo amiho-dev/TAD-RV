@@ -7,59 +7,88 @@
         Background="Transparent"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Width="700" Height="460"
+        Width="480" Height="340"
         Topmost="True">
 
-    <Border CornerRadius="16" Background="#0D1117" BorderBrush="#30363D" BorderThickness="1">
+    <Window.Resources>
+        <!-- Animated dot pulse -->
+        <Storyboard x:Key="PulseAnim" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="Dot1" Storyboard.TargetProperty="Opacity"
+                             From="0.3" To="1" Duration="0:0:0.4" BeginTime="0:0:0" AutoReverse="True" />
+            <DoubleAnimation Storyboard.TargetName="Dot2" Storyboard.TargetProperty="Opacity"
+                             From="0.3" To="1" Duration="0:0:0.4" BeginTime="0:0:0.15" AutoReverse="True" />
+            <DoubleAnimation Storyboard.TargetName="Dot3" Storyboard.TargetProperty="Opacity"
+                             From="0.3" To="1" Duration="0:0:0.4" BeginTime="0:0:0.3" AutoReverse="True" />
+        </Storyboard>
+    </Window.Resources>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource PulseAnim}" />
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Border CornerRadius="12" BorderThickness="1">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#0D1117" Offset="0" />
+                <GradientStop Color="#161B22" Offset="1" />
+            </LinearGradientBrush>
+        </Border.Background>
+        <Border.BorderBrush>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#30363D" Offset="0" />
+                <GradientStop Color="#1A1F27" Offset="1" />
+            </LinearGradientBrush>
+        </Border.BorderBrush>
         <Border.Effect>
-            <DropShadowEffect BlurRadius="30" ShadowDepth="0" Color="#000000" Opacity="0.6" />
+            <DropShadowEffect BlurRadius="40" ShadowDepth="0" Color="#000000" Opacity="0.5" />
         </Border.Effect>
 
-        <Grid Margin="60,48">
+        <Grid Margin="48,40">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />  <!-- Logo + name -->
+                <RowDefinition Height="Auto" />  <!-- Subtitle -->
+                <RowDefinition Height="*" />      <!-- Center spacer -->
+                <RowDefinition Height="Auto" />  <!-- Loading dots + status -->
+                <RowDefinition Height="24" />     <!-- Spacer -->
+                <RowDefinition Height="Auto" />  <!-- Version -->
+                <RowDefinition Height="Auto" />  <!-- Copyright -->
             </Grid.RowDefinitions>
 
             <!-- Logo + Product Name -->
             <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
-                <Image x:Name="LogoImage" Width="40" Height="40" Margin="0,0,12,0"
+                <Image x:Name="LogoImage" Width="36" Height="36" Margin="0,0,10,0"
                        RenderOptions.BitmapScalingMode="HighQuality" />
-                <TextBlock Text="TAD.RV" FontSize="38" FontWeight="Bold"
-                           Foreground="#58A6FF" VerticalAlignment="Center" />
+                <TextBlock FontSize="32" FontWeight="Bold" VerticalAlignment="Center">
+                    <Run Text="TAD" Foreground="#E6EDF3" /><Run Text="." Foreground="#58A6FF" /><Run Text="RV" Foreground="#E6EDF3" />
+                </TextBlock>
             </StackPanel>
 
             <!-- Subtitle -->
             <TextBlock Grid.Row="1" Text="Admin Controller"
-                       FontSize="16" Foreground="#C9D1D9" FontWeight="SemiBold"
-                       HorizontalAlignment="Center" Margin="0,4,0,0" />
+                       FontSize="13" Foreground="#8B949E" FontWeight="Normal"
+                       HorizontalAlignment="Center" Margin="0,6,0,0" />
 
-            <!-- Branding Line -->
-            <TextBlock Grid.Row="2" Text="Endpoint Management Platform"
-                       FontSize="11" Foreground="#8B949E" FontStyle="Italic"
-                       HorizontalAlignment="Center" Margin="0,17,0,0" />
-
-            <!-- Spacer + Loading indicator -->
-            <StackPanel Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center">
-                <ProgressBar x:Name="SplashProgress" Width="200" Height="3" IsIndeterminate="True"
-                             Foreground="#58A6FF" Background="#21262D" BorderThickness="0" />
+            <!-- Loading dots + Status -->
+            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                    <Ellipse x:Name="Dot1" Width="6" Height="6" Fill="#58A6FF" Opacity="0.3" Margin="3,0" />
+                    <Ellipse x:Name="Dot2" Width="6" Height="6" Fill="#58A6FF" Opacity="0.3" Margin="3,0" />
+                    <Ellipse x:Name="Dot3" Width="6" Height="6" Fill="#58A6FF" Opacity="0.3" Margin="3,0" />
+                </StackPanel>
                 <TextBlock x:Name="TxtLoadingStatus" Text="Initializing..."
-                           FontSize="11" Foreground="#8B949E" HorizontalAlignment="Center"
-                           Margin="0,8,0,0" />
+                           FontSize="11" Foreground="#6E7681" HorizontalAlignment="Center" />
             </StackPanel>
 
-            <!-- Version + Build Date -->
-            <TextBlock Grid.Row="4" x:Name="TxtVersion"
-                       FontSize="11" Foreground="#8B949E"
-                       HorizontalAlignment="Center" Margin="0,0,0,4" />
+            <!-- Version -->
+            <TextBlock Grid.Row="5" x:Name="TxtVersion"
+                       FontSize="11" Foreground="#484F58"
+                       HorizontalAlignment="Center" Margin="0,0,0,6" />
 
             <!-- Copyright -->
-            <TextBlock Grid.Row="5" Text="(C) 2026 TAD Europe — https://tad-it.eu"
-                       FontSize="10" Foreground="#484F58"
+            <TextBlock Grid.Row="6" Text="© 2026 TAD Europe"
+                       FontSize="10" Foreground="#30363D"
                        HorizontalAlignment="Center" />
         </Grid>
     </Border>

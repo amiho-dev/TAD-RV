@@ -96,6 +96,9 @@ public sealed class TadTcpListener : BackgroundService
         if (ct.IsCancellationRequested) return;
         _log.LogInformation("TCP listener started on port {Port}", ListenPort);
 
+        // Clean up any stale firewall rules from a previous crash
+        CleanupStaleFirewallRules();
+
         // Periodic status beacon
         _ = StatusBeaconAsync(ct);
 
@@ -1081,11 +1084,12 @@ public sealed class TadTcpListener : BackgroundService
                      "enable=yes");
 
             // 2) Block ALL outbound public internet traffic
-            //    Public ranges: everything except private (10/8, 127/8, 172.16/12, 192.168/16, 169.254/16)
+            //    Public ranges: everything except private (10/8, 127/8, 169.254/16, 172.16/12, 192.168/16)
             RunNetsh($"advfirewall firewall add rule name=\"{FW_RULE_BLOCK}\" " +
                      "dir=out action=block " +
                      "remoteip=1.0.0.0-9.255.255.255,11.0.0.0-126.255.255.255," +
-                     "128.0.0.0-172.15.255.255,172.32.0.0-191.255.255.255," +
+                     "128.0.0.0-169.253.255.255,169.255.0.0-172.15.255.255," +
+                     "172.32.0.0-191.255.255.255," +
                      "192.0.0.0-192.167.255.255,192.169.0.0-223.255.255.255 " +
                      "enable=yes");
 
@@ -1122,7 +1126,7 @@ public sealed class TadTcpListener : BackgroundService
         }
     }
 
-    private static void RunNetsh(string arguments)
+    private void RunNetsh(string arguments)
     {
         var psi = new ProcessStartInfo("netsh", arguments)
         {
@@ -1132,7 +1136,32 @@ public sealed class TadTcpListener : BackgroundService
             RedirectStandardError = true
         };
         using var proc = Process.Start(psi);
-        proc?.WaitForExit(5000);
+        if (proc == null)
+        {
+            _log.LogWarning("Failed to start netsh process");
+            return;
+        }
+        proc.WaitForExit(5000);
+        if (proc.ExitCode != 0)
+        {
+            var stderr = proc.StandardError.ReadToEnd();
+            _log.LogWarning("netsh exited with code {Code}: {Err}", proc.ExitCode, stderr);
+        }
+    }
+
+    /// <summary>Remove stale TAD-WebLock firewall rules left over from a previous crash.</summary>
+    private void CleanupStaleFirewallRules()
+    {
+        try
+        {
+            RunNetsh($"advfirewall firewall delete rule name=\"{FW_RULE_BLOCK}\"");
+            RunNetsh($"advfirewall firewall delete rule name=\"{FW_RULE_ALLOW_PRIVATE}\"");
+            _log.LogDebug("Stale firewall rule cleanup complete");
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "No stale firewall rules to clean (expected on first run)");
+        }
     }
 
     // ─── Program-Lock (per-student program kill) ──────────────────────

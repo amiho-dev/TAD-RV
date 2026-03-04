@@ -299,6 +299,54 @@ const TAD_LANG_EN = {
 
     // ── Teacher: Announcement ───────────────────────────────────
     'announce.frozen': 'All screens frozen — Eyes on the teacher!',
+    'announce.blanked': 'All screens blanked — Attention mode active',
+
+    // ── Teacher: Toast Messages ─────────────────────────────────
+    'toast.lockSent': 'Lock command sent to {name}',
+    'toast.unlockSent': 'Unlock command sent to {name}',
+    'toast.freezeSent': 'Freeze command sent to {name}',
+    'toast.unfreezeSent': 'Unfreeze command sent to {name}',
+    'toast.blankSent': 'Blank screen sent to {name}',
+    'toast.unblankSent': 'Screen restored for {name}',
+    'toast.lockAllSent': 'Lock All command sent',
+    'toast.unlockAllSent': 'Unlock All sent',
+    'toast.freezeAllSent': 'Freeze All command sent',
+    'toast.unfreezeAllSent': 'Unfreeze All sent',
+    'toast.autoUnlock': 'Auto-unlock: duration expired',
+    'toast.autoUnfreeze': 'Auto-unfreeze: duration expired',
+
+    // ── Teacher: Message Dialog ─────────────────────────────────
+    'message.title': 'Broadcast Message',
+    'message.placeholder': 'Type a message to send to all students...',
+    'message.sendAll': 'Send to All',
+
+    // ── Teacher: Device Panel ───────────────────────────────────
+    'device.title': 'Device Details',
+    'device.identity': 'Identity',
+    'device.host': 'Host',
+    'device.user': 'User',
+    'device.ip': 'IP',
+    'device.version': 'Version',
+    'device.storage': 'Storage',
+    'device.disk': 'Disk',
+    'device.performance': 'Performance',
+    'device.cpu': 'CPU',
+    'device.ram': 'RAM',
+    'device.openWindows': 'Open Windows',
+    'device.noData': 'No data yet',
+
+    // ── Teacher: Confirm Dialog (extra) ─────────────────────────
+    'confirm.lockAllTitle': '🔒 Lock All Screens',
+    'confirm.lockAllDesc': 'Lock all student screens? Students will not be able to use their computers.',
+    'confirm.lockAllBtn': '🔒 Lock All',
+    'confirm.freezeAllTitle': '❄ Freeze All Screens',
+    'confirm.freezeAllDesc': 'Freeze all student screens? Students will see a frozen overlay and cannot interact.',
+    'confirm.freezeAllBtn': '❄ Freeze All',
+
+    // ── Teacher: Remote View ────────────────────────────────────
+    'rv.title': 'Remote View — {name}',
+    'rv.subStream': 'Sub-stream 480p',
+    'rv.demoStream': 'Demo stream (synthetic)',
 
     // ── Teacher: About ──────────────────────────────────────────
     'about.subtitle': 'Teacher Controller',

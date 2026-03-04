@@ -56,24 +56,25 @@ public partial class SplashScreen : Window
     private void LoadVersionInfo()
     {
         var asm = Assembly.GetExecutingAssembly();
-        var version = asm.GetName().Version?.ToString() ?? "1.0.0.0";
 
-        // Get build date from assembly informational version or linker timestamp
-        string buildDate;
+        // Get clean version from InformationalVersion (e.g. "v26.3.04.123-admin")
         var infoVer = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-        if (infoVer != null && infoVer.InformationalVersion.Contains('-'))
+        string version;
+        if (infoVer != null)
         {
-            buildDate = infoVer.InformationalVersion;
+            version = infoVer.InformationalVersion;
+            // Strip +commitHash suffix if present
+            var plusIdx = version.IndexOf('+');
+            if (plusIdx >= 0) version = version[..plusIdx];
+            // Strip -admin/-client suffix for display
+            var dashIdx = version.LastIndexOf('-');
+            if (dashIdx > 0) version = version[..dashIdx];
         }
         else
         {
-            // Fallback: use file write time
-            var loc = asm.Location;
-            buildDate = !string.IsNullOrEmpty(loc) && File.Exists(loc)
-                ? File.GetLastWriteTime(loc).ToString("yyyy-MM-dd")
-                : DateTime.Now.ToString("yyyy-MM-dd");
+            version = asm.GetName().Version?.ToString() ?? "1.0.0.0";
         }
 
-        TxtVersion.Text = $"Version {version}  •  Build {buildDate}";
+        TxtVersion.Text = version;
     }
 }

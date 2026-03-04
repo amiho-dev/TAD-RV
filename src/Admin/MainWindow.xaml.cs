@@ -492,12 +492,15 @@ public partial class MainWindow : Window
         PostJsonMessage(new { type = "toast", message, level });
     }
 
-    /// <summary>Returns the InformationalVersion from the running assembly (e.g. v26.3.02.003-admin).</summary>
+    /// <summary>Returns the InformationalVersion from the running assembly (e.g. v26.3.04.122-admin).</summary>
     private static string GetRunningVersion()
     {
         var asm = System.Reflection.Assembly.GetExecutingAssembly();
         var attr = asm.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
-        return attr?.InformationalVersion ?? asm.GetName().Version?.ToString() ?? "0.0";
+        var ver = attr?.InformationalVersion ?? asm.GetName().Version?.ToString() ?? "0.0";
+        // Strip +commitHash suffix if present (e.g. "v26.3.04.122-admin+abc123" → "v26.3.04.122-admin")
+        var plusIdx = ver.IndexOf('+');
+        return plusIdx >= 0 ? ver[..plusIdx] : ver;
     }
 
     private static string LoadEmbeddedHtml()
