@@ -248,7 +248,7 @@
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
                     <TextBox x:Name="TxtManualIp"
-                             Width="150"
+                             Width="130"
                              Text="IP or hostname…"
                              VerticalAlignment="Center"
                              Padding="8,5"

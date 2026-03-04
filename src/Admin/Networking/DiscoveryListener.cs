@@ -12,6 +12,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -115,7 +116,10 @@ public sealed class DiscoveryListener : IDisposable
                 udp = new UdpClient();
                 udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 udp.Client.Bind(new IPEndPoint(IPAddress.Any, MulticastPort));
-                udp.JoinMulticastGroup(MulticastGroup);
+
+                // Join multicast on every operational IPv4 interface (Ethernet + Wi-Fi)
+                JoinMulticastOnAllInterfaces(udp);
+
                 udp.Client.ReceiveTimeout = 3000;
 
                 while (!ct.IsCancellationRequested)
@@ -170,5 +174,38 @@ public sealed class DiscoveryListener : IDisposable
     {
         Stop();
         _cts?.Dispose();
+    }
+
+    /// <summary>
+    /// Joins the multicast group on every operational IPv4 interface so
+    /// discovery works across Ethernet, Wi-Fi, etc.
+    /// </summary>
+    private static void JoinMulticastOnAllInterfaces(UdpClient udp)
+    {
+        bool joined = false;
+        foreach (var iface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (iface.OperationalStatus != OperationalStatus.Up) continue;
+            if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+            if (!iface.SupportsMulticast) continue;
+
+            foreach (var ua in iface.GetIPProperties().UnicastAddresses)
+            {
+                if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                try
+                {
+                    udp.JoinMulticastGroup(MulticastGroup, ua.Address);
+                    joined = true;
+                }
+                catch { /* interface unusable — skip */ }
+            }
+        }
+
+        // Fallback: default join if per-interface join didn't work
+        if (!joined)
+        {
+            try { udp.JoinMulticastGroup(MulticastGroup); }
+            catch { }
+        }
     }
 }

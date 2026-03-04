@@ -288,12 +288,8 @@ function toggleOfflineVisibility() {
     students.forEach(s => applyFilter(s));
 }
 
-function toggleHideIfAllOffline() {
-    hideIfAllOffline = !hideIfAllOffline;
-    const btn = document.getElementById('allOfflineToggle');
-    if (btn) btn.classList.toggle('active', hideIfAllOffline);
-    const lbl = document.querySelector('#allOfflineToggle .stat-label');
-    if (lbl) lbl.textContent = hideIfAllOffline ? 'Hide ✓' : 'Hide ✗';
+function toggleHideIfAllOffline(checked) {
+    hideIfAllOffline = checked;
     updateStats();
 }
 

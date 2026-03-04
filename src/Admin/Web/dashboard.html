@@ -43,12 +43,17 @@
                 <span class="stat-value stat-offline" id="statOffline">0</span>
                 <span class="stat-label">Offline</span>
             </div>
-            <div class="stat stat-toggle" id="allOfflineToggle"
-                 onclick="toggleHideIfAllOffline()"
-                 title="Show nothing if every PC is offline">
-                <span class="stat-value" style="font-size:11px">&#xE7B3;</span>
-                <span class="stat-label">Hide ✗</span>
+            <div class="stat stat-toggle" id="offlineToggle"
+                 onclick="toggleOfflineVisibility()"
+                 title="Click to show / hide offline computers">
+                <span class="stat-value stat-offline" id="statOffline">0</span>
+                <span class="stat-label">Offline</span>
             </div>
+            <label class="switch-wrapper" title="Show nothing if every PC is offline">
+                <input type="checkbox" id="allOfflineCheckbox" onchange="toggleHideIfAllOffline(this.checked)">
+                <span class="switch-slider"></span>
+                <span class="switch-label">Hide if all offline</span>
+            </label>
         </div>
         <div class="stats-right">
             <div class="search-box">

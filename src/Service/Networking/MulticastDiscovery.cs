@@ -22,6 +22,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -188,20 +189,15 @@ public sealed class MulticastDiscovery : BackgroundService
 
     private async Task HeartbeatSenderLoop(CancellationToken ct)
     {
-        using var client = new UdpClient();
-        client.Client.SetSocketOption(SocketOptionLevel.IP,
-            SocketOptionName.MulticastTimeToLive, MulticastTtl);
-
-        // Allow multiple processes on same machine (teacher + student test)
-        client.Client.SetSocketOption(SocketOptionLevel.Socket,
-            SocketOptionName.ReuseAddress, true);
-
-        var endpoint = new IPEndPoint(MulticastGroup, MulticastPort);
+        var multicastEp = new IPEndPoint(MulticastGroup, MulticastPort);
+        var broadcastEp = new IPEndPoint(IPAddress.Broadcast, MulticastPort);
 
         while (!ct.IsCancellationRequested)
         {
             try
             {
+                _localIp = ResolveLocalIp();   // refresh in case adapter changed
+
                 var packet = new DiscoveryPacket
                 {
                     RoomId = _roomId,
@@ -213,7 +209,37 @@ public sealed class MulticastDiscovery : BackgroundService
                 };
 
                 var json = JsonSerializer.SerializeToUtf8Bytes(packet);
-                await client.SendAsync(json, json.Length, endpoint);
+
+                // ── Send multicast on every IPv4 interface ──
+                foreach (var iface in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (iface.OperationalStatus != OperationalStatus.Up) continue;
+                    if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                    if (!iface.SupportsMulticast) continue;
+
+                    var props = iface.GetIPProperties();
+                    foreach (var ua in props.UnicastAddresses)
+                    {
+                        if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                        try
+                        {
+                            using var client = new UdpClient(new IPEndPoint(ua.Address, 0));
+                            client.Client.SetSocketOption(SocketOptionLevel.IP,
+                                SocketOptionName.MulticastTimeToLive, MulticastTtl);
+                            await client.SendAsync(json, json.Length, multicastEp);
+                        }
+                        catch { /* interface unusable — skip */ }
+                    }
+                }
+
+                // ── Broadcast fallback (works even when multicast is blocked) ──
+                try
+                {
+                    using var bc = new UdpClient();
+                    bc.EnableBroadcast = true;
+                    await bc.SendAsync(json, json.Length, broadcastEp);
+                }
+                catch { /* broadcast may fail on some networks */ }
             }
             catch (Exception ex)
             {
@@ -232,9 +258,10 @@ public sealed class MulticastDiscovery : BackgroundService
         client.Client.SetSocketOption(SocketOptionLevel.Socket,
             SocketOptionName.ReuseAddress, true);
         client.Client.Bind(new IPEndPoint(IPAddress.Any, MulticastPort));
-        client.JoinMulticastGroup(MulticastGroup);
 
-        _log.LogInformation("Joined multicast group {Group}", MulticastGroup);
+        // Join multicast group on every usable IPv4 interface
+        JoinMulticastOnAllInterfaces(client);
+        _log.LogInformation("Joined multicast group {Group} on all interfaces", MulticastGroup);
 
         while (!ct.IsCancellationRequested)
         {
@@ -248,6 +275,43 @@ public sealed class MulticastDiscovery : BackgroundService
             {
                 _log.LogWarning(ex, "Multicast receive error");
             }
+        }
+    }
+
+    /// <summary>
+    /// Joins the multicast group on every operational IPv4 interface so
+    /// discovery works across Ethernet, Wi-Fi, etc.
+    /// </summary>
+    private void JoinMulticastOnAllInterfaces(UdpClient client)
+    {
+        bool joined = false;
+        foreach (var iface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (iface.OperationalStatus != OperationalStatus.Up) continue;
+            if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+            if (!iface.SupportsMulticast) continue;
+
+            foreach (var ua in iface.GetIPProperties().UnicastAddresses)
+            {
+                if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                try
+                {
+                    client.JoinMulticastGroup(MulticastGroup, ua.Address);
+                    _log.LogDebug("Multicast join on {Iface} ({Ip})", iface.Name, ua.Address);
+                    joined = true;
+                }
+                catch (Exception ex)
+                {
+                    _log.LogDebug(ex, "Failed to join multicast on {Iface}", iface.Name);
+                }
+            }
+        }
+
+        // Fallback: default join if per-interface join didn't work
+        if (!joined)
+        {
+            try { client.JoinMulticastGroup(MulticastGroup); }
+            catch { }
         }
     }
 
