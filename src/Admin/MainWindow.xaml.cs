@@ -529,18 +529,18 @@ public partial class MainWindow : Window
                     break;
                 case "freeze":
                     if (_isDemoMode) _demoManager!.FreezeStudent(msg.Target, 300);
-                    else _tcpManager!.LockStudent(msg.Target); // Freeze via lock in production
+                    else _tcpManager!.FreezeStudent(msg.Target);
                     break;
                 case "unfreeze":
                     if (_isDemoMode) _demoManager!.UnfreezeStudent(msg.Target);
-                    else _tcpManager!.UnlockStudent(msg.Target);
+                    else _tcpManager!.UnfreezeStudent(msg.Target);
                     break;
                 case "message":
                     if (!string.IsNullOrWhiteSpace(msg.Payload))
                     {
                         if (_isDemoMode) _demoManager!.BroadcastPushMessage(msg.Payload);
                         else _tcpManager!.BroadcastPushMessage(msg.Payload);
-                        SetStatus($"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"");;
+                        SetStatus($"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"");
                     }
                     break;
                 case "kill_process":

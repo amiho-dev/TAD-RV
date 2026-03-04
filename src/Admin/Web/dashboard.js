@@ -1011,6 +1011,7 @@ function refreshDevicePanel() {
     document.getElementById('dpHost').textContent = s.Hostname || '—';
     document.getElementById('dpUser').textContent = s.Username || '—';
     document.getElementById('dpIp').textContent = s.IpAddress || devicePanelIp;
+    document.getElementById('dpVersion').textContent = s.ServiceVersion || '—';
 
     // CPU bar
     const cpuPct = Math.round(s.CpuUsage || 0);

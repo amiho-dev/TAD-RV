@@ -13,6 +13,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
@@ -41,8 +42,10 @@ public sealed class TadTcpListener : BackgroundService
     private volatile bool _isLocked;
     private volatile bool _isStreaming;
     private volatile bool _isBlanked;
+    private volatile bool _isFrozen;
     private Process? _lockOverlayProcess;
     private Process? _blankOverlayProcess;
+    private Process? _freezeOverlayProcess;
 
     // Blocklist enforcement
     private BlocklistUpdate _blocklist = new();
@@ -155,6 +158,7 @@ public sealed class TadTcpListener : BackgroundService
             if (_isStreaming) StopStreaming();
             if (_isLocked)  ExecuteUnlock();
             if (_isBlanked) ExecuteUnblankScreen();
+            if (_isFrozen)  ExecuteUnfreeze();
         }
     }
 
@@ -241,6 +245,14 @@ public sealed class TadTcpListener : BackgroundService
                 ExecuteUnblankScreen();
                 break;
 
+            case TadCommand.Freeze:
+                ExecuteFreeze();
+                break;
+
+            case TadCommand.Unfreeze:
+                ExecuteUnfreeze();
+                break;
+
             case TadCommand.PushMessage:
                 try
                 {
@@ -282,6 +294,10 @@ public sealed class TadTcpListener : BackgroundService
                     _log.LogWarning(ex, "Bad SetBlocklist payload");
                 }
                 break;
+
+            default:
+                _log.LogDebug("Unhandled command: {Cmd}", cmd);
+                break;
         }
     }
 
@@ -313,20 +329,25 @@ public sealed class TadTcpListener : BackgroundService
         _isBlanked = true;
         try
         {
-            // Try dedicated overlay first; fall back to PowerShell blackout
-            var overlayPath = Path.Combine(AppContext.BaseDirectory, "TadBlankOverlay.exe");
-            if (File.Exists(overlayPath))
+            // Fullscreen black form in the USER'S session via CreateProcessAsUser
+            var cmd = "powershell.exe -WindowStyle Hidden -Command \"" +
+                "Add-Type -AssemblyName System.Windows.Forms; " +
+                "$f=New-Object System.Windows.Forms.Form; " +
+                "$f.BackColor='Black'; $f.FormBorderStyle='None'; " +
+                "$f.WindowState='Maximized'; $f.TopMost=$true; " +
+                "$f.ShowInTaskbar=$false; " +
+                "$f.Add_FormClosing({$_.Cancel=$true}); " +
+                "$f.ShowDialog()\"";
+
+            _blankOverlayProcess = LaunchInUserSession(cmd);
+            if (_blankOverlayProcess != null)
             {
-                _blankOverlayProcess = Process.Start(new ProcessStartInfo
-                {
-                    FileName = overlayPath,
-                    WindowStyle = ProcessWindowStyle.Maximized,
-                    UseShellExecute = true
-                });
+                _log.LogInformation("Blank screen activated in user session (PID {Pid})", _blankOverlayProcess.Id);
             }
             else
             {
-                // PowerShell fullscreen black WinForms window
+                // Fallback: direct launch (emulation mode)
+                _log.LogWarning("CreateProcessAsUser unavailable — trying direct launch");
                 _blankOverlayProcess = Process.Start(new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
@@ -335,13 +356,15 @@ public sealed class TadTcpListener : BackgroundService
                         "$f=New-Object System.Windows.Forms.Form; " +
                         "$f.BackColor='Black'; $f.FormBorderStyle='None'; " +
                         "$f.WindowState='Maximized'; $f.TopMost=$true; " +
+                        "$f.ShowInTaskbar=$false; " +
+                        "$f.Add_FormClosing({$_.Cancel=$true}); " +
                         "$f.ShowDialog()\"",
                     UseShellExecute = true,
                     WindowStyle = ProcessWindowStyle.Hidden
                 });
+                _log.LogInformation("Blank screen activated via direct launch (PID {Pid})",
+                    _blankOverlayProcess?.Id);
             }
-            _log.LogInformation("Blank screen activated (PID {Pid})",
-                _blankOverlayProcess?.Id);
         }
         catch (Exception ex)
         {
@@ -389,8 +412,8 @@ public sealed class TadTcpListener : BackgroundService
             bool ok = WTSSendMessage(
                 IntPtr.Zero,       // WTS_CURRENT_SERVER_HANDLE
                 sessionId,
-                title,             title.Length,
-                message,           message.Length,
+                title,             title.Length * sizeof(char),    // byte count for Unicode
+                message,           message.Length * sizeof(char),  // byte count for Unicode
                 0x00000040,        // MB_ICONINFORMATION
                 durationSeconds,   // auto-close after N seconds
                 out _,
@@ -432,6 +455,91 @@ public sealed class TadTcpListener : BackgroundService
         }
     }
 
+    // ─── FREEZE Command ───────────────────────────────────────────────
+
+    private void ExecuteFreeze()
+    {
+        if (_isFrozen) return;
+        _isFrozen = true;
+
+        // Launch semi-transparent freeze overlay in the USER'S session
+        try
+        {
+            var cmd = "powershell.exe -WindowStyle Hidden -Command \"" +
+                "Add-Type -AssemblyName System.Windows.Forms; " +
+                "$f=New-Object System.Windows.Forms.Form; " +
+                "$f.BackColor=[System.Drawing.Color]::FromArgb(30,60,100); " +
+                "$f.Opacity=0.55; " +
+                "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
+                "$f.ShowInTaskbar=$false; " +
+                "$f.Add_FormClosing({$_.Cancel=$true}); " +
+                "$lbl=New-Object System.Windows.Forms.Label; " +
+                "$lbl.Text=[char]0x2744+' Screen frozen by the teacher'; " +
+                "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',20); " +
+                "$lbl.AutoSize=$true; $lbl.BackColor='Transparent'; " +
+                "$f.Controls.Add($lbl); " +
+                "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
+                "$f.ShowDialog()\"";
+
+            _freezeOverlayProcess = LaunchInUserSession(cmd);
+            if (_freezeOverlayProcess != null)
+            {
+                _log.LogInformation("Freeze overlay launched in user session (PID {Pid})", _freezeOverlayProcess.Id);
+            }
+            else
+            {
+                // Fallback: direct launch (emulation mode)
+                _log.LogWarning("CreateProcessAsUser unavailable — trying direct launch for freeze");
+                _freezeOverlayProcess = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-WindowStyle Hidden -Command \"" +
+                        "Add-Type -AssemblyName System.Windows.Forms; " +
+                        "$f=New-Object System.Windows.Forms.Form; " +
+                        "$f.BackColor=[System.Drawing.Color]::FromArgb(30,60,100); " +
+                        "$f.Opacity=0.55; " +
+                        "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
+                        "$f.ShowInTaskbar=$false; " +
+                        "$f.Add_FormClosing({$_.Cancel=$true}); " +
+                        "$lbl=New-Object System.Windows.Forms.Label; " +
+                        "$lbl.Text=[char]0x2744+' Screen frozen by the teacher'; " +
+                        "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',20); " +
+                        "$lbl.AutoSize=$true; $lbl.BackColor='Transparent'; " +
+                        "$f.Controls.Add($lbl); " +
+                        "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
+                        "$f.ShowDialog()\"",
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to launch freeze overlay");
+        }
+    }
+
+    private void ExecuteUnfreeze()
+    {
+        if (!_isFrozen) return;
+        _isFrozen = false;
+
+        try
+        {
+            if (_freezeOverlayProcess is { HasExited: false })
+            {
+                _freezeOverlayProcess.Kill();
+                _freezeOverlayProcess.WaitForExit(3000);
+                _freezeOverlayProcess.Dispose();
+                _freezeOverlayProcess = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to kill freeze overlay");
+        }
+    }
+
     // ─── LOCK Command ─────────────────────────────────────────────────
 
     private void ExecuteLock()
@@ -439,7 +547,7 @@ public sealed class TadTcpListener : BackgroundService
         if (_isLocked) return;
         _isLocked = true;
 
-        // 1. Tell the kernel driver to disable keyboard/mouse
+        // 1. Tell the kernel driver to disable keyboard/mouse (if loaded)
         try
         {
             _driver.SendHardLock(true);
@@ -447,32 +555,58 @@ public sealed class TadTcpListener : BackgroundService
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "Failed to engage kernel hard-lock");
+            _log.LogWarning(ex, "Kernel hard-lock unavailable — overlay lock only");
         }
 
-        // 2. Launch the fullscreen lock overlay (WebView2 or WPF window)
+        // 2. Launch fullscreen lock overlay in the USER'S session via CreateProcessAsUser
         try
         {
-            var overlayPath = Path.Combine(AppContext.BaseDirectory, "TadLockOverlay.exe");
-            if (File.Exists(overlayPath))
-            {
-                _lockOverlayProcess = Process.Start(new ProcessStartInfo
-                {
-                    FileName = overlayPath,
-                    WindowStyle = ProcessWindowStyle.Maximized,
-                    UseShellExecute = true
-                });
+            var cmd = "powershell.exe -WindowStyle Hidden -Command \"" +
+                "Add-Type -AssemblyName System.Windows.Forms; " +
+                "$f=New-Object System.Windows.Forms.Form; " +
+                "$f.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
+                "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
+                "$f.ShowInTaskbar=$false; " +
+                "$f.Add_FormClosing({$_.Cancel=$true}); " +
+                "$lbl=New-Object System.Windows.Forms.Label; " +
+                "$lbl.Text=[char]0x1F512+' This workstation is locked by the teacher'; " +
+                "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',24); " +
+                "$lbl.AutoSize=$true; $lbl.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
+                "$f.Controls.Add($lbl); " +
+                "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
+                "$f.ShowDialog()\"";
 
-                // 3. Protect the overlay process from being killed
-                if (_lockOverlayProcess != null)
-                {
-                    _driver.ProtectPid((uint)_lockOverlayProcess.Id);
-                    _log.LogInformation("Lock overlay PID {Pid} protected", _lockOverlayProcess.Id);
-                }
+            _lockOverlayProcess = LaunchInUserSession(cmd);
+            if (_lockOverlayProcess != null)
+            {
+                _log.LogInformation("Lock overlay launched in user session (PID {Pid})", _lockOverlayProcess.Id);
+                try { _driver.ProtectPid((uint)_lockOverlayProcess.Id); }
+                catch { /* Driver may not be loaded */ }
             }
             else
             {
-                _log.LogWarning("Lock overlay not found at {Path}", overlayPath);
+                // Fallback: direct launch (emulation mode where service runs interactively)
+                _log.LogWarning("CreateProcessAsUser unavailable — trying direct launch");
+                _lockOverlayProcess = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-WindowStyle Hidden -Command \"" +
+                        "Add-Type -AssemblyName System.Windows.Forms; " +
+                        "$f=New-Object System.Windows.Forms.Form; " +
+                        "$f.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
+                        "$f.FormBorderStyle='None'; $f.WindowState='Maximized'; $f.TopMost=$true; " +
+                        "$f.ShowInTaskbar=$false; " +
+                        "$f.Add_FormClosing({$_.Cancel=$true}); " +
+                        "$lbl=New-Object System.Windows.Forms.Label; " +
+                        "$lbl.Text=[char]0x1F512+' This workstation is locked by the teacher'; " +
+                        "$lbl.ForeColor='White'; $lbl.Font=New-Object System.Drawing.Font('Segoe UI',24); " +
+                        "$lbl.AutoSize=$true; $lbl.BackColor=[System.Drawing.Color]::FromArgb(13,17,23); " +
+                        "$f.Controls.Add($lbl); " +
+                        "$f.Load={$lbl.Left=($f.ClientSize.Width-$lbl.Width)/2; $lbl.Top=($f.ClientSize.Height-$lbl.Height)/2}; " +
+                        "$f.ShowDialog()\"",
+                    UseShellExecute = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                });
             }
         }
         catch (Exception ex)
@@ -546,8 +680,19 @@ public sealed class TadTcpListener : BackgroundService
             SendFrame(cmd, frameData);
         };
 
-        _ = _capture.StartAsync(ct);
-        _log.LogInformation("Sub-stream started (1fps, 480p)");
+        try
+        {
+            _ = _capture.StartAsync(ct);
+            _log.LogInformation("Sub-stream started (1fps, 480p)");
+        }
+        catch (Exception ex)
+        {
+            // DXGI Desktop Duplication fails when the service runs in Session 0
+            // because there is no interactive desktop to capture. This is expected
+            // for Windows Service mode.  Streaming works in emulation/interactive mode.
+            _log.LogWarning(ex, "Screen capture start failed (Session 0?) — streaming unavailable");
+            _isStreaming = false;
+        }
     }
 
     private void StopStreaming()
@@ -622,13 +767,44 @@ public sealed class TadTcpListener : BackgroundService
 
     /// <summary>
     /// Capture the primary screen as JPEG and send it back as SnapshotData.
-    /// Uses GDI+ BitBlt — fast, works without GPU drivers.
-    /// Quality: 75% JPEG (~50–150 KB per screenshot).
+    /// When running as a service in Session 0, GDI+ CopyFromScreen only sees
+    /// the empty Session 0 desktop. Use CreateProcessAsUser to capture from
+    /// the interactive user session instead.
     /// </summary>
     private async Task SendSnapshotAsync()
     {
         try
         {
+            // 1. Attempt user-session capture via CreateProcessAsUser
+            var tempFile = Path.Combine(Path.GetTempPath(), $"tad_snap_{Guid.NewGuid():N}.jpg");
+            var cmd = "powershell.exe -WindowStyle Hidden -Command \"" +
+                "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; " +
+                "$b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; " +
+                "$bmp=New-Object System.Drawing.Bitmap($b.Width,$b.Height); " +
+                "$g=[System.Drawing.Graphics]::FromImage($bmp); " +
+                "$g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); " +
+                "$c=[System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders()|?{$_.MimeType-eq'image/jpeg'}; " +
+                "$p=New-Object System.Drawing.Imaging.EncoderParameters(1); " +
+                "$p.Param[0]=New-Object System.Drawing.Imaging.EncoderParameter(" +
+                "[System.Drawing.Imaging.Encoder]::Quality,60L); " +
+                "$bmp.Save('" + tempFile.Replace("\\", "\\\\") + "',$c,$p); " +
+                "$g.Dispose(); $bmp.Dispose()\"";
+
+            var proc = LaunchInUserSession(cmd);
+            if (proc != null)
+            {
+                await Task.Run(() => proc.WaitForExit(5000));
+                if (File.Exists(tempFile))
+                {
+                    var data = await File.ReadAllBytesAsync(tempFile);
+                    SendFrame(TadCommand.SnapshotData, data);
+                    try { File.Delete(tempFile); } catch { }
+                    _log.LogDebug("Snapshot sent via user-session capture ({Bytes} bytes)", data.Length);
+                    return;
+                }
+            }
+
+            // 2. Fallback: direct GDI capture (works in emulation / interactive mode)
             await Task.Run(() =>
             {
                 var screen = System.Windows.Forms.Screen.PrimaryScreen;
@@ -642,7 +818,6 @@ public sealed class TadTcpListener : BackgroundService
                 using (var g = System.Drawing.Graphics.FromImage(bmp))
                     g.CopyFromScreen(bounds.Location, System.Drawing.Point.Empty, bounds.Size);
 
-                // Encode as JPEG at quality 75
                 var jpegCodec = System.Drawing.Imaging.ImageCodecInfo
                     .GetImageEncoders()
                     .FirstOrDefault(e => e.FormatID == System.Drawing.Imaging.ImageFormat.Jpeg.Guid);
@@ -661,7 +836,7 @@ public sealed class TadTcpListener : BackgroundService
                 }
 
                 SendFrame(TadCommand.SnapshotData, ms.GetBuffer().AsSpan(0, (int)ms.Length));
-                _log.LogDebug("Snapshot sent ({Bytes} bytes)", ms.Length);
+                _log.LogDebug("Snapshot sent via direct capture ({Bytes} bytes)", ms.Length);
             });
         }
         catch (Exception ex)
@@ -679,23 +854,43 @@ public sealed class TadTcpListener : BackgroundService
         // ── Logged-in user (from interactive session, NOT this service account) ──
         string loggedInUser = GetConsoleSessionUser();
 
-        // ── Collect open windows from the interactive session ──
+        // ── Collect running programs from the interactive session ──
         var openWindows = new List<OpenWindowInfo>();
         try
         {
+            int userSessionId = WTSGetActiveConsoleSessionId();
+            var ignoredNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "svchost", "csrss", "wininit", "services", "lsass", "smss",
+                "System", "Idle", "Registry", "dwm", "fontdrvhost",
+                "sihost", "taskhostw", "ctfmon", "conhost", "dllhost",
+                "RuntimeBroker", "SearchHost", "StartMenuExperienceHost",
+                "ShellExperienceHost", "TextInputHost", "SecurityHealthSystray",
+                "SearchIndexer", "spoolsv", "CompPkgSrv", "uhssvc",
+                "MsMpEng", "NisSrv", "SgrmBroker", "WmiPrvSE",
+                "TadBridgeService", "audiodg", "powershell"
+            };
+
             foreach (var proc in Process.GetProcesses())
             {
                 try
                 {
-                    if (!string.IsNullOrEmpty(proc.MainWindowTitle) && proc.MainWindowHandle != IntPtr.Zero)
+                    // Filter to the active user session only
+                    if (!ProcessIdToSessionId((uint)proc.Id, out uint procSid)) continue;
+                    if (procSid != (uint)userSessionId) continue;
+                    if (ignoredNames.Contains(proc.ProcessName)) continue;
+
+                    // MainWindowTitle won't work from Session 0 for most processes,
+                    // so fall back to process name as the display title
+                    string title = "";
+                    try { title = proc.MainWindowTitle; } catch { }
+
+                    openWindows.Add(new OpenWindowInfo
                     {
-                        openWindows.Add(new OpenWindowInfo
-                        {
-                            Title = proc.MainWindowTitle,
-                            ProcessId = proc.Id,
-                            ProcessName = proc.ProcessName
-                        });
-                    }
+                        Title = string.IsNullOrEmpty(title) ? proc.ProcessName : title,
+                        ProcessId = proc.Id,
+                        ProcessName = proc.ProcessName
+                    });
                 }
                 catch { /* access denied for some processes */ }
             }
@@ -733,21 +928,23 @@ public sealed class TadTcpListener : BackgroundService
 
         return new StudentStatus
         {
-            Hostname      = Environment.MachineName,
-            Username      = loggedInUser,
-            IpAddress     = GetLocalIp(),
-            DriverLoaded  = heartbeat != null,
-            IsLocked      = _isLocked,
-            IsStreaming   = _isStreaming,
-            IsBlankScreen = _isBlanked,
-            ActiveWindow  = GetForegroundWindowTitle(),
-            CpuUsage      = cpuUsage,
-            RamUsedMb     = ramUsedMb,
-            RamTotalMb    = ramTotalMb,
-            DiskUsedGb    = diskUsedGb,
-            DiskTotalGb   = diskTotalGb,
-            OpenWindows   = openWindows,
-            Timestamp     = DateTime.UtcNow
+            Hostname       = Environment.MachineName,
+            Username       = loggedInUser,
+            IpAddress      = GetLocalIp(),
+            DriverLoaded   = heartbeat != null,
+            IsLocked       = _isLocked,
+            IsFrozen       = _isFrozen,
+            IsStreaming    = _isStreaming,
+            IsBlankScreen  = _isBlanked,
+            ActiveWindow   = GetForegroundWindowTitle(),
+            CpuUsage       = cpuUsage,
+            RamUsedMb      = ramUsedMb,
+            RamTotalMb     = ramTotalMb,
+            DiskUsedGb     = diskUsedGb,
+            DiskTotalGb    = diskTotalGb,
+            OpenWindows    = openWindows,
+            ServiceVersion = GetServiceVersion(),
+            Timestamp      = DateTime.UtcNow
         };
     }
 
@@ -934,6 +1131,22 @@ public sealed class TadTcpListener : BackgroundService
         catch { return "unknown"; }
     }
 
+    private static string GetServiceVersion()
+    {
+        try
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var attr = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            var ver = attr?.InformationalVersion ?? asm.GetName().Version?.ToString() ?? "0.0";
+            // Strip component suffix (e.g. "v26.3.04.116-client" → "26.3.04.116")
+            if (ver.StartsWith('v')) ver = ver[1..];
+            var dash = ver.IndexOf('-');
+            if (dash > 0) ver = ver[..dash];
+            return ver;
+        }
+        catch { return "unknown"; }
+    }
+
     private static string GetForegroundWindowTitle()
     {
         try
@@ -972,6 +1185,131 @@ public sealed class TadTcpListener : BackgroundService
 
     [DllImport("kernel32.dll")]
     private static extern int WTSGetActiveConsoleSessionId();
+
+    // ─── CreateProcessAsUser P/Invoke — launch processes in the interactive session ──
+
+    [DllImport("Wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSQueryUserToken(int SessionId, out IntPtr phToken);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool DuplicateTokenEx(
+        IntPtr hExistingToken, uint dwDesiredAccess, IntPtr lpTokenAttributes,
+        int ImpersonationLevel, int TokenType, out IntPtr phNewToken);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    private static extern bool CreateEnvironmentBlock(out IntPtr lpEnvironment, IntPtr hToken, bool bInherit);
+
+    [DllImport("userenv.dll", SetLastError = true)]
+    private static extern bool DestroyEnvironmentBlock(IntPtr lpEnvironment);
+
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CreateProcessAsUser(
+        IntPtr hToken, string? lpApplicationName, string lpCommandLine,
+        IntPtr lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles,
+        uint dwCreationFlags, IntPtr lpEnvironment, string? lpCurrentDirectory,
+        ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool ProcessIdToSessionId(uint dwProcessId, out uint pSessionId);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct STARTUPINFO
+    {
+        public int cb;
+        public string lpReserved;
+        public string lpDesktop;
+        public string lpTitle;
+        public int dwX, dwY, dwXSize, dwYSize;
+        public int dwXCountChars, dwYCountChars;
+        public int dwFillAttribute;
+        public int dwFlags;
+        public short wShowWindow;
+        public short cbReserved2;
+        public IntPtr lpReserved2;
+        public IntPtr hStdInput, hStdOutput, hStdError;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PROCESS_INFORMATION
+    {
+        public IntPtr hProcess;
+        public IntPtr hThread;
+        public int dwProcessId;
+        public int dwThreadId;
+    }
+
+    /// <summary>
+    /// Launch a process in the interactive user's session (not Session 0).
+    /// Uses WTSQueryUserToken + CreateProcessAsUser so overlays appear on the user's desktop.
+    /// </summary>
+    private Process? LaunchInUserSession(string commandLine)
+    {
+        int sessionId = WTSGetActiveConsoleSessionId();
+        if (sessionId == unchecked((int)0xFFFFFFFF))
+        {
+            _log.LogWarning("No active console session — cannot launch in user session");
+            return null;
+        }
+
+        IntPtr userToken = IntPtr.Zero;
+        IntPtr duplicateToken = IntPtr.Zero;
+        IntPtr environment = IntPtr.Zero;
+
+        try
+        {
+            if (!WTSQueryUserToken(sessionId, out userToken))
+            {
+                _log.LogWarning("WTSQueryUserToken failed (Win32={Err})", Marshal.GetLastWin32Error());
+                return null;
+            }
+
+            // Duplicate as primary token (MAXIMUM_ALLOWED, SecurityImpersonation, TokenPrimary)
+            if (!DuplicateTokenEx(userToken, 0x02000000, IntPtr.Zero, 2, 1, out duplicateToken))
+            {
+                _log.LogWarning("DuplicateTokenEx failed (Win32={Err})", Marshal.GetLastWin32Error());
+                return null;
+            }
+
+            CreateEnvironmentBlock(out environment, duplicateToken, false);
+
+            var si = new STARTUPINFO
+            {
+                cb = Marshal.SizeOf<STARTUPINFO>(),
+                lpDesktop = "winsta0\\default",   // interactive desktop
+                dwFlags = 0x00000001,             // STARTF_USESHOWWINDOW
+                wShowWindow = 0                   // SW_HIDE — hide the host console
+            };
+
+            const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
+
+            if (CreateProcessAsUser(
+                duplicateToken, null, commandLine,
+                IntPtr.Zero, IntPtr.Zero, false,
+                CREATE_UNICODE_ENVIRONMENT, environment, null,
+                ref si, out var pi))
+            {
+                CloseHandle(pi.hThread);
+                CloseHandle(pi.hProcess);
+                _log.LogInformation("Launched process in user session {Sid} (PID {Pid})", sessionId, pi.dwProcessId);
+                try { return Process.GetProcessById(pi.dwProcessId); }
+                catch { return null; }
+            }
+            else
+            {
+                _log.LogWarning("CreateProcessAsUser failed (Win32={Err})", Marshal.GetLastWin32Error());
+                return null;
+            }
+        }
+        finally
+        {
+            if (environment != IntPtr.Zero) DestroyEnvironmentBlock(environment);
+            if (duplicateToken != IntPtr.Zero) CloseHandle(duplicateToken);
+            if (userToken != IntPtr.Zero) CloseHandle(userToken);
+        }
+    }
 }
 
 file static class NativeForeground

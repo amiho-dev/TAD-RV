@@ -209,9 +209,17 @@ static void RunTrayHelper()
             trayIcon.Text = $"TAD.RV Client \u2014 {s}";
         }
 
-        // Context menu
+        // Dark color palette (matches Admin theme)
+        var cBg      = System.Drawing.Color.FromArgb(0x0D, 0x11, 0x17);
+        var cSurface = System.Drawing.Color.FromArgb(0x16, 0x1B, 0x22);
+        var cBorder  = System.Drawing.Color.FromArgb(0x30, 0x36, 0x3D);
+        var cText    = System.Drawing.Color.FromArgb(0xC9, 0xD1, 0xD9);
+        var cAccent  = System.Drawing.Color.FromArgb(0x58, 0xA6, 0xFF);
+
+        // Context menu with dark renderer
         var titleItem = new System.Windows.Forms.ToolStripMenuItem("TAD.RV Client") { Enabled = false };
         var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Renderer = new DarkMenuRenderer(cBg, cSurface, cBorder, cText, cAccent);
         menu.Items.Add(titleItem);
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("Show Info", null, (_, _) => ShowClientInfoDialog(trayIcon));
@@ -236,19 +244,27 @@ static void RunTrayHelper()
             bool vHeld = (GetAsyncKeyState(VK_V) & 0x8000) != 0;
             if (!rHeld || !vHeld) return;
 
-            // Show password prompt
+            // Show dark password prompt
+            var dBg      = System.Drawing.Color.FromArgb(0x0D, 0x11, 0x17);
+            var dSurface = System.Drawing.Color.FromArgb(0x16, 0x1B, 0x22);
+            var dBorder  = System.Drawing.Color.FromArgb(0x30, 0x36, 0x3D);
+            var dText    = System.Drawing.Color.FromArgb(0xC9, 0xD1, 0xD9);
+            var dAccent  = System.Drawing.Color.FromArgb(0x58, 0xA6, 0xFF);
+
             using var pwForm = new System.Windows.Forms.Form
             {
-                Text = "TAD.RV — Secret Exit",
+                Text = "TAD.RV \u2014 Secret Exit",
                 Width = 340, Height = 170,
                 FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog,
                 StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen,
                 MaximizeBox = false, MinimizeBox = false,
-                TopMost = true
+                TopMost = true,
+                BackColor = dBg, ForeColor = dText
             };
-            var lbl = new System.Windows.Forms.Label { Text = "Enter exit password:", Left = 20, Top = 16, Width = 280 };
-            var txt = new System.Windows.Forms.TextBox { Left = 20, Top = 40, Width = 280, PasswordChar = '*' };
-            var btn = new System.Windows.Forms.Button { Text = "OK", Left = 200, Top = 75, Width = 100, DialogResult = System.Windows.Forms.DialogResult.OK };
+            var lbl = new System.Windows.Forms.Label { Text = "Enter exit password:", Left = 20, Top = 16, Width = 280, ForeColor = dText, BackColor = dBg };
+            var txt = new System.Windows.Forms.TextBox { Left = 20, Top = 40, Width = 280, PasswordChar = '*', BackColor = dSurface, ForeColor = dText, BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle };
+            var btn = new System.Windows.Forms.Button { Text = "OK", Left = 200, Top = 75, Width = 100, DialogResult = System.Windows.Forms.DialogResult.OK, FlatStyle = System.Windows.Forms.FlatStyle.Flat, BackColor = dAccent, ForeColor = System.Drawing.Color.White };
+            btn.FlatAppearance.BorderColor = dAccent;
             pwForm.Controls.AddRange(new System.Windows.Forms.Control[] { lbl, txt, btn });
             pwForm.AcceptButton = btn;
 
@@ -351,11 +367,51 @@ static void ShowClientInfoDialog(System.Windows.Forms.NotifyIcon tray)
           Admin Port:      {adminStatus}
         """;
 
-    System.Windows.Forms.MessageBox.Show(
-        info.Trim(),
-        "TAD.RV — Client Info",
-        System.Windows.Forms.MessageBoxButtons.OK,
-        System.Windows.Forms.MessageBoxIcon.Information);
+    // Dark info dialog (matches admin theme)
+    var fBg      = System.Drawing.Color.FromArgb(0x0D, 0x11, 0x17);
+    var fSurface = System.Drawing.Color.FromArgb(0x16, 0x1B, 0x22);
+    var fText    = System.Drawing.Color.FromArgb(0xC9, 0xD1, 0xD9);
+    var fAccent  = System.Drawing.Color.FromArgb(0x58, 0xA6, 0xFF);
+
+    using var infoForm = new System.Windows.Forms.Form
+    {
+        Text = "TAD.RV \u2014 Client Info",
+        Width = 520, Height = 420,
+        FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog,
+        StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen,
+        MaximizeBox = false, MinimizeBox = false,
+        BackColor = fBg, ForeColor = fText
+    };
+
+    var infoTxt = new System.Windows.Forms.TextBox
+    {
+        Multiline = true,
+        ReadOnly = true,
+        ScrollBars = System.Windows.Forms.ScrollBars.Vertical,
+        Dock = System.Windows.Forms.DockStyle.Fill,
+        Font = new System.Drawing.Font("Consolas", 9.5f),
+        Text = info.Trim(),
+        BackColor = fSurface,
+        ForeColor = fText,
+        BorderStyle = System.Windows.Forms.BorderStyle.None
+    };
+
+    var okBtn = new System.Windows.Forms.Button
+    {
+        Text = "OK",
+        Dock = System.Windows.Forms.DockStyle.Bottom,
+        Height = 34,
+        FlatStyle = System.Windows.Forms.FlatStyle.Flat,
+        BackColor = fAccent,
+        ForeColor = System.Drawing.Color.White,
+        DialogResult = System.Windows.Forms.DialogResult.OK
+    };
+    okBtn.FlatAppearance.BorderColor = fAccent;
+
+    infoForm.Controls.Add(infoTxt);
+    infoForm.Controls.Add(okBtn);
+    infoForm.AcceptButton = okBtn;
+    infoForm.ShowDialog();
 }
 
 /// <summary>Collects diagnostics and shows them in a scrollable dialog.</summary>
@@ -455,14 +511,21 @@ static void ShowDiagnosticsDialog(System.Windows.Forms.NotifyIcon tray)
     }
     catch (Exception ex) { sb.AppendLine($"  Error: {ex.Message}"); }
 
-    // Show in a form with a textbox
+    // Show in a dark-themed form
+    var gBg      = System.Drawing.Color.FromArgb(0x0D, 0x11, 0x17);
+    var gSurface = System.Drawing.Color.FromArgb(0x16, 0x1B, 0x22);
+    var gText    = System.Drawing.Color.FromArgb(0xC9, 0xD1, 0xD9);
+    var gAccent  = System.Drawing.Color.FromArgb(0x58, 0xA6, 0xFF);
+
     var form = new System.Windows.Forms.Form
     {
-        Text = "TAD.RV — Diagnostics",
+        Text = "TAD.RV \u2014 Diagnostics",
         Width = 600,
         Height = 500,
         StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen,
-        FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable
+        FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable,
+        BackColor = gBg,
+        ForeColor = gText
     };
 
     var txt = new System.Windows.Forms.TextBox
@@ -473,20 +536,25 @@ static void ShowDiagnosticsDialog(System.Windows.Forms.NotifyIcon tray)
         Dock = System.Windows.Forms.DockStyle.Fill,
         Font = new System.Drawing.Font("Consolas", 9f),
         Text = sb.ToString(),
-        BackColor = System.Drawing.Color.FromArgb(0x0D, 0x11, 0x17),
-        ForeColor = System.Drawing.Color.FromArgb(0xC9, 0xD1, 0xD9)
+        BackColor = gSurface,
+        ForeColor = gText,
+        BorderStyle = System.Windows.Forms.BorderStyle.None
     };
 
     var copyBtn = new System.Windows.Forms.Button
     {
         Text = "Copy to Clipboard",
         Dock = System.Windows.Forms.DockStyle.Bottom,
-        Height = 32
+        Height = 32,
+        FlatStyle = System.Windows.Forms.FlatStyle.Flat,
+        BackColor = gAccent,
+        ForeColor = System.Drawing.Color.White
     };
+    copyBtn.FlatAppearance.BorderColor = gAccent;
     copyBtn.Click += (_, _) =>
     {
         System.Windows.Forms.Clipboard.SetText(sb.ToString());
-        copyBtn.Text = "Copied!";
+        copyBtn.Text = "\u2714 Copied!";
     };
 
     form.Controls.Add(txt);
@@ -500,3 +568,74 @@ static extern bool FreeConsole();
 
 [System.Runtime.InteropServices.DllImport("user32.dll")]
 static extern short GetAsyncKeyState(int vKey);
+
+// ─── Dark Context Menu Renderer ───────────────────────────────────────────
+
+/// <summary>Custom ToolStripRenderer for dark-themed context menus matching the admin panel.</summary>
+sealed class DarkMenuRenderer : System.Windows.Forms.ToolStripProfessionalRenderer
+{
+    private readonly System.Drawing.Color _bg, _surface, _border, _text, _accent;
+
+    public DarkMenuRenderer(System.Drawing.Color bg, System.Drawing.Color surface, System.Drawing.Color border,
+        System.Drawing.Color text, System.Drawing.Color accent)
+        : base(new DarkMenuColorTable(bg, surface, border))
+    {
+        _bg = bg; _surface = surface; _border = border; _text = text; _accent = accent;
+        RoundedEdges = false;
+    }
+
+    protected override void OnRenderMenuItemBackground(System.Windows.Forms.ToolStripItemRenderEventArgs e)
+    {
+        var g = e.Graphics;
+        var rect = new System.Drawing.Rectangle(System.Drawing.Point.Empty, e.Item.Size);
+        var color = e.Item.Selected ? _surface : _bg;
+        using var brush = new System.Drawing.SolidBrush(color);
+        g.FillRectangle(brush, rect);
+    }
+
+    protected override void OnRenderItemText(System.Windows.Forms.ToolStripItemTextRenderEventArgs e)
+    {
+        e.TextColor = e.Item.Enabled ? _text : System.Drawing.Color.FromArgb(0x48, 0x4F, 0x58);
+        base.OnRenderItemText(e);
+    }
+
+    protected override void OnRenderSeparator(System.Windows.Forms.ToolStripSeparatorRenderEventArgs e)
+    {
+        var g = e.Graphics;
+        var rect = new System.Drawing.Rectangle(System.Drawing.Point.Empty, e.Item.Size);
+        using var bgBrush = new System.Drawing.SolidBrush(_bg);
+        g.FillRectangle(bgBrush, rect);
+        int y = rect.Height / 2;
+        using var pen = new System.Drawing.Pen(_border);
+        g.DrawLine(pen, 4, y, rect.Width - 4, y);
+    }
+
+    protected override void OnRenderToolStripBorder(System.Windows.Forms.ToolStripRenderEventArgs e)
+    {
+        using var pen = new System.Drawing.Pen(_border);
+        e.Graphics.DrawRectangle(pen, 0, 0, e.AffectedBounds.Width - 1, e.AffectedBounds.Height - 1);
+    }
+}
+
+sealed class DarkMenuColorTable : System.Windows.Forms.ProfessionalColorTable
+{
+    private readonly System.Drawing.Color _bg, _surface, _border;
+    public DarkMenuColorTable(System.Drawing.Color bg, System.Drawing.Color surface, System.Drawing.Color border)
+    { _bg = bg; _surface = surface; _border = border; }
+
+    public override System.Drawing.Color MenuBorder => _border;
+    public override System.Drawing.Color MenuItemBorder => _border;
+    public override System.Drawing.Color MenuItemSelected => _surface;
+    public override System.Drawing.Color MenuStripGradientBegin => _bg;
+    public override System.Drawing.Color MenuStripGradientEnd => _bg;
+    public override System.Drawing.Color MenuItemSelectedGradientBegin => _surface;
+    public override System.Drawing.Color MenuItemSelectedGradientEnd => _surface;
+    public override System.Drawing.Color MenuItemPressedGradientBegin => _surface;
+    public override System.Drawing.Color MenuItemPressedGradientEnd => _surface;
+    public override System.Drawing.Color ImageMarginGradientBegin => _bg;
+    public override System.Drawing.Color ImageMarginGradientMiddle => _bg;
+    public override System.Drawing.Color ImageMarginGradientEnd => _bg;
+    public override System.Drawing.Color ToolStripDropDownBackground => _bg;
+    public override System.Drawing.Color SeparatorDark => _border;
+    public override System.Drawing.Color SeparatorLight => _border;
+}
