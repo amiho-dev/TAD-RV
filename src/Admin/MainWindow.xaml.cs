@@ -49,6 +49,9 @@ public partial class MainWindow : Window
     private readonly HashSet<string> _pendingFrameIps = new();
     private readonly object _frameLock = new();
 
+    // Periodic thumbnail snapshot counter (every 5th status tick = 15s)
+    private int _snapshotTickCounter;
+
     // System tray icon
     private NotifyIcon? _trayIcon;
 
@@ -105,6 +108,7 @@ public partial class MainWindow : Window
             _tcpManager.StudentStatusUpdated += OnStudentStatusUpdated;
             _tcpManager.VideoFrameReceived += OnVideoFrameReceived;
             _tcpManager.MainFrameReceived += OnMainFrameReceived;
+            _tcpManager.SnapshotReceived += OnSnapshotReceived;
 
             // Auto-discover student machines via UDP multicast (zero-config)
             _discoveryListener = new DiscoveryListener();
@@ -135,6 +139,17 @@ public partial class MainWindow : Window
             // If any add_students message was dropped (race on startup), this recovers it
             // within 3 seconds without waiting for the next multicast heartbeat.
             FlushStudentsToWebView();
+
+            // Request thumbnail snapshots every 5th tick (~15 seconds) in production mode
+            if (!_isDemoMode && _tcpManager != null)
+            {
+                _snapshotTickCounter++;
+                if (_snapshotTickCounter >= 5)
+                {
+                    _snapshotTickCounter = 0;
+                    _tcpManager.BroadcastRequestSnapshot();
+                }
+            }
         };
         _statusTimer.Start();
     }
@@ -535,12 +550,40 @@ public partial class MainWindow : Window
                     if (_isDemoMode) _demoManager!.UnfreezeStudent(msg.Target);
                     else _tcpManager!.UnfreezeStudent(msg.Target);
                     break;
+                case "blank":
+                    if (!_isDemoMode)
+                    {
+                        var blFrame = TadFrameCodec.Encode(TadCommand.BlankScreen);
+                        _tcpManager!.SendCommandToStudent(msg.Target, blFrame);
+                    }
+                    SetStatus($"Blanked screen: {msg.Target}");
+                    break;
+                case "unblank":
+                    if (!_isDemoMode)
+                    {
+                        var ubFrame = TadFrameCodec.Encode(TadCommand.UnblankScreen);
+                        _tcpManager!.SendCommandToStudent(msg.Target, ubFrame);
+                    }
+                    SetStatus($"Restored screen: {msg.Target}");
+                    break;
                 case "message":
                     if (!string.IsNullOrWhiteSpace(msg.Payload))
                     {
                         if (_isDemoMode) _demoManager!.BroadcastPushMessage(msg.Payload);
                         else _tcpManager!.BroadcastPushMessage(msg.Payload);
                         SetStatus($"Message sent: \"{msg.Payload.Substring(0, Math.Min(msg.Payload.Length, 50))}\"");
+                    }
+                    break;
+                case "message_student":
+                    if (!string.IsNullOrWhiteSpace(msg.Payload) && !string.IsNullOrEmpty(msg.Target))
+                    {
+                        if (!_isDemoMode)
+                        {
+                            var pmFrame = TadFrameCodec.EncodeJson(TadCommand.PushMessage,
+                                new PushMessageRequest { Message = msg.Payload });
+                            _tcpManager!.SendCommandToStudent(msg.Target, pmFrame);
+                        }
+                        SetStatus($"Message sent to {msg.Target}");
                     }
                     break;
                 case "kill_process":
@@ -647,7 +690,10 @@ public partial class MainWindow : Window
                     break;
             }
         }
-        catch { /* Ignore malformed messages */ }
+        catch (Exception ex)
+        {
+            TADLogger.Warn($"WebMessage handling failed: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     /// <summary>Push student status update to the WebView2 grid.</summary>
@@ -708,6 +754,21 @@ public partial class MainWindow : Window
                 ip,
                 keyFrame = isKeyFrame,
                 data = Convert.ToBase64String(frameData)
+            });
+        });
+    }
+
+    /// <summary>Push a JPEG snapshot thumbnail to the WebView for the student tile.</summary>
+    private void OnSnapshotReceived(string ip, byte[] jpegData)
+    {
+        if (!_webViewReady) return;
+        Dispatcher.InvokeAsync(() =>
+        {
+            PostJsonMessage(new
+            {
+                type = "thumbnail",
+                ip,
+                data = Convert.ToBase64String(jpegData)
             });
         });
     }

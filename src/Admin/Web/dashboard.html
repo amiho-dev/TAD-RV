@@ -51,6 +51,24 @@
         </div>
         <div class="stats-right">
             <div class="stats-actions">
+                <button class="stats-action-btn" onclick="handleConfirmAction('lock_all')" title="Lock all student screens">
+                    <span class="sai">&#xE72E;</span> Lock All
+                </button>
+                <button class="stats-action-btn" onclick="sendToHost({action:'unlock_all'})" title="Unlock all screens">
+                    <span class="sai">&#xE785;</span> Unlock All
+                </button>
+                <button class="stats-action-btn" onclick="handleConfirmAction('freeze_all')" title="Freeze all student screens">
+                    <span class="sai">&#xE7AD;</span> Freeze All
+                </button>
+                <button class="stats-action-btn" onclick="sendToHost({action:'unfreeze_all'})" title="Unfreeze all screens">
+                    <span class="sai">&#xE77A;</span> Unfreeze All
+                </button>
+                <button class="stats-action-btn" onclick="handleConfirmAction('blank_all')" title="Blank all student screens">
+                    <span class="sai">&#xE747;</span> Blank All
+                </button>
+                <button class="stats-action-btn" onclick="sendToHost({action:'unblank_all'})" title="Restore all screens">
+                    <span class="sai">&#xE793;</span> Unblank All
+                </button>
                 <button class="stats-action-btn" onclick="openMessageDialog()" title="Broadcast a message to all students">
                     <span class="sai">&#xE8BD;</span> Message
                 </button>

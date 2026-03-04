@@ -59,9 +59,9 @@ const string SetupBinaryName = "TADClientSetup.exe";
 const string AssetPrefix     = "TADClientSetup";      // GitHub release asset prefix
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.Client";
 const bool   IsService       = true;
-const bool   CreateShortcut  = false;
-const string ShortcutName    = "";
-const string ShortcutDesc    = "";
+const bool   CreateShortcut  = true;
+const string ShortcutName    = "TAD.RV Client.lnk";
+const string ShortcutDesc    = "TAD.RV Client System Tray";
 #endif
 
 // ── Service constants (Client only, unused by Admin/DC but must compile) ─────
@@ -285,7 +285,7 @@ static bool RunUpdate()
 static bool RunInstall()
 {
 #if SETUP_CLIENT
-    int totalSteps = 7;
+    int totalSteps = CreateShortcut ? 8 : 7;
 #else
     int totalSteps = CreateShortcut ? 5 : 4;
 #endif
@@ -314,6 +314,20 @@ static bool RunInstall()
 
     Step(7, totalSteps, "Registering tray icon (auto-start at login)...");
     AddTrayRunKey();
+
+    if (CreateShortcut)
+    {
+        Step(8, totalSteps, $"Creating Start Menu shortcut  \u2192  {StartMenuFolder}\\{Path.GetFileNameWithoutExtension(ShortcutName)}");
+        CreateStartMenuShortcut();
+    }
+
+    // Launch tray helper immediately so user sees it without re-login
+    try
+    {
+        var trayPath = Path.Combine(InstallDir(), BinaryName);
+        Process.Start(new ProcessStartInfo(trayPath, "--tray") { UseShellExecute = true });
+    }
+    catch { /* Best effort — tray will start on next login */ }
 #else
     if (CreateShortcut)
     {
@@ -687,6 +701,8 @@ static void AddAppRunKey()
     catch (Exception ex) { Warn($"Auto-start Run key (non-fatal): {ex.Message}"); }
 }
 
+#endif  // !SETUP_CLIENT
+
 static void CreateStartMenuShortcut()
 {
     try
@@ -696,12 +712,18 @@ static void CreateStartMenuShortcut()
         string target  = InstallBin(BinaryName);
         string workDir = InstallDir();
         string desc    = ShortcutDesc;
+#if SETUP_CLIENT
+        string args    = "--tray";
+#else
+        string args    = "";
+#endif
 
         // Build the PS script first, then Base64-encode it.
         // This completely avoids quoting/backslash issues with -Command "...".
         string psScript =
             $"$s = (New-Object -ComObject WScript.Shell).CreateShortcut([string]'{EscapePs(lnkPath)}');\n" +
             $"$s.TargetPath      = [string]'{EscapePs(target)}';\n" +
+            $"$s.Arguments       = [string]'{EscapePs(args)}';\n" +
             $"$s.WorkingDirectory = [string]'{EscapePs(workDir)}';\n" +
             $"$s.Description     = [string]'{EscapePs(desc)}';\n" +
             "$s.Save();\n";
@@ -719,7 +741,6 @@ static void CreateStartMenuShortcut()
 
 // Escape single quotes inside a PS single-quoted string
 static string EscapePs(string s) => s.Replace("'", "''");
-#endif
 
 static void RemoveShortcuts()
 {

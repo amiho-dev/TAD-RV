@@ -859,8 +859,10 @@ public sealed class TadTcpListener : BackgroundService
         try
         {
             int userSessionId = WTSGetActiveConsoleSessionId();
+            // Processes to always ignore — system services, shell, runtime, background agents
             var ignoredNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
+                // Windows core
                 "svchost", "csrss", "wininit", "services", "lsass", "smss",
                 "System", "Idle", "Registry", "dwm", "fontdrvhost",
                 "sihost", "taskhostw", "ctfmon", "conhost", "dllhost",
@@ -868,7 +870,34 @@ public sealed class TadTcpListener : BackgroundService
                 "ShellExperienceHost", "TextInputHost", "SecurityHealthSystray",
                 "SearchIndexer", "spoolsv", "CompPkgSrv", "uhssvc",
                 "MsMpEng", "NisSrv", "SgrmBroker", "WmiPrvSE",
-                "TadBridgeService", "audiodg", "powershell"
+                "TadBridgeService", "audiodg", "powershell",
+                // Shell & UWP infrastructure
+                "explorer", "ApplicationFrameHost", "SystemSettings",
+                "UserOOBEBroker", "WidgetService", "Widgets",
+                "LockApp", "LogonUI", "WinLogon", "userinit",
+                "backgroundTaskHost", "backgroundTransferHost",
+                "PhoneExperienceHost", "YourPhone", "GameBarPresenceWriter",
+                // Runtime / hosting
+                "cmd", "pwsh", "WindowsTerminal", "OpenConsole",
+                "msedgewebview2", "WebViewHost", "crashpad_handler",
+                // Windows Defender & security
+                "SecurityHealthService", "smartscreen",
+                // Windows Update & maintenance
+                "TiWorker", "TrustedInstaller", "WerFault", "wermgr",
+                "MusNotifyIcon", "musNotification",
+                // Graphics / driver
+                "igfxCUIService", "igfxEM", "igfxHK", "igfxTray",
+                "nvcontainer", "NVIDIA", "amddvr",
+                // Input / accessibility
+                "TabTip", "InputApp", "Narrator", "Magnify",
+                // Lenovo / OEM (common on T431S)
+                "Lenovo", "LenovoUtility", "WUDFHost", "PresentationFontCache"
+            };
+
+            // Prefixes that indicate non-user background processes
+            var ignoredPrefixes = new[] {
+                "svchost", "com.docker", "docker", "vmware",
+                "Microsoft.SharePoint", "OneDrive"
             };
 
             foreach (var proc in Process.GetProcesses())
@@ -878,18 +907,24 @@ public sealed class TadTcpListener : BackgroundService
                     // Filter to the active user session only
                     if (!ProcessIdToSessionId((uint)proc.Id, out uint procSid)) continue;
                     if (procSid != (uint)userSessionId) continue;
-                    if (ignoredNames.Contains(proc.ProcessName)) continue;
 
-                    // MainWindowTitle won't work from Session 0 for most processes,
-                    // so fall back to process name as the display title
+                    string name = proc.ProcessName;
+                    if (ignoredNames.Contains(name)) continue;
+                    if (ignoredPrefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
+
+                    // Get the window title — from Session 0 this is usually empty
                     string title = "";
                     try { title = proc.MainWindowTitle; } catch { }
 
+                    // Only include processes that have a visible window title
+                    // (i.e., actual user applications, not background services)
+                    if (string.IsNullOrWhiteSpace(title)) continue;
+
                     openWindows.Add(new OpenWindowInfo
                     {
-                        Title = string.IsNullOrEmpty(title) ? proc.ProcessName : title,
+                        Title = title,
                         ProcessId = proc.Id,
-                        ProcessName = proc.ProcessName
+                        ProcessName = name
                     });
                 }
                 catch { /* access denied for some processes */ }

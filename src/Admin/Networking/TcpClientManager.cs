@@ -44,6 +44,9 @@ public sealed class TcpClientManager : IDisposable
     /// <summary>Fired when a main-stream H.264 frame arrives (30fps 720p focus).</summary>
     public event Action<string, byte[], bool>? MainFrameReceived;
 
+    /// <summary>Fired when a JPEG snapshot arrives (thumbnail for grid tile).</summary>
+    public event Action<string, byte[]>? SnapshotReceived;
+
     // ─── Public Properties ────────────────────────────────────────────
 
     public int ConnectedCount => _connections.Count(c => c.Value.IsConnected);
@@ -115,6 +118,8 @@ public sealed class TcpClientManager : IDisposable
         BroadcastRaw(frame);
     }
     public void PingAll() => BroadcastCommand(TadCommand.Ping);
+    public void RequestSnapshot(string ip) => SendCommand(ip, TadCommand.Snapshot);
+    public void BroadcastRequestSnapshot() => BroadcastCommand(TadCommand.Snapshot);
 
     public void KillProcessOnStudent(string ip, int pid)
     {
@@ -240,6 +245,10 @@ public sealed class TcpClientManager : IDisposable
 
             case TadCommand.MainKeyFrame:
                 MainFrameReceived?.Invoke(ip, payload.ToArray(), true);
+                break;
+
+            case TadCommand.SnapshotData:
+                SnapshotReceived?.Invoke(ip, payload.ToArray());
                 break;
 
             case TadCommand.FileChunk:

@@ -77,6 +77,10 @@ window.chrome.webview.addEventListener('message', (event) => {
             handleDemoFrame(msg.ip, msg.frame);
             break;
 
+        case 'thumbnail':
+            handleThumbnail(msg.ip, msg.data);
+            break;
+
         case 'add_students':
             msg.ips.forEach(ip => ensureStudentTile(ip));
             break;
@@ -182,6 +186,10 @@ function renderTile(student) {
             <button onclick="event.stopPropagation(); unlockStudent('${student.ip}')">&#xE785; Unlock</button>
             <button onclick="event.stopPropagation(); freezeStudent('${student.ip}')">&#xE7AD; Freeze</button>
             <button onclick="event.stopPropagation(); unfreezeStudent('${student.ip}')">&#xE77A; Unfreeze</button>
+            <div class="ctx-sep"></div>
+            <button onclick="event.stopPropagation(); blankStudent('${student.ip}')">&#xE747; Blank Screen</button>
+            <button onclick="event.stopPropagation(); unblankStudent('${student.ip}')">&#xE793; Restore Screen</button>
+            <button onclick="event.stopPropagation(); messageStudent('${student.ip}')">&#xE8BD; Send Message</button>
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; Internetsperre</button>
             <button onclick="event.stopPropagation(); toggleProgramBlock('${student.ip}')">&#xE74C; Programmsperre</button>
@@ -375,6 +383,37 @@ function handleMainFrame(ip, base64Data, isKeyFrame) {
     }
 
     decodeFrame(rvMainDecoder, data, isKeyFrame);
+}
+
+// ── JPEG Thumbnail Rendering (snapshot-based tile previews) ──────────
+
+function handleThumbnail(ip, base64Data) {
+    const student = students.get(ip);
+    if (!student) return;
+
+    // Don't overwrite live H.264 video frames with lower-quality snapshots
+    if (student.decoder) return;
+
+    const img = new Image();
+    img.onload = () => {
+        student.hasReceivedFrame = true;
+        const placeholder = student.tileEl?.querySelector('.preview-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+
+        if (student.canvas && student.ctx) {
+            student.ctx.drawImage(img, 0, 0, 480, 270);
+        }
+
+        // If this student's RV modal is open and no main decoder, show snapshot there too
+        if (activeRvIp === ip && !rvMainDecoder && !rvDecoder) {
+            const rvCanvas = document.getElementById('rvCanvas');
+            if (rvCanvas) {
+                const rvCtx = rvCanvas.getContext('2d');
+                rvCtx.drawImage(img, 0, 0, 1920, 1080);
+            }
+        }
+    };
+    img.src = 'data:image/jpeg;base64,' + base64Data;
 }
 
 // ── Demo Frame Rendering (synthetic desktop thumbnails) ──────────────
@@ -938,18 +977,42 @@ function freezeFromRv() {
 
 function lockStudent(ip) {
     sendToHost({ action: 'lock', target: ip });
+    closeAllContextMenus();
 }
 
 function unlockStudent(ip) {
     sendToHost({ action: 'unlock', target: ip });
+    closeAllContextMenus();
 }
 
 function freezeStudent(ip) {
     sendToHost({ action: 'freeze', target: ip });
+    closeAllContextMenus();
 }
 
 function unfreezeStudent(ip) {
     sendToHost({ action: 'unfreeze', target: ip });
+    closeAllContextMenus();
+}
+
+function blankStudent(ip) {
+    sendToHost({ action: 'blank', target: ip });
+    closeAllContextMenus();
+}
+
+function unblankStudent(ip) {
+    sendToHost({ action: 'unblank', target: ip });
+    closeAllContextMenus();
+}
+
+function messageStudent(ip) {
+    // Reuse the broadcast message modal but target one student
+    document.getElementById('messageModal').style.display = 'flex';
+    const ta = document.getElementById('messageText');
+    ta.value = '';
+    ta.focus();
+    ta.dataset.targetIp = ip;
+    closeAllContextMenus();
 }
 
 function toggleInternetBlock(ip) {
@@ -1198,14 +1261,23 @@ function openMessageDialog() {
 
 function closeMessageDialog() {
     document.getElementById('messageModal').style.display = 'none';
+    // Clear per-student target if set
+    delete document.getElementById('messageText').dataset.targetIp;
 }
 
 function sendBroadcastMessage() {
-    const text = document.getElementById('messageText').value.trim();
+    const ta = document.getElementById('messageText');
+    const text = ta.value.trim();
     if (!text) return;
-    sendToHost({ action: 'message', target: '', payload: text });
+    const targetIp = ta.dataset.targetIp || '';
+    if (targetIp) {
+        sendToHost({ action: 'message_student', target: targetIp, payload: text });
+    } else {
+        sendToHost({ action: 'message', target: '', payload: text });
+    }
     closeMessageDialog();
-    showAnnouncement(`Message sent: "${text.substring(0, 60)}${text.length > 60 ? '...' : ''}"`);
+    const label = targetIp ? `Message sent to ${targetIp}` : `Message sent: "${text.substring(0, 60)}${text.length > 60 ? '...' : ''}"`;
+    showAnnouncement(label);
     setTimeout(() => showAnnouncement(null), 5000);
 }
 
