@@ -48,6 +48,8 @@ public sealed class TrayIconManager : IHostedService, IDisposable
             _menu = new System.Windows.Forms.ContextMenuStrip();
             _menu.Items.Add("TAD.RV Bridge Service (Emulation)", null, null!).Enabled = false;
             _menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+            _menu.Items.Add("Diagnostics", null, (_, _) => ShowEmulationDiagnostics());
+            _menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
             _menu.Items.Add("Exit", null, (_, _) =>
             {
                 _log.LogInformation("[TRAY] User requested exit from tray icon");
@@ -99,6 +101,60 @@ public sealed class TrayIconManager : IHostedService, IDisposable
     {
         Dispose();
         return Task.CompletedTask;
+    }
+
+    private void ShowEmulationDiagnostics()
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("═══ TAD.RV Service Diagnostics (Emulation) ═══");
+            sb.AppendLine($"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                var attr = asm.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
+                sb.AppendLine($"Version: {attr?.InformationalVersion ?? "?"}");
+            }
+            catch { sb.AppendLine("Version: ?"); }
+
+            sb.AppendLine();
+            sb.AppendLine("── System ──");
+            sb.AppendLine($"  Machine:    {Environment.MachineName}");
+            sb.AppendLine($"  User:       {Environment.UserDomainName}\\{Environment.UserName}");
+            sb.AppendLine($"  OS:         {Environment.OSVersion}");
+            sb.AppendLine($"  .NET:       {Environment.Version}");
+            sb.AppendLine($"  Processors: {Environment.ProcessorCount}");
+
+            sb.AppendLine();
+            sb.AppendLine("── Network ──");
+            try
+            {
+                var props = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+                sb.AppendLine($"  Hostname: {props.HostName}");
+                sb.AppendLine($"  Domain:   {(string.IsNullOrEmpty(props.DomainName) ? "(none)" : props.DomainName)}");
+
+                var listeners = props.GetActiveTcpListeners();
+                sb.AppendLine($"  TCP 17420: {(listeners.Any(ep => ep.Port == 17420) ? "LISTENING" : "not listening")}");
+            }
+            catch (Exception ex) { sb.AppendLine($"  Error: {ex.Message}"); }
+
+            sb.AppendLine();
+            sb.AppendLine("── Installation ──");
+            sb.AppendLine($"  Base Dir: {AppContext.BaseDirectory}");
+            sb.AppendLine($"  Process:  {Environment.ProcessPath}");
+
+            System.Windows.Forms.MessageBox.Show(
+                sb.ToString(),
+                "TAD.RV — Service Diagnostics",
+                System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "[TRAY] Failed to show diagnostics");
+        }
     }
 
     public void Dispose()

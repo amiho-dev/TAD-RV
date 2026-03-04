@@ -53,6 +53,7 @@ public partial class MainWindow : Window
 
     private bool _allFrozen;
     private bool _allBlanked;
+    private bool _exitRequested;  // true only when "Exit" from tray — X button hides to tray
     private DateTime? _statusMessageExpiry;
 
     // JSON options for camelCase deserialization
@@ -73,6 +74,9 @@ public partial class MainWindow : Window
         var dashIdx = fullVer.IndexOf('-');
         if (dashIdx > 0) shortVer = fullVer[..dashIdx];
         TxtVersionBar.Text = $"v{shortVer}";
+
+        // Load logo into title bar from embedded base64 PNG
+        LoadTitleBarLogo();
 
         _isDemoMode = demoMode;
 
@@ -176,7 +180,9 @@ public partial class MainWindow : Window
         menu.Items.Add("Lock All Screens", null, (_, _) => Dispatcher.InvokeAsync(() => BtnLockAll_Click(this, new RoutedEventArgs())));
         menu.Items.Add("Unlock All Screens", null, (_, _) => Dispatcher.InvokeAsync(() => BtnUnlockAll_Click(this, new RoutedEventArgs())));
         menu.Items.Add("-");
-        menu.Items.Add("Exit", null, (_, _) => Dispatcher.InvokeAsync(Close));
+        menu.Items.Add("Diagnostics", null, (_, _) => Dispatcher.InvokeAsync(ShowDiagnostics));
+        menu.Items.Add("-");
+        menu.Items.Add("Exit", null, (_, _) => Dispatcher.InvokeAsync(() => { _exitRequested = true; Close(); }));
         return menu;
     }
 
@@ -188,6 +194,29 @@ public partial class MainWindow : Window
             WindowState = WindowState.Maximized;
             Activate();
         });
+    }
+
+    /// <summary>Load the logo PNG from embedded base64 resource into the title bar Image.</summary>
+    private void LoadTitleBarLogo()
+    {
+        try
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            using var stream = asm.GetManifestResourceStream("TADAdmin.Assets.logo32.b64");
+            if (stream == null) return;
+            using var reader = new StreamReader(stream);
+            string base64 = reader.ReadToEnd().Trim();
+            byte[] bytes = Convert.FromBase64String(base64);
+            using var ms = new MemoryStream(bytes);
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.StreamSource = ms;
+            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            bmp.Freeze();
+            TitleBarLogo.Source = bmp;
+        }
+        catch { /* Logo is cosmetic — don't crash */ }
     }
 
     /// <summary>Minimize to system tray instead of taskbar.</summary>
@@ -694,7 +723,25 @@ public partial class MainWindow : Window
             : "\uE922";  // ChromeMaximize
     }
 
-    private void CaptionClose_Click(object sender, RoutedEventArgs e) => Close();
+    private void CaptionClose_Click(object sender, RoutedEventArgs e)
+    {
+        // X button hides to tray — use tray "Exit" to truly quit
+        Hide();
+        _trayIcon?.ShowBalloonTip(2000, "TAD.RV", "Still running in the system tray", ToolTipIcon.Info);
+    }
+
+    /// <summary>Only actually close when _exitRequested is true (tray → Exit).</summary>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        if (!_exitRequested)
+        {
+            e.Cancel = true;
+            Hide();
+            _trayIcon?.ShowBalloonTip(2000, "TAD.RV", "Still running in the system tray", ToolTipIcon.Info);
+            return;
+        }
+        base.OnClosing(e);
+    }
 
     protected override void OnClosed(EventArgs e)
     {
@@ -739,6 +786,61 @@ public partial class MainWindow : Window
             });
         }
         catch { /* Best effort */ }
+    }
+
+    // ─── Diagnostics ──────────────────────────────────────────────────
+
+    private void ShowDiagnostics()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("═══ TAD.RV Admin Diagnostics ═══");
+        sb.AppendLine($"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine($"Version:   {GetRunningVersion()}");
+        sb.AppendLine($"Mode:      {(_isDemoMode ? "Demo" : "Production")}");
+        sb.AppendLine();
+
+        sb.AppendLine("── Connections ──");
+        if (_isDemoMode)
+        {
+            sb.AppendLine($"  Connected: {_demoManager!.ConnectedCount} / {_demoManager.TotalEndpoints}");
+        }
+        else
+        {
+            sb.AppendLine($"  Connected: {_tcpManager!.ConnectedCount} / {_tcpManager.TotalEndpoints}");
+            sb.AppendLine($"  Known IPs: {string.Join(", ", _tcpManager.GetAllEndpointIps())}");
+        }
+
+        if (_discoveryListener != null)
+        {
+            sb.AppendLine($"  Discovery: {_discoveryListener.KnownStudentIps?.Count ?? 0} discovered");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("── System ──");
+        sb.AppendLine($"  Machine:    {Environment.MachineName}");
+        sb.AppendLine($"  User:       {Environment.UserDomainName}\\{Environment.UserName}");
+        sb.AppendLine($"  OS:         {Environment.OSVersion}");
+        sb.AppendLine($"  .NET:       {Environment.Version}");
+        sb.AppendLine($"  Processors: {Environment.ProcessorCount}");
+        sb.AppendLine($"  WebView2:   {(_webViewReady ? "Ready" : "Not ready")}");
+
+        sb.AppendLine();
+        sb.AppendLine("── Network ──");
+        try
+        {
+            foreach (var iface in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
+                    && n.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback))
+            {
+                var addrs = iface.GetIPProperties().UnicastAddresses
+                    .Where(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    .Select(a => a.Address.ToString());
+                sb.AppendLine($"  {iface.Name}: {string.Join(", ", addrs)}");
+            }
+        }
+        catch (Exception ex) { sb.AppendLine($"  Error: {ex.Message}"); }
+
+        MessageBox.Show(sb.ToString(), "TAD.RV — Diagnostics", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }
 

@@ -25,6 +25,7 @@ let isDemoMode = false;               // Set by config message from C#
 let currentFilter = '';               // Search filter string
 let appVersion = '26700.192';         // Updated by config message
 let showOffline = true;               // Show offline/connecting tiles by default
+let hideIfAllOffline = false;         // Toggle: show nothing if every PC is offline
 
 // ── Message Bridge (C# → JS) ────────────────────────────────────────
 
@@ -226,8 +227,20 @@ function updateTileUI(student) {
 
     if (s.IsHandRaised) html += '<span class="badge badge-hand">Hand</span>';
 
-    if (s.DriverLoaded) html += '<span class="badge badge-online">Online</span>';
-    else html += '<span class="badge badge-offline">Offline</span>';
+    // Determine real connectivity: "online" = received status within the last 10s
+    const now = Date.now();
+    const neverSeen = student.lastSeen === 0;
+    const recentlySeen = !neverSeen && (now - student.lastSeen < 10000);
+    if (recentlySeen) {
+        html += '<span class="badge badge-online">Online</span>';
+        tile.classList.remove('offline');
+    } else if (neverSeen) {
+        html += '<span class="badge badge-connecting">Connecting…</span>';
+        tile.classList.remove('offline');
+    } else {
+        html += '<span class="badge badge-offline">Offline</span>';
+        tile.classList.add('offline');
+    }
 
     badges.innerHTML = html;
 
@@ -273,6 +286,15 @@ function toggleOfflineVisibility() {
     const lbl = document.querySelector('#offlineToggle .stat-label');
     if (lbl) lbl.textContent = showOffline ? 'Offline ▲' : 'Offline ▼';
     students.forEach(s => applyFilter(s));
+}
+
+function toggleHideIfAllOffline() {
+    hideIfAllOffline = !hideIfAllOffline;
+    const btn = document.getElementById('allOfflineToggle');
+    if (btn) btn.classList.toggle('active', hideIfAllOffline);
+    const lbl = document.querySelector('#allOfflineToggle .stat-label');
+    if (lbl) lbl.textContent = hideIfAllOffline ? 'Hide ✓' : 'Hide ✗';
+    updateStats();
 }
 
 function applyFilter(student) {
@@ -971,23 +993,25 @@ function closeAbout(event) {
 
 function updateStats() {
     const now = Date.now();
-    let online = 0, locked = 0, frozen = 0, streaming = 0, handRaised = 0, offline = 0;
+    let online = 0, locked = 0, frozen = 0, streaming = 0, handRaised = 0, offline = 0, connecting = 0;
 
     students.forEach(s => {
-        const isOnline = s.status && (now - s.lastSeen < 10000);
+        const neverSeen = s.lastSeen === 0;
+        const isOnline = !neverSeen && s.status && (now - s.lastSeen < 10000);
         if (isOnline) {
             online++;
             if (s.status.IsLocked) locked++;
             if (s.status.IsFrozen) frozen++;
             if (s.status.IsStreaming) streaming++;
             if (s.status.IsHandRaised) handRaised++;
+        } else if (neverSeen) {
+            connecting++;
         } else {
             offline++;
-            if (s.tileEl) s.tileEl.classList.add('offline');
         }
     });
 
-    document.getElementById('statOnline').textContent = online;
+    document.getElementById('statOnline').textContent = online + (connecting > 0 ? ` (+${connecting})` : '');
     document.getElementById('statLocked').textContent = locked;
     document.getElementById('statFrozen').textContent = frozen;
     document.getElementById('statStreaming').textContent = streaming;
@@ -996,6 +1020,19 @@ function updateStats() {
 
     // Re-apply filter so newly-offline tiles get hidden/shown per toggle
     students.forEach(s => applyFilter(s));
+
+    // "Hide if all offline" toggle: show empty state when every PC is offline
+    const emptyEl = document.getElementById('emptyState');
+    if (hideIfAllOffline && students.size > 0 && online === 0 && connecting === 0) {
+        // All students are offline — show empty state over the grid
+        if (emptyEl) {
+            emptyEl.style.display = '';
+            emptyEl.querySelector('h2').textContent = 'All Students Offline';
+            emptyEl.querySelector('p').textContent = 'Every connected PC is currently offline.';
+        }
+    } else if (students.size > 0 && emptyEl) {
+        emptyEl.style.display = 'none';
+    }
 }
 
 // Refresh stats every 5 seconds
