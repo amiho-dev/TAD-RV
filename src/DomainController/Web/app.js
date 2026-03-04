@@ -3,6 +3,12 @@
 // C# ↔ WebView2 bridge + SPA routing + UI state management
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ── i18n shortcut (delegates to TAD_I18N.t once loaded) ─────────────────────
+function t(key, replacements) {
+    if (typeof TAD_I18N !== 'undefined') return TAD_I18N.t(key, replacements);
+    return key;
+}
+
 // ── State ──────────────────────────────────────────────────────────────────
 let allEvents = [];
 let currentFilter = 'all';

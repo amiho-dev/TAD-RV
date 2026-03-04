@@ -265,9 +265,6 @@ const TAD_LANG_PL = {
     'confirm.30min': '30 minut',
     'confirm.1hour': '1 godzina',
 
-    'empty.noStudents': 'Brak połączonych uczniów',
-    'empty.waiting': 'Oczekiwanie na punkty końcowe uczniów…',
-
     'announce.frozen': 'Wszystkie ekrany zamrożone — Uwaga na nauczyciela!',
     'announce.blanked': 'Wszystkie ekrany wygaszone — Tryb uwagi aktywny',
 
@@ -309,7 +306,6 @@ const TAD_LANG_PL = {
     'confirm.freezeAllDesc': 'Zamrozić wszystkie ekrany? Uczniowie zobaczą zamrożony obraz.',
     'confirm.freezeAllBtn': '❄ Zamroź wszystko',
 
-    'rv.title': 'Widok zdalny — {name}',
     'rv.subStream': 'Sub-stream 480p',
     'rv.demoStream': 'Strumień demo (syntetyczny)',
 

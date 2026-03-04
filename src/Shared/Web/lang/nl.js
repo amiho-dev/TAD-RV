@@ -265,9 +265,6 @@ const TAD_LANG_NL = {
     'confirm.30min': '30 minuten',
     'confirm.1hour': '1 uur',
 
-    'empty.noStudents': 'Geen leerlingen verbonden',
-    'empty.waiting': 'Wachten op leerling-endpoints…',
-
     'announce.frozen': 'Alle schermen bevroren — Kijk naar de leraar!',
     'announce.blanked': 'Alle schermen verduisterd — Aandachtmodus actief',
 
@@ -309,7 +306,6 @@ const TAD_LANG_NL = {
     'confirm.freezeAllDesc': 'Alle leerlingschermen bevriezen? Leerlingen zien een bevroren beeld.',
     'confirm.freezeAllBtn': '❄ Alles bevriezen',
 
-    'rv.title': 'Op afstand bekijken — {name}',
     'rv.subStream': 'Sub-stream 480p',
     'rv.demoStream': 'Demo-stream (synthetisch)',
 

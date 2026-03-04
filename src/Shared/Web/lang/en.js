@@ -209,7 +209,6 @@ const TAD_LANG_EN = {
     'empty.waiting': 'Waiting for student endpoints to come online...',
 
     // ── Teacher: Remote View Modal ──────────────────────────────
-    'rv.title': 'Remote View — {host}',
     'rv.student': 'Remote View — Student',
     'rv.privacyMode': 'Toggle Privacy Mode',
     'rv.lockStudent': 'Lock This Student',
@@ -292,10 +291,6 @@ const TAD_LANG_EN = {
     'confirm.15min': '15 minutes',
     'confirm.30min': '30 minutes',
     'confirm.1hour': '1 hour',
-
-    // ── Teacher: Empty State ────────────────────────────────────
-    'empty.noStudents': 'No Students Connected',
-    'empty.waiting': 'Waiting for student endpoints to come online...',
 
     // ── Teacher: Announcement ───────────────────────────────────
     'announce.frozen': 'All screens frozen — Eyes on the teacher!',

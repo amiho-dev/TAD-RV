@@ -279,9 +279,6 @@ const TAD_LANG_DE = {
     'confirm.30min': '30 Minuten',
     'confirm.1hour': '1 Stunde',
 
-    'empty.noStudents': 'Keine Schüler verbunden',
-    'empty.waiting': 'Warten auf Schüler-Endpunkte…',
-
     'announce.frozen': 'Alle Bildschirme eingefroren — Augen nach vorne!',
     'announce.blanked': 'Alle Bildschirme abgedunkelt — Aufmerksamkeitsmodus aktiv',
 
@@ -323,7 +320,6 @@ const TAD_LANG_DE = {
     'confirm.freezeAllDesc': 'Alle Schülerbildschirme einfrieren? Die Schüler sehen ein eingefrorenes Bild.',
     'confirm.freezeAllBtn': '❄ Alle einfrieren',
 
-    'rv.title': 'Fernansicht — {name}',
     'rv.subStream': 'Sub-Stream 480p',
     'rv.demoStream': 'Demo-Stream (synthetisch)',
 

@@ -265,9 +265,6 @@ const TAD_LANG_ES = {
     'confirm.30min': '30 minutos',
     'confirm.1hour': '1 hora',
 
-    'empty.noStudents': 'No hay alumnos conectados',
-    'empty.waiting': 'Esperando a que los puestos de alumno se conecten…',
-
     'announce.frozen': '¡Todas las pantallas congeladas — Atención al profesor!',
     'announce.blanked': 'Todas las pantallas apagadas — Modo atención activo',
 
@@ -309,7 +306,6 @@ const TAD_LANG_ES = {
     'confirm.freezeAllDesc': '¿Congelar todas las pantallas? Los alumnos verán una imagen congelada.',
     'confirm.freezeAllBtn': '❄ Congelar todo',
 
-    'rv.title': 'Vista remota — {name}',
     'rv.subStream': 'Sub-stream 480p',
     'rv.demoStream': 'Flujo demo (sintético)',
 

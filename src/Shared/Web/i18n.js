@@ -119,6 +119,3 @@ const TAD_I18N = (() => {
 
     return { init, t, setLanguage, getLanguage, getSupportedLanguages, applyTranslations };
 })();
-
-// Convenience alias
-const t = TAD_I18N.t;

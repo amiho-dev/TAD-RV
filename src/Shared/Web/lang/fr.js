@@ -265,9 +265,6 @@ const TAD_LANG_FR = {
     'confirm.30min': '30 minutes',
     'confirm.1hour': '1 heure',
 
-    'empty.noStudents': 'Aucun élève connecté',
-    'empty.waiting': 'En attente des postes élèves…',
-
     'announce.frozen': 'Tous les écrans gelés — Regardez le professeur !',
     'announce.blanked': 'Tous les écrans éteints — Mode attention actif',
 
@@ -309,7 +306,6 @@ const TAD_LANG_FR = {
     'confirm.freezeAllDesc': 'Geler tous les écrans ? Les élèves verront un écran figé.',
     'confirm.freezeAllBtn': '❄ Tout geler',
 
-    'rv.title': 'Vue à distance — {name}',
     'rv.subStream': 'Sous-flux 480p',
     'rv.demoStream': 'Flux démo (synthétique)',
 
