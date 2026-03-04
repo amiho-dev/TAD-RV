@@ -593,12 +593,14 @@ public partial class MainWindow : Window
                     else _tcpManager!.UnlockStudent(msg.Target);
                     break;
                 case "freeze":
-                    if (_isDemoMode) _demoManager!.FreezeStudent(msg.Target, 300);
-                    else _tcpManager!.FreezeStudent(msg.Target);
+                    // Freeze is now merged into Lock
+                    if (_isDemoMode) _demoManager!.LockStudent(msg.Target);
+                    else _tcpManager!.LockStudent(msg.Target);
                     break;
                 case "unfreeze":
-                    if (_isDemoMode) _demoManager!.UnfreezeStudent(msg.Target);
-                    else _tcpManager!.UnfreezeStudent(msg.Target);
+                    // Freeze is now merged into Lock
+                    if (_isDemoMode) _demoManager!.UnlockStudent(msg.Target);
+                    else _tcpManager!.UnlockStudent(msg.Target);
                     break;
                 case "blank":
                     // Blanking merged into Lock
@@ -684,28 +686,26 @@ public partial class MainWindow : Window
                     break;
                 case "freeze_all_confirmed":
                     {
-                        _allFrozen = true;
-                        if (_isDemoMode) _demoManager!.BroadcastFreeze(300, "Eyes on the teacher!");
+                        // Freeze merged into Lock — treat as Lock All
+                        if (_isDemoMode) _demoManager!.BroadcastLock();
                         else
                         {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Freeze);
-                            ShowToast(n > 0 ? $"Freeze sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Lock);
+                            ShowToast(n > 0 ? $"Lock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
                         }
-                        PostJsonMessage(new { type = "freeze_all", frozen = true });
-                        SetStatus("Froze all screens");
+                        SetStatus("Locked all screens");
                     }
                     break;
                 case "unfreeze_all":
                     {
-                        _allFrozen = false;
-                        if (_isDemoMode) _demoManager!.BroadcastUnfreeze();
+                        // Freeze merged into Lock — treat as Unlock All
+                        if (_isDemoMode) _demoManager!.BroadcastUnlock();
                         else
                         {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unfreeze);
-                            ShowToast(n > 0 ? $"Unfreeze sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
+                            ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
                         }
-                        PostJsonMessage(new { type = "freeze_all", frozen = false });
-                        SetStatus("Unfroze all screens");
+                        SetStatus("Unlocked all screens");
                     }
                     break;
                 case "blank_all_confirmed":
@@ -752,6 +752,32 @@ public partial class MainWindow : Window
                         _tcpManager!.SendCommandToStudent(msg.Target, puFrame);
                     }
                     SetStatus($"Program-Lock disabled for {msg.Target}");
+                    break;
+
+                // ── Logoff / Reboot / Shutdown ───────────────────────────
+                case "logoff":
+                    if (!_isDemoMode)
+                    {
+                        var loFrame = TadFrameCodec.Encode(TadCommand.Logoff);
+                        _tcpManager!.SendCommandToStudent(msg.Target, loFrame);
+                    }
+                    SetStatus($"Logoff sent to {msg.Target}");
+                    break;
+                case "reboot":
+                    if (!_isDemoMode)
+                    {
+                        var rbFrame = TadFrameCodec.Encode(TadCommand.Reboot);
+                        _tcpManager!.SendCommandToStudent(msg.Target, rbFrame);
+                    }
+                    SetStatus($"Reboot sent to {msg.Target}");
+                    break;
+                case "shutdown":
+                    if (!_isDemoMode)
+                    {
+                        var sdFrame = TadFrameCodec.Encode(TadCommand.Shutdown);
+                        _tcpManager!.SendCommandToStudent(msg.Target, sdFrame);
+                    }
+                    SetStatus($"Shutdown sent to {msg.Target}");
                     break;
             }
         }

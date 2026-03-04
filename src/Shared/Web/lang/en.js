@@ -252,15 +252,16 @@ const TAD_LANG_EN = {
     'ctx.details': 'Details',
     'ctx.lock': 'Lock',
     'ctx.unlock': 'Unlock',
-    'ctx.freeze': 'Freeze',
-    'ctx.unfreeze': 'Unfreeze',
     'ctx.sendMessage': 'Send Message',
     'ctx.webLock': 'Web-Lock',
     'ctx.programLock': 'Program-Lock',
+    'ctx.logoff': 'Log Off User',
+    'ctx.reboot': 'Reboot Device',
+    'ctx.shutdown': 'Shutdown Device',
 
     // ── Teacher: Tile Indicators ────────────────────────────────
     'ind.locked': 'Locked',
-    'ind.frozen': 'Frozen',
+    'ind.disconnected': 'Disconnected',
     'ind.blanked': 'Blanked',
     'ind.webLock': 'Web-Lock',
     'ind.programLock': 'Program-Lock',
@@ -293,27 +294,28 @@ const TAD_LANG_EN = {
     'confirm.1hour': '1 hour',
 
     // ── Teacher: Announcement ───────────────────────────────────
-    'announce.frozen': 'All screens frozen — Eyes on the teacher!',
+    'announce.locked': 'All screens locked — Eyes on the teacher!',
     'announce.blanked': 'All screens blanked — Attention mode active',
 
     // ── Teacher: Toast Messages ─────────────────────────────────
     'toast.lockSent': 'Lock command sent to {name}',
     'toast.unlockSent': 'Unlock command sent to {name}',
-    'toast.freezeSent': 'Freeze command sent to {name}',
-    'toast.unfreezeSent': 'Unfreeze command sent to {name}',
     'toast.blankSent': 'Blank screen sent to {name}',
     'toast.unblankSent': 'Screen restored for {name}',
     'toast.lockAllSent': 'Lock All command sent',
     'toast.unlockAllSent': 'Unlock All sent',
-    'toast.freezeAllSent': 'Freeze All command sent',
-    'toast.unfreezeAllSent': 'Unfreeze All sent',
     'toast.autoUnlock': 'Auto-unlock: duration expired',
-    'toast.autoUnfreeze': 'Auto-unfreeze: duration expired',
+    'toast.logoffSent': 'Log off command sent to {name}',
+    'toast.rebootSent': 'Reboot command sent to {name}',
+    'toast.shutdownSent': 'Shutdown command sent to {name}',
+    'toast.messageSentTo': 'Message sent to {name}',
 
     // ── Teacher: Message Dialog ─────────────────────────────────
     'message.title': 'Broadcast Message',
     'message.placeholder': 'Type a message to send to all students...',
     'message.sendAll': 'Send to All',
+    'message.titleTo': 'Message — {name}',
+    'message.sendTo': 'Send to {name}',
 
     // ── Teacher: Device Panel ───────────────────────────────────
     'device.title': 'Device Details',
@@ -334,9 +336,9 @@ const TAD_LANG_EN = {
     'confirm.lockAllTitle': '🔒 Lock All Screens',
     'confirm.lockAllDesc': 'Lock all student screens? Students will not be able to use their computers.',
     'confirm.lockAllBtn': '🔒 Lock All',
-    'confirm.freezeAllTitle': '❄ Freeze All Screens',
-    'confirm.freezeAllDesc': 'Freeze all student screens? Students will see a frozen overlay and cannot interact.',
-    'confirm.freezeAllBtn': '❄ Freeze All',
+    'confirm.logoffDesc': 'Are you sure you want to log off {name}? Unsaved work will be lost.',
+    'confirm.rebootDesc': 'Are you sure you want to reboot {name}? Unsaved work will be lost.',
+    'confirm.shutdownDesc': 'Are you sure you want to shut down {name}? Unsaved work will be lost.',
 
     // ── Teacher: Remote View ────────────────────────────────────
     'rv.title': 'Remote View — {name}',

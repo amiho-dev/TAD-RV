@@ -43,6 +43,9 @@ public enum TadCommand : byte
     WebUnlock       = 0x54,     // Remove internet block firewall rules
     ProgramLock     = 0x55,     // Send specific program list to block
     ProgramUnlock   = 0x56,     // Remove program blocks
+    Logoff          = 0x57,     // Log off the current user session
+    Reboot          = 0x58,     // Reboot the student machine
+    Shutdown        = 0x59,     // Shut down the student machine
 
     // Student → Teacher
     Pong            = 0x81,
@@ -78,6 +81,7 @@ public sealed class StudentStatus
     public bool IsBlankScreen { get; set; }
     public bool IsWebLocked { get; set; }
     public bool IsProgramLocked { get; set; }
+    public bool IsNetworkConnected { get; set; } = true;
     public string ActiveWindow { get; set; } = "";
     public double CpuUsage { get; set; }
     public long RamUsedMb { get; set; }

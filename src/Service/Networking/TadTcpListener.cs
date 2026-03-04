@@ -12,6 +12,7 @@
 
 using System.Diagnostics;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -45,13 +46,17 @@ public sealed class TadTcpListener : BackgroundService
     private volatile bool _isFrozen;
     private Process? _lockOverlayProcess;
     private Process? _blankOverlayProcess;
-    private Process? _freezeOverlayProcess;
 
     // Blocklist enforcement
     private BlocklistUpdate _blocklist = new();
     private readonly object _blocklistLock = new();
     private volatile bool _isWebLocked;
     private volatile bool _isProgramLocked;
+
+    // Network disconnect auto-lock
+    private volatile bool _networkDisconnected;
+    private DateTime _networkLostAt = DateTime.MaxValue;
+    private const int NetworkLockGraceSeconds = 30;
 
     // CPU usage tracking via PerformanceCounter-free approach
     private TimeSpan _prevCpuTotal;
@@ -101,6 +106,9 @@ public sealed class TadTcpListener : BackgroundService
 
         // Periodic status beacon
         _ = StatusBeaconAsync(ct);
+
+        // Network connectivity monitor — auto-lock on LAN disconnect
+        _ = NetworkMonitorAsync(ct);
 
         while (!ct.IsCancellationRequested)
         {
@@ -163,7 +171,6 @@ public sealed class TadTcpListener : BackgroundService
             if (_isStreaming) StopStreaming();
             if (_isLocked)  ExecuteUnlock();
             if (_isBlanked) ExecuteUnblankScreen();
-            if (_isFrozen)  ExecuteUnfreeze();
             if (_isWebLocked) ExecuteWebUnlock();
             if (_isProgramLocked) ExecuteProgramUnlock();
         }
@@ -253,11 +260,13 @@ public sealed class TadTcpListener : BackgroundService
                 break;
 
             case TadCommand.Freeze:
-                ExecuteFreeze();
+                // Freeze is replaced by Lock — redirect
+                ExecuteLock();
                 break;
 
             case TadCommand.Unfreeze:
-                ExecuteUnfreeze();
+                // Freeze is replaced by Lock — redirect
+                ExecuteUnlock();
                 break;
 
             case TadCommand.PushMessage:
@@ -324,6 +333,18 @@ public sealed class TadTcpListener : BackgroundService
 
             case TadCommand.ProgramUnlock:
                 ExecuteProgramUnlock();
+                break;
+
+            case TadCommand.Logoff:
+                ExecuteLogoff();
+                break;
+
+            case TadCommand.Reboot:
+                ExecuteReboot();
+                break;
+
+            case TadCommand.Shutdown:
+                ExecuteShutdown();
                 break;
 
             default:
@@ -455,45 +476,116 @@ public sealed class TadTcpListener : BackgroundService
         }
     }
 
-    // ─── FREEZE Command ───────────────────────────────────────────────
+    // ─── FREEZE Command (removed — redirected to Lock in RouteCommand) ──
 
-    private void ExecuteFreeze()
+    // ─── Logoff / Reboot / Shutdown ───────────────────────────────────
+
+    private void ExecuteLogoff()
     {
-        if (_isFrozen) return;
-        _isFrozen = true;
-
+        _log.LogInformation("Logoff command received — logging off current user");
         try
         {
-            _freezeOverlayProcess = LaunchOverlay("--freeze");
-            if (_freezeOverlayProcess != null)
-                _log.LogInformation("Freeze overlay launched (PID {Pid})", _freezeOverlayProcess.Id);
-            else
-                _log.LogWarning("Failed to launch freeze overlay — TadOverlay.exe not found or CreateProcessAsUser failed");
+            var psi = new ProcessStartInfo("shutdown.exe", "/l /f")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "Failed to launch freeze overlay");
+            _log.LogWarning(ex, "Failed to execute logoff");
         }
     }
 
-    private void ExecuteUnfreeze()
+    private void ExecuteReboot()
     {
-        if (!_isFrozen) return;
-        _isFrozen = false;
-
+        _log.LogInformation("Reboot command received — rebooting in 3 seconds");
         try
         {
-            if (_freezeOverlayProcess is { HasExited: false })
+            var psi = new ProcessStartInfo("shutdown.exe", "/r /t 3 /f")
             {
-                _freezeOverlayProcess.Kill();
-                _freezeOverlayProcess.WaitForExit(3000);
-                _freezeOverlayProcess.Dispose();
-                _freezeOverlayProcess = null;
-            }
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "Failed to kill freeze overlay");
+            _log.LogWarning(ex, "Failed to execute reboot");
+        }
+    }
+
+    private void ExecuteShutdown()
+    {
+        _log.LogInformation("Shutdown command received — shutting down in 3 seconds");
+        try
+        {
+            var psi = new ProcessStartInfo("shutdown.exe", "/s /t 3 /f")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to execute shutdown");
+        }
+    }
+
+    // ─── Network Disconnect Monitor ───────────────────────────────────
+
+    /// <summary>
+    /// Monitors LAN connectivity. If all non-loopback NICs go down for more
+    /// than <see cref="NetworkLockGraceSeconds"/>, auto-lock the workstation.
+    /// </summary>
+    private async Task NetworkMonitorAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                bool anyUp = false;
+                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                    if (nic.OperationalStatus == OperationalStatus.Up)
+                    {
+                        anyUp = true;
+                        break;
+                    }
+                }
+
+                if (!anyUp && !_networkDisconnected)
+                {
+                    _networkDisconnected = true;
+                    _networkLostAt = DateTime.UtcNow;
+                    _log.LogWarning("Network disconnected — auto-lock in {Sec}s if not restored",
+                        NetworkLockGraceSeconds);
+                }
+                else if (!anyUp && _networkDisconnected)
+                {
+                    double elapsed = (DateTime.UtcNow - _networkLostAt).TotalSeconds;
+                    if (elapsed >= NetworkLockGraceSeconds && !_isLocked)
+                    {
+                        _log.LogWarning("Network disconnected for >{Sec}s — auto-locking workstation",
+                            NetworkLockGraceSeconds);
+                        ExecuteLock();
+                    }
+                }
+                else if (anyUp && _networkDisconnected)
+                {
+                    _networkDisconnected = false;
+                    _log.LogInformation("Network restored — auto-lock cancelled (teacher must manually unlock)");
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.LogDebug(ex, "Network monitor check failed");
+            }
+
+            await Task.Delay(2000, ct);
         }
     }
 
@@ -894,6 +986,7 @@ public sealed class TadTcpListener : BackgroundService
             IsBlankScreen  = _isBlanked,
             IsWebLocked    = _isWebLocked,
             IsProgramLocked = _isProgramLocked,
+            IsNetworkConnected = !_networkDisconnected,
             ActiveWindow   = GetForegroundWindowTitle(),
             CpuUsage       = cpuUsage,
             RamUsedMb      = ramUsedMb,
@@ -1350,7 +1443,8 @@ public sealed class TadTcpListener : BackgroundService
         string cmdLine = $"\"{overlayPath}\" {modeArg}";
 
         // Primary: launch in user session via CreateProcessAsUser
-        var proc = LaunchInUserSession(cmdLine);
+        // Use SW_SHOW (5) so the overlay window is visible on the user's desktop
+        var proc = LaunchInUserSession(cmdLine, showWindow: true);
         if (proc != null)
         {
             _log.LogInformation("Overlay {Mode} launched via CreateProcessAsUser (PID {Pid})", modeArg, proc.Id);
@@ -1379,7 +1473,9 @@ public sealed class TadTcpListener : BackgroundService
     /// Launch a process in the interactive user's session (not Session 0).
     /// Uses WTSQueryUserToken + CreateProcessAsUser so overlays appear on the user's desktop.
     /// </summary>
-    private Process? LaunchInUserSession(string commandLine)
+    /// <param name="commandLine">Full command line including path + args.</param>
+    /// <param name="showWindow">If true, use SW_SHOW (5) so the window is visible. If false, use SW_HIDE (0) for background processes.</param>
+    private Process? LaunchInUserSession(string commandLine, bool showWindow = false)
     {
         int sessionId = WTSGetActiveConsoleSessionId();
         if (sessionId == unchecked((int)0xFFFFFFFF))
@@ -1414,7 +1510,7 @@ public sealed class TadTcpListener : BackgroundService
                 cb = Marshal.SizeOf<STARTUPINFO>(),
                 lpDesktop = "winsta0\\default",   // interactive desktop
                 dwFlags = 0x00000001,             // STARTF_USESHOWWINDOW
-                wShowWindow = 0                   // SW_HIDE — hide the host console
+                wShowWindow = (short)(showWindow ? 5 : 0)  // SW_SHOW (5) for overlays, SW_HIDE (0) for bg processes
             };
 
             const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
@@ -1427,7 +1523,8 @@ public sealed class TadTcpListener : BackgroundService
             {
                 CloseHandle(pi.hThread);
                 CloseHandle(pi.hProcess);
-                _log.LogInformation("Launched process in user session {Sid} (PID {Pid})", sessionId, pi.dwProcessId);
+                _log.LogInformation("Launched process in user session {Sid} (PID {Pid}, show={Show})",
+                    sessionId, pi.dwProcessId, showWindow);
                 try { return Process.GetProcessById(pi.dwProcessId); }
                 catch { return null; }
             }

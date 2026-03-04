@@ -35,12 +35,6 @@
                 <button class="stats-action-btn" onclick="sendToHost({action:'unlock_all'}); showToast(t('toast.unlockAllSent'),'success')" title="Unlock all screens">
                     <span class="sai">&#xE785;</span> <span data-i18n="toolbar.unlockAll">Unlock All</span>
                 </button>
-                <button class="stats-action-btn" onclick="handleConfirmAction('freeze_all')" title="Freeze all student screens">
-                    <span class="sai">&#xE7AD;</span> <span data-i18n="toolbar.freezeAll">Freeze All</span>
-                </button>
-                <button class="stats-action-btn" onclick="sendToHost({action:'unfreeze_all'}); showToast(t('toast.unfreezeAllSent'),'success')" title="Unfreeze all screens">
-                    <span class="sai">&#xE77A;</span> <span data-i18n="toolbar.unfreezeAll">Unfreeze All</span>
-                </button>
                 <button class="stats-action-btn" onclick="openMessageDialog()" title="Broadcast a message to all students">
                     <span class="sai">&#xE8BD;</span> <span data-i18n="toolbar.message">Message</span>
                 </button>
@@ -90,9 +84,6 @@
                     <button class="modal-btn" onclick="toggleRvCensored()" title="Toggle Privacy Mode">
                         &#xE890;
                     </button>
-                    <button class="modal-btn" onclick="freezeFromRv()" title="Freeze This Student">
-                        &#xE7AD;
-                    </button>
                     <button class="modal-btn danger" onclick="lockFromRv()" title="Lock This Student">
                         &#xE72E;
                     </button>
@@ -109,19 +100,20 @@
         </div>
     </div>
 
-    <!-- Message Broadcast Dialog -->
+    <!-- Message Dialog -->
     <div class="modal-overlay" id="messageModal" style="display:none">
         <div class="modal-content modal-small">
             <div class="modal-header">
-                <span>&#xE8BD; <span data-i18n="message.title">Broadcast Message</span></span>
+                <span>&#xE8BD; <span id="messageDialogTitle" data-i18n="message.title">Broadcast Message</span></span>
                 <button class="modal-btn" onclick="closeMessageDialog()">&#xE711;</button>
             </div>
             <div class="modal-body-form">
+                <p id="messageTargetHint" style="display:none;margin:0 0 8px;font-size:13px;color:#8B949E"></p>
                 <textarea id="messageText" data-i18n-placeholder="message.placeholder" placeholder="Type a message to send to all students..."
                           rows="4" maxlength="500"></textarea>
                 <div class="form-actions">
                     <button class="btn btn-primary" onclick="sendBroadcastMessage()">
-                        &#xE724; <span data-i18n="message.sendAll">Send to All</span>
+                        &#xE724; <span id="messageSendLabel" data-i18n="message.sendAll">Send to All</span>
                     </button>
                     <button class="btn btn-secondary" onclick="closeMessageDialog()"><span data-i18n="common.cancel">Cancel</span></button>
                 </div>

@@ -106,8 +106,9 @@ window.chrome.webview.addEventListener('message', (event) => {
             break;
 
         case 'freeze_all':
+            // Freeze merged into Lock — show lock announcement
             showAnnouncement(msg.frozen
-                ? t('announce.frozen')
+                ? t('announce.locked')
                 : null);
             break;
 
@@ -215,13 +216,15 @@ function renderTile(student) {
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); lockStudent('${student.ip}')">&#xE72E; ${t('ctx.lock')}</button>
             <button onclick="event.stopPropagation(); unlockStudent('${student.ip}')">&#xE785; ${t('ctx.unlock')}</button>
-            <button onclick="event.stopPropagation(); freezeStudent('${student.ip}')">&#xE7AD; ${t('ctx.freeze')}</button>
-            <button onclick="event.stopPropagation(); unfreezeStudent('${student.ip}')">&#xE77A; ${t('ctx.unfreeze')}</button>
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); messageStudent('${student.ip}')">&#xE8BD; ${t('ctx.sendMessage')}</button>
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; ${t('ctx.webLock')}</button>
             <button onclick="event.stopPropagation(); toggleProgramBlock('${student.ip}')">&#xE74C; ${t('ctx.programLock')}</button>
+            <div class="ctx-sep"></div>
+            <button onclick="event.stopPropagation(); logoffStudent('${student.ip}')">&#xE7E8; ${t('ctx.logoff')}</button>
+            <button onclick="event.stopPropagation(); rebootStudent('${student.ip}')">&#xE777; ${t('ctx.reboot')}</button>
+            <button onclick="event.stopPropagation(); shutdownStudent('${student.ip}')">&#xE7E8; ${t('ctx.shutdown')}</button>
         </div>
     `;
 
@@ -282,7 +285,10 @@ function updateTileUI(student) {
 
     // State classes
     if (s.IsLocked) tile.classList.add('locked'); else tile.classList.remove('locked');
-    if (s.IsFrozen) tile.classList.add('frozen'); else tile.classList.remove('frozen');
+
+    // Network disconnect indicator
+    if (s.IsNetworkConnected === false) tile.classList.add('net-disconnected');
+    else tile.classList.remove('net-disconnected');
 
     // Determine real connectivity
     const now = Date.now();
@@ -293,7 +299,7 @@ function updateTileUI(student) {
     const dot = tile.querySelector('.tile-status-dot');
     dot.className = 'tile-status-dot';
     if (s.IsLocked) dot.classList.add('dot-locked');
-    else if (s.IsFrozen) dot.classList.add('dot-frozen');
+    else if (s.IsNetworkConnected === false) dot.classList.add('dot-disconnected');
     else if (recentlySeen) dot.classList.add('dot-online');
     else if (neverSeen) dot.classList.add('dot-connecting');
     else dot.classList.add('dot-offline');
@@ -307,7 +313,7 @@ function updateTileUI(student) {
     let html = '';
 
     if (s.IsLocked) html += `<span class="ind ind-locked" title="${t('ind.locked')}">&#xE72E;</span>`;
-    if (s.IsFrozen) html += `<span class="ind ind-frozen" title="${t('ind.frozen')}">&#xE7AD;</span>`;
+    if (s.IsNetworkConnected === false) html += `<span class="ind ind-disconnected" title="${t('ind.disconnected')}">&#xE871;</span>`;
     if (s.IsBlankScreen) html += `<span class="ind ind-blank" title="${t('ind.blanked')}">&#xE7B3;</span>`;
     if (s.IsWebLocked || internetBlocked.has(student.ip)) html += `<span class="ind ind-inet" title="${t('ind.webLock')}">&#xE774;</span>`;
     if (s.IsProgramLocked || programBlocked.has(student.ip)) html += `<span class="ind ind-prog" title="${t('ind.programLock')}">&#xE74C;</span>`;
@@ -1013,7 +1019,8 @@ function lockFromRv() {
 }
 
 function freezeFromRv() {
-    if (activeRvIp) freezeStudent(activeRvIp);
+    // Freeze merged into Lock — redirect
+    if (activeRvIp) lockStudent(activeRvIp);
 }
 
 // ── Student Commands (JS → C#) ──────────────────────────────────────
@@ -1031,15 +1038,34 @@ function unlockStudent(ip) {
 }
 
 function freezeStudent(ip) {
-    sendToHost({ action: 'freeze', target: ip });
-    closeAllContextMenus();
-    showToast(t('toast.freezeSent', { name: getStudentName(ip) }), 'success');
+    // Freeze merged into Lock — redirect
+    lockStudent(ip);
 }
 
 function unfreezeStudent(ip) {
-    sendToHost({ action: 'unfreeze', target: ip });
+    // Freeze merged into Lock — redirect
+    unlockStudent(ip);
+}
+
+function logoffStudent(ip) {
+    if (!confirm(t('confirm.logoffDesc', { name: getStudentName(ip) }))) return;
+    sendToHost({ action: 'logoff', target: ip });
     closeAllContextMenus();
-    showToast(t('toast.unfreezeSent', { name: getStudentName(ip) }), 'success');
+    showToast(t('toast.logoffSent', { name: getStudentName(ip) }), 'success');
+}
+
+function rebootStudent(ip) {
+    if (!confirm(t('confirm.rebootDesc', { name: getStudentName(ip) }))) return;
+    sendToHost({ action: 'reboot', target: ip });
+    closeAllContextMenus();
+    showToast(t('toast.rebootSent', { name: getStudentName(ip) }), 'success');
+}
+
+function shutdownStudent(ip) {
+    if (!confirm(t('confirm.shutdownDesc', { name: getStudentName(ip) }))) return;
+    sendToHost({ action: 'shutdown', target: ip });
+    closeAllContextMenus();
+    showToast(t('toast.shutdownSent', { name: getStudentName(ip) }), 'success');
 }
 
 function blankStudent(ip) {
@@ -1061,7 +1087,14 @@ function getStudentName(ip) {
 
 function messageStudent(ip) {
     // Reuse the broadcast message modal but target one student
+    const name = getStudentName(ip);
     document.getElementById('messageModal').style.display = 'flex';
+    const titleEl = document.getElementById('messageDialogTitle');
+    const hintEl  = document.getElementById('messageTargetHint');
+    const btnEl   = document.getElementById('messageSendLabel');
+    if (titleEl) titleEl.textContent = t('message.titleTo', { name });
+    if (hintEl)  { hintEl.textContent = name; hintEl.style.display = 'block'; }
+    if (btnEl)   btnEl.textContent = t('message.sendTo', { name });
     const ta = document.getElementById('messageText');
     ta.value = '';
     ta.focus();
@@ -1315,9 +1348,17 @@ function dismissAnnouncement() {
 
 function openMessageDialog() {
     document.getElementById('messageModal').style.display = 'flex';
+    // Reset to broadcast mode
+    const titleEl = document.getElementById('messageDialogTitle');
+    const hintEl  = document.getElementById('messageTargetHint');
+    const btnEl   = document.getElementById('messageSendLabel');
+    if (titleEl) titleEl.textContent = t('toolbar.message');
+    if (hintEl)  hintEl.style.display = 'none';
+    if (btnEl)   btnEl.textContent = t('message.sendAll');
     const ta = document.getElementById('messageText');
     ta.value = '';
     ta.focus();
+    delete ta.dataset.targetIp;
 }
 
 function closeMessageDialog() {
@@ -1337,7 +1378,7 @@ function sendBroadcastMessage() {
         sendToHost({ action: 'message', target: '', payload: text });
     }
     closeMessageDialog();
-    const label = targetIp ? `Message sent to ${targetIp}` : `Message sent: "${text.substring(0, 60)}${text.length > 60 ? '...' : ''}"`;
+    const label = targetIp ? t('toast.messageSentTo', { name: getStudentName(targetIp) }) : `Message sent: "${text.substring(0, 60)}${text.length > 60 ? '...' : ''}"`;
     showAnnouncement(label);
     setTimeout(() => showAnnouncement(null), 5000);
 }
@@ -1587,20 +1628,8 @@ function handleConfirmAction(action) {
                 { showDuration: true, confirmText: t('confirm.lockAllBtn'), danger: true });
             break;
         case 'freeze_all':
-            showConfirm(t('confirm.freezeAllTitle'),
-                t('confirm.freezeAllDesc'),
-                (duration) => {
-                    sendToHost({ action: 'freeze_all_confirmed' });
-                    showToast(t('toast.freezeAllSent'), 'success');
-                    if (duration > 0) {
-                        const tmr = setTimeout(() => {
-                            sendToHost({ action: 'unfreeze_all' });
-                            showToast(t('toast.autoUnfreeze'), 'info');
-                        }, duration * 1000);
-                        _activeDurationTimers.push(tmr);
-                    }
-                },
-                { showDuration: true, confirmText: t('confirm.freezeAllBtn') });
+            // Freeze merged into Lock — redirect
+            handleConfirmAction('lock_all');
             break;
         case 'blank_all':
             // Blanking merged into Lock — no longer a separate action

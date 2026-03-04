@@ -183,7 +183,7 @@ body {
     box-shadow: 0 1px 8px rgba(88, 166, 255, 0.08);
 }
 .student-tile.locked  { border-color: var(--accent-red); }
-.student-tile.frozen  { border-color: var(--accent-orange); }
+.student-tile.net-disconnected { border-color: var(--accent-orange); }
 .student-tile.offline { opacity: 0.45; }
 .student-tile.hand-raised {
     border-color: var(--accent-purple);
@@ -281,7 +281,7 @@ body {
 }
 .dot-online     { background: var(--accent-green); box-shadow: 0 0 4px var(--accent-green); }
 .dot-locked     { background: var(--accent-red); box-shadow: 0 0 4px var(--accent-red); }
-.dot-frozen     { background: var(--accent-orange); box-shadow: 0 0 4px var(--accent-orange); }
+.dot-disconnected { background: var(--accent-orange); box-shadow: 0 0 4px var(--accent-orange); }
 .dot-connecting { background: var(--accent-blue); animation: pulse 1.5s ease-in-out infinite; }
 .dot-offline    { background: #484F58; }
 
@@ -336,7 +336,7 @@ body {
 .tile-act-btn.act-msg:hover { background: var(--accent-blue); }
 
 .ind-locked  { background: rgba(248,81,73,0.2); color: var(--accent-red); }
-.ind-frozen  { background: rgba(210,153,34,0.2); color: var(--accent-orange); }
+.ind-disconnected { background: rgba(210,153,34,0.2); color: var(--accent-orange); }
 .ind-blank   { background: rgba(139,148,158,0.25); color: var(--text-primary); }
 .ind-inet    { background: rgba(248,81,73,0.15); color: #FF6B6B; border: 1px solid rgba(248,81,73,0.3); }
 .ind-prog    { background: rgba(210,153,34,0.15); color: #FFAA33; border: 1px solid rgba(210,153,34,0.3); }
