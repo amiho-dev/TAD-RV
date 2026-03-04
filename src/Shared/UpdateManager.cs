@@ -140,9 +140,9 @@ public sealed class UpdateManager : IDisposable
     private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(30);
 
     // Asset name prefixes per component
-    private const string TeacherAssetPrefix    = "TADAdmin";
-    private const string ServiceAssetPrefix    = "TADBridgeService";
-    private const string ConsoleAssetPrefix    = "TADDomainController";
+    private const string TeacherAssetPrefix    = "TADAdminSetup";
+    private const string ServiceAssetPrefix    = "TADClientSetup";
+    private const string ConsoleAssetPrefix    = "TADDomainControllerSetup";
     private const string BootstrapAssetPrefix  = "TADBootstrap";
     private const string DriverAssetPrefix     = "TAD_RV";
 
@@ -349,6 +349,32 @@ public sealed class UpdateManager : IDisposable
     }
 
     /// <summary>
+    /// Download the update Setup EXE and run it silently to apply the update.
+    /// Returns true if the installer was launched successfully.
+    /// </summary>
+    public async Task<bool> DownloadAndRunSetupAsync(
+        UpdateInfo update,
+        CancellationToken ct = default)
+    {
+        string? exePath = await DownloadUpdateAsync(update, null, ct);
+        if (exePath == null || !File.Exists(exePath))
+            return false;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName        = exePath,
+                Arguments       = "--install",
+                UseShellExecute = true,   // allows UAC elevation
+                Verb            = "runas",
+            });
+            return true;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>
     /// Get the cached update info from the last check, or null if no check was performed.
     /// </summary>
     public UpdateInfo? GetCachedUpdate() => _cachedUpdate?.IsNewer == true ? _cachedUpdate : null;
@@ -362,15 +388,15 @@ public sealed class UpdateManager : IDisposable
 
     private GitHubAsset? FindMatchingAsset(List<GitHubAsset> assets)
     {
-        // Primary: exact prefix match (e.g., "TADAdmin-26200.173-win-x64.zip")
+        // Primary: Setup EXE match (e.g., "TADAdminSetup-v26.3.03.105-win-x64.exe")
         var match = assets.FirstOrDefault(a =>
             a.Name.StartsWith(_componentPrefix, StringComparison.OrdinalIgnoreCase) &&
-            a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+            a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
 
-        // Fallback: any zip containing the prefix
+        // Fallback: any EXE containing the prefix
         match ??= assets.FirstOrDefault(a =>
             a.Name.Contains(_componentPrefix, StringComparison.OrdinalIgnoreCase) &&
-            a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+            a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
 
         return match;
     }

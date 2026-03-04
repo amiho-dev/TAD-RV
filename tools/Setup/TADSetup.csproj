@@ -58,6 +58,11 @@
       Include="Resources\TADDomainController.exe"
       LogicalName="bundled_dc"
       Condition="Exists('Resources\TADDomainController.exe') And '$(SetupTarget)'=='DomainController'" />
+    <!-- Updater helper — always embedded in every Setup variant -->
+    <EmbeddedResource
+      Include="Resources\TADUpdater.exe"
+      LogicalName="bundled_updater"
+      Condition="Exists('Resources\TADUpdater.exe')" />
   </ItemGroup>
 
 </Project>

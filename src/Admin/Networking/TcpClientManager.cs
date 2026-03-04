@@ -49,6 +49,9 @@ public sealed class TcpClientManager : IDisposable
     public int ConnectedCount => _connections.Count(c => c.Value.IsConnected);
     public int TotalEndpoints => _connections.Count;
 
+    /// <summary>All known student IPs regardless of connection state.</summary>
+    public List<string> GetAllEndpointIps() => _connections.Keys.ToList();
+
     // ─── Endpoint Management ──────────────────────────────────────────
 
     /// <summary>Add a student IP and begin auto-connect loop.</summary>

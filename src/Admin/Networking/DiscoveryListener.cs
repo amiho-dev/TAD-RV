@@ -57,8 +57,23 @@ public sealed class DiscoveryListener : IDisposable
 
     private readonly HashSet<string> _knownIps = new();
     private readonly object _lock = new();
+    private readonly HashSet<string> _localIps;
     private CancellationTokenSource? _cts;
     private Thread? _thread;
+
+    public DiscoveryListener()
+    {
+        // Pre-compute local IP addresses so we can filter out self-discovery
+        _localIps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var addr in System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName()))
+                _localIps.Add(addr.ToString());
+        }
+        catch { /* non-fatal */ }
+        _localIps.Add("127.0.0.1");
+        _localIps.Add("::1");
+    }
 
     /// <summary>
     /// Fired when a previously-unseen student IP is discovered.
@@ -117,8 +132,12 @@ public sealed class DiscoveryListener : IDisposable
 
                         if (pkt == null || pkt.Version < 1) continue;
                         if (pkt.Role.Equals("admin", StringComparison.OrdinalIgnoreCase)) continue;
+                        if (pkt.Role.Equals("teacher", StringComparison.OrdinalIgnoreCase)) continue;
 
                         string ip = !string.IsNullOrEmpty(pkt.IpAddress) ? pkt.IpAddress : ep.Address.ToString();
+
+                        // Skip packets originating from this machine itself
+                        if (_localIps.Contains(ep.Address.ToString()) || _localIps.Contains(ip)) continue;
                         int port = pkt.TcpPort > 0 ? pkt.TcpPort : 17420;
 
                         bool isNew;

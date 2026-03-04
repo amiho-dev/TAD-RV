@@ -5,8 +5,9 @@ echo "=== TAD-RV Solution Build (Linux cross-compile) ==="
 echo ""
 
 # ── Clean old artifacts ────────────────────────────────────────────────
-echo "[0/9] Cleaning old build artifacts..."
+echo "[0/10] Cleaning old build artifacts..."
 rm -rf tools/Bootstrap/bin tools/Bootstrap/obj \
+       tools/Updater/bin tools/Updater/obj \
        tools/Setup/bin tools/Setup/obj tools/Setup/publish \
        src/Service/bin src/Service/obj \
        src/DomainController/bin src/DomainController/obj \
@@ -23,7 +24,8 @@ rm -rf build/results/*.exe build/results/*.pdb build/results/*.dll \
 # Clean all staged installer resources
 rm -f tools/Setup/Resources/TADBridgeService.exe \
       tools/Setup/Resources/TADAdmin.exe \
-      tools/Setup/Resources/TADDomainController.exe
+      tools/Setup/Resources/TADDomainController.exe \
+      tools/Setup/Resources/TADUpdater.exe
 
 mkdir -p build/results build/release-addc tools/Setup/Resources tools/Setup/publish
 
@@ -34,37 +36,44 @@ echo ""
 echo "[INFO] .NET SDK version: $(dotnet --version)"
 echo ""
 
-# ── [1/9] Restore ──────────────────────────────────────────────────────
-echo "[1/9] Restoring NuGet packages..."
+# ── [1/10] Restore ──────────────────────────────────────────────────────
+echo "[1/10] Restoring NuGet packages..."
 dotnet restore TAD-RV.sln -r win-x64
 echo ""
 
-# ── [2/9] Bootstrap ────────────────────────────────────────────────────
-echo "[2/9] Publishing TADBootstrap (Single File Exe)..."
+# ── [2/10] Bootstrap ──────────────────────────────────────────────────
+echo "[2/10] Publishing TADBootstrap (Single File Exe)..."
 dotnet publish tools/Bootstrap/TADBootstrap.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# ── [3/9] Service ──────────────────────────────────────────────────────
-echo "[3/9] Publishing TADBridgeService (Single File Exe)..."
+# ── [3/10] Updater ────────────────────────────────────────────────────
+echo "[3/10] Publishing TADUpdater (Single File Exe)..."
+dotnet publish tools/Updater/TADUpdater.csproj -c Release -r win-x64 \
+  -p:PublishSingleFile=true -p:SelfContained=true \
+  -p:PublishReadyToRun=false --no-restore
+echo ""
+
+# ── [4/10] Service ────────────────────────────────────────────────────
+echo "[4/10] Publishing TADBridgeService (Single File Exe)..."
 dotnet publish src/Service/TADBridgeService.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# ── [4/9] Admin ────────────────────────────────────────────────────────
-echo "[4/9] Publishing TADAdmin (Single File Exe)..."
+# ── [5/10] Admin ──────────────────────────────────────────────────────
+echo "[5/10] Publishing TADAdmin (Single File Exe)..."
 dotnet publish src/Admin/TADAdmin.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:PublishReadyToRun=false --no-restore
 echo ""
 
-# ── [5/9] Domain Controller ────────────────────────────────────────────
-echo "[5/9] Publishing TADDomainController (Single File Exe)..."
+# ── [6/10] Domain Controller ──────────────────────────────────────────────
+echo "[6/10] Publishing TADDomainController (Single File Exe)..."
 dotnet publish src/DomainController/TADDomainController.csproj -c Release -r win-x64 \
   -p:PublishSingleFile=true -p:SelfContained=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
@@ -82,8 +91,14 @@ cp "$DC_BIN"  build/results/TADDomainController.exe
 cp tools/Bootstrap/bin/Release/net8.0-windows/win-x64/publish/TADBootstrap.exe \
    build/results/TADBootstrap.exe
 
-# ── [6/9] TADClientSetup — bundles TADBridgeService ───────────────────
-echo "[6/9] Building TADClientSetup (WPF Installer)..."
+# Stage TADUpdater into Setup resources (same binary for all 3 Setup variants)
+UPD_BIN=tools/Updater/bin/Release/net8.0-windows/win-x64/publish/TADUpdater.exe
+cp "$UPD_BIN" tools/Setup/Resources/TADUpdater.exe
+echo "   TADUpdater.exe staged  $(du -h tools/Setup/Resources/TADUpdater.exe | cut -f1)"
+echo ""
+
+# ── [7/10] TADClientSetup — bundles TADBridgeService ────────────────────────
+echo "[7/10] Building TADClientSetup (WPF Installer)..."
 cp "$SVC_BIN" tools/Setup/Resources/TADBridgeService.exe
 dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
   -p:SetupTarget=Client \
@@ -96,8 +111,8 @@ dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
 echo "   TADClientSetup.exe  $(du -h tools/Setup/publish/client/TADClientSetup.exe | cut -f1)"
 echo ""
 
-# ── [7/9] TADAdminSetup — bundles TADAdmin ─────────────────────────────
-echo "[7/9] Building TADAdminSetup (WPF Installer)..."
+# ── [8/10] TADAdminSetup — bundles TADAdmin ───────────────────────────────────
+echo "[8/10] Building TADAdminSetup (WPF Installer)..."
 rm -f tools/Setup/Resources/TADBridgeService.exe
 cp "$ADM_BIN" tools/Setup/Resources/TADAdmin.exe
 dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
@@ -111,8 +126,8 @@ dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
 echo "   TADAdminSetup.exe  $(du -h tools/Setup/publish/admin/TADAdminSetup.exe | cut -f1)"
 echo ""
 
-# ── [8/9] TADDomainControllerSetup — bundles TADDomainController ───────
-echo "[8/9] Building TADDomainControllerSetup (WPF Installer)..."
+# ── [9/10] TADDomainControllerSetup — bundles TADDomainController ───────────────────
+echo "[9/10] Building TADDomainControllerSetup (WPF Installer)..."
 rm -f tools/Setup/Resources/TADAdmin.exe
 cp "$DC_BIN" tools/Setup/Resources/TADDomainController.exe
 dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
@@ -126,8 +141,12 @@ dotnet publish tools/Setup/TADSetup.csproj -c Release -r win-x64 \
 echo "   TADDomainControllerSetup.exe  $(du -h tools/Setup/publish/dc/TADDomainControllerSetup.exe | cut -f1)"
 echo ""
 
-# ── [9/9] Package release artifacts ───────────────────────────────────
-echo "[9/9] Packaging release artifacts..."
+# Clean staged resources
+rm -f tools/Setup/Resources/TADDomainController.exe \
+      tools/Setup/Resources/TADUpdater.exe
+
+# ── [10/10] Package release artifacts ─────────────────────────────────────────────────
+echo "[10/10] Packaging release artifacts..."
 
 VERSION=$(grep -oP '(?<=<InformationalVersion>)[^<]+' version-client.props \
           | head -1 | sed 's/-client$//')
@@ -155,3 +174,5 @@ echo "  TADAdminSetup-$VERSION-win-x64.exe"
 echo "    Installs: TADAdmin (dashboard app + Start Menu shortcut)"
 echo "  TADDomainControllerSetup-$VERSION-win-x64.exe"
 echo "    Installs: TADDomainController (DC console + Start Menu shortcut)"
+echo ""
+echo "  All Setup EXEs embed TADUpdater.exe for background self-update."

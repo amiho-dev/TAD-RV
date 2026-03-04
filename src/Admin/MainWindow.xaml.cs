@@ -119,7 +119,14 @@ public partial class MainWindow : Window
         {
             Interval = TimeSpan.FromSeconds(3)
         };
-        _statusTimer.Tick += (_, _) => UpdateStatusBar();
+        _statusTimer.Tick += (_, _) =>
+        {
+            UpdateStatusBar();
+            // Belt-and-suspenders: re-flush all known student IPs to WebView every tick.
+            // If any add_students message was dropped (race on startup), this recovers it
+            // within 3 seconds without waiting for the next multicast heartbeat.
+            FlushStudentsToWebView();
+        };
         _statusTimer.Start();
     }
 
@@ -256,8 +263,12 @@ public partial class MainWindow : Window
                     // Flush any students already discovered before the WebView was ready.
                     // Without this, students that connected before NavigationCompleted
                     // never produce a tile (their status updates were silently dropped).
-                    var knownIps = _discoveryListener?.KnownStudentIps;
-                    if (knownIps?.Count > 0)
+                    var knownIps = new HashSet<string>(
+                        _discoveryListener?.KnownStudentIps ?? []);
+                    // Also include any IPs already in TcpManager (e.g., manual adds)
+                    foreach (var tip in _tcpManager?.GetAllEndpointIps() ?? [])
+                        knownIps.Add(tip);
+                    if (knownIps.Count > 0)
                     {
                         TADLogger.Info($"Flushing {knownIps.Count} already-known student(s) to WebView");
                         PostJsonMessage(new { type = "add_students", ips = knownIps.ToArray() });
@@ -647,6 +658,18 @@ public partial class MainWindow : Window
                 ? "Waiting for endpoints…"
                 : $"{connected} connected  ·  {offline} offline";
         }
+    }
+
+    /// <summary>Re-post ALL known student IPs to the WebView every status-timer tick.
+    /// This is the belt-and-suspenders recovery for any add_students message that was
+    /// silently dropped due to a startup race (_webViewReady was false at the time).
+    /// JS's ensureStudentTile() is idempotent — it never creates duplicate tiles.</summary>
+    private void FlushStudentsToWebView()
+    {
+        if (!_webViewReady || _isDemoMode) return;
+        var ips = _tcpManager?.GetAllEndpointIps();
+        if (ips is { Count: > 0 })
+            PostJsonMessage(new { type = "add_students", ips = ips.ToArray() });
     }
 
     /// <summary>Set a temporary status message that auto-clears after <paramref name="seconds"/> seconds.</summary>

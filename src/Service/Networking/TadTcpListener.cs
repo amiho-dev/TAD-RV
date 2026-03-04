@@ -98,6 +98,10 @@ public sealed class TadTcpListener : BackgroundService
                 lock (_streamLock)
                     _activeStream = client.GetStream();
 
+                // Send an immediate status beacon so the teacher's dashboard
+                // shows this student right away, without waiting for the 3-second cycle.
+                SendStatusNow();
+
                 await HandleConnectionAsync(client, ct);
             }
             catch (OperationCanceledException) { break; }
@@ -610,30 +614,36 @@ public sealed class TadTcpListener : BackgroundService
 
     // ─── Status Beacon ────────────────────────────────────────────────
 
+    private StudentStatus BuildStatus()
+    {
+        var heartbeat = _driver.Heartbeat();
+        return new StudentStatus
+        {
+            Hostname      = Environment.MachineName,
+            Username      = Environment.UserName,
+            IpAddress     = GetLocalIp(),
+            DriverLoaded  = heartbeat != null,
+            IsLocked      = _isLocked,
+            IsStreaming   = _isStreaming,
+            IsBlankScreen = _isBlanked,
+            ActiveWindow  = GetForegroundWindowTitle(),
+            CpuUsage      = 0,
+            RamUsedMb     = Environment.WorkingSet / (1024 * 1024),
+            Timestamp     = DateTime.UtcNow
+        };
+    }
+
+    private void SendStatusNow()
+    {
+        try { SendFrame(TadCommand.Status, JsonSerializer.SerializeToUtf8Bytes(BuildStatus())); }
+        catch { }
+    }
+
     private async Task StatusBeaconAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
-            try
-            {
-                var heartbeat = _driver.Heartbeat();
-                var status = new StudentStatus
-                {
-                    Hostname = Environment.MachineName,
-                    Username = Environment.UserName,
-                    IpAddress = GetLocalIp(),
-                    DriverLoaded = heartbeat != null,
-                    IsLocked     = _isLocked,
-                    IsStreaming   = _isStreaming,
-                    IsBlankScreen = _isBlanked,
-                    ActiveWindow = GetForegroundWindowTitle(),
-                    CpuUsage = 0,   // Populated by perf counter in production
-                    RamUsedMb = Environment.WorkingSet / (1024 * 1024),
-                    Timestamp = DateTime.UtcNow
-                };
-
-                SendFrame(TadCommand.Status, JsonSerializer.SerializeToUtf8Bytes(status));
-            }
+            try { SendFrame(TadCommand.Status, JsonSerializer.SerializeToUtf8Bytes(BuildStatus())); }
             catch { /* Best effort */ }
 
             await Task.Delay(3000, ct);

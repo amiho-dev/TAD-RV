@@ -11,6 +11,7 @@
 //   *Setup.exe --install     → silent install (no prompts)
 //   *Setup.exe --uninstall   → remove
 //   *Setup.exe --status      → show service status  (Client only)
+//   *Setup.exe --update      → check GitHub for a newer version and install it
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Suppress dead-code warnings caused by compile-time const bool flags
@@ -19,8 +20,11 @@
 #pragma warning disable CS0162, CS0219, CS8321
 
 using System.Diagnostics;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Principal;
+using System.Text.Json;
 using Microsoft.Win32;
 
 // ── Compile-time target configuration ────────────────────────────────────────
@@ -30,6 +34,7 @@ const string AppDisplayName  = "TAD Admin";
 const string BinaryName      = "TADAdmin.exe";
 const string ResourceName    = "bundled_admin";
 const string SetupBinaryName = "TADAdminSetup.exe";
+const string AssetPrefix     = "TADAdminSetup";       // GitHub release asset prefix
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.Admin";
 const bool   IsService       = false;
 const bool   CreateShortcut  = true;
@@ -40,6 +45,7 @@ const string AppDisplayName  = "TAD Domain Controller";
 const string BinaryName      = "TADDomainController.exe";
 const string ResourceName    = "bundled_dc";
 const string SetupBinaryName = "TADDomainControllerSetup.exe";
+const string AssetPrefix     = "TADDomainControllerSetup"; // GitHub release asset prefix
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.DomainController";
 const bool   IsService       = false;
 const bool   CreateShortcut  = true;
@@ -50,6 +56,7 @@ const string AppDisplayName  = "TAD Client";
 const string BinaryName      = "TADBridgeService.exe";
 const string ResourceName    = "bundled_service";
 const string SetupBinaryName = "TADClientSetup.exe";
+const string AssetPrefix     = "TADClientSetup";      // GitHub release asset prefix
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.Client";
 const bool   IsService       = true;
 const bool   CreateShortcut  = false;
@@ -76,6 +83,7 @@ static string StartMenuDir() =>
 bool silent     = args.Any(a => a.Equals("--install",   StringComparison.OrdinalIgnoreCase));
 bool uninstall  = args.Any(a => a.Equals("--uninstall", StringComparison.OrdinalIgnoreCase));
 bool statusOnly = args.Any(a => a.Equals("--status",    StringComparison.OrdinalIgnoreCase));
+bool update     = args.Any(a => a.Equals("--update",    StringComparison.OrdinalIgnoreCase));
 
 PrintBanner();
 
@@ -102,6 +110,13 @@ if (!IsAdmin())
 }
 
 // ── Dispatch ──────────────────────────────────────────────────────────────────
+if (update)
+{
+    bool launched = RunUpdate();
+    if (!silent) Pause();
+    return launched ? 0 : 1;
+}
+
 if (statusOnly)
 {
 #if !SETUP_CLIENT
@@ -135,6 +150,135 @@ if (!silent)
 return RunInstall() ? 0 : 1;
 
 // ═════════════════════════════════════════════════════════════════════════════
+// UPDATE   — download newest Setup EXE from GitHub and run --install
+// ═════════════════════════════════════════════════════════════════════════════
+
+static bool RunUpdate()
+{
+    string current = GetVersion();
+    Console.WriteLine($"  Current version : {current}");
+    Console.WriteLine($"  Checking GitHub for the latest {AppDisplayName} release...");
+    Console.WriteLine();
+
+    const string ApiUrl = "https://api.github.com/repos/amiho-dev/TAD-RV/releases/latest";
+
+    try
+    {
+        using var http = new HttpClient();
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("TADSetup/1.0");
+        http.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
+        http.Timeout = TimeSpan.FromSeconds(30);
+
+        string json = http.GetStringAsync(ApiUrl).GetAwaiter().GetResult();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        string tagName        = root.GetProperty("tag_name").GetString() ?? "";
+        string releaseVersion = tagName.TrimStart('v');
+
+        Console.WriteLine($"  Latest release  : {tagName}");
+
+        // Compare version numbers
+        bool isNewer = false;
+        if (System.Version.TryParse(releaseVersion, out var latestVer) &&
+            System.Version.TryParse(current,        out var currentVer))
+        {
+            isNewer = latestVer > currentVer;
+        }
+        else
+        {
+            isNewer = string.Compare(releaseVersion, current, StringComparison.Ordinal) > 0;
+        }
+
+        if (!isNewer)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"  {AppDisplayName} is already up to date.");
+            Console.ResetColor();
+            return true;   // nothing to do — caller will Pause() then exit normally
+        }
+
+        // Find matching Setup EXE asset
+        string? downloadUrl = null;
+        string? assetName   = null;
+
+        foreach (var asset in root.GetProperty("assets").EnumerateArray())
+        {
+            string name = asset.GetProperty("name").GetString() ?? "";
+            if (name.StartsWith(AssetPrefix, StringComparison.OrdinalIgnoreCase) &&
+                name.EndsWith(".exe",        StringComparison.OrdinalIgnoreCase))
+            {
+                downloadUrl = asset.GetProperty("browser_download_url").GetString();
+                assetName   = name;
+                break;
+            }
+        }
+
+        if (downloadUrl is null || assetName is null)
+        {
+            Err($"No asset matching '{AssetPrefix}*.exe' found in release {tagName}.");
+            return false;
+        }
+
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"  Update available: {current}  →  {releaseVersion}");
+        Console.ResetColor();
+        Console.WriteLine();
+
+        // ── Extract TADUpdater.exe from embedded resources ─────────────────
+        string tmpDir      = Path.Combine(Path.GetTempPath(), "TAD_Update");
+        Directory.CreateDirectory(tmpDir);
+        string updaterPath = Path.Combine(tmpDir, "TADUpdater.exe");
+        string destPath    = InstallBin(SetupBinaryName);
+
+        var asm = System.Reflection.Assembly.GetExecutingAssembly();
+        string? rname = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n.Equals("bundled_updater", StringComparison.OrdinalIgnoreCase));
+
+        if (rname is null)
+        {
+            Err("TADUpdater.exe is not embedded in this installer (resource 'bundled_updater' missing).");
+            Err("This build may be incomplete. Please re-download the Setup EXE.");
+            return false;
+        }
+
+        using (var src = asm.GetManifestResourceStream(rname)!)
+        using (var dst = File.Create(updaterPath))
+            src.CopyTo(dst);
+        Ok($"Updater extracted  →  {updaterPath}");
+        Console.WriteLine();
+
+        // ── Spawn TADUpdater and EXIT immediately ──────────────────────────
+        // TADUpdater waits for our PID to disappear, then downloads the new
+        // EXE, replaces the installed copy, and launches it with --install.
+        // We MUST exit so we release any hold on the installed Setup file.
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"  Launching TADUpdater — will download {assetName}");
+        Console.WriteLine($"  This window will close and the update will install automatically.");
+        Console.ResetColor();
+        Console.WriteLine();
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName        = updaterPath,
+            // Args: <url> <dest-path> <caller-pid> [installer-args]
+            Arguments       = $"\"{downloadUrl}\" \"{destPath}\" {Environment.ProcessId} --install",
+            UseShellExecute = false,   // inherit elevation — no second UAC prompt
+            CreateNoWindow  = false,
+        });
+
+        // Exit this process so we release the installed EXE. Does NOT return.
+        Environment.Exit(0);
+        return true; // unreachable — satisfies compiler
+    }
+    catch (Exception ex)
+    {
+        Err($"Update failed: {ex.Message}");
+        return false;
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // INSTALL
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -143,7 +287,7 @@ static bool RunInstall()
 #if SETUP_CLIENT
     int totalSteps = 7;
 #else
-    int totalSteps = CreateShortcut ? 4 : 3;
+    int totalSteps = CreateShortcut ? 5 : 4;
 #endif
 
     Step(1, totalSteps, $"Extracting  {BinaryName}  →  {InstallDir()}");
@@ -177,6 +321,8 @@ static bool RunInstall()
 
     Step(CreateShortcut ? 4 : 3, totalSteps, $"Registering auto-start  →  {AppDisplayName}  (tray icon at login)...");
     AddAppRunKey();
+    Step(CreateShortcut ? 5 : 4, totalSteps, "Configuring Windows Firewall rules...");
+    RegisterAdminFirewallRules();
 #endif
 
     Console.WriteLine();
@@ -236,7 +382,8 @@ static bool RunUninstall()
 
     Step(5, 5, $"Removing files from  {installDir}...");
 #else
-    Step(3, 5, "Removing auto-start Run key...");
+    Step(3, 5, "Removing firewall rules + auto-start Run key...");
+    RunVerbose("netsh", $"advfirewall firewall delete rule name=\"TAD.RV {AppDisplayName} (UDP 17421)\"");
     try
     {
         using var runKey2 = Registry.LocalMachine.OpenSubKey(
@@ -460,6 +607,23 @@ static void AddTrayRunKey()
 
 
 #if !SETUP_CLIENT
+static void RegisterAdminFirewallRules()
+{
+    // Remove any stale rule first (ignore errors)
+    RunVerbose("netsh", $"advfirewall firewall delete rule name=\"TAD.RV {AppDisplayName} (UDP 17421)\"");
+
+    // UDP 17421 inbound — receive student multicast discovery heartbeats
+    int rc = RunVerbose("netsh",
+        "advfirewall firewall add rule " +
+        $"name=\"TAD.RV {AppDisplayName} (UDP 17421)\" " +
+        "protocol=UDP dir=in localport=17421 " +
+        "action=allow enable=yes profile=any " +
+        $"program=\"{InstallBin(BinaryName)}\" " +
+        $"description=\"TAD.RV {AppDisplayName} — student multicast discovery\"");
+    if (rc == 0) Ok($"Firewall rule added: UDP 17421 inbound ({AppDisplayName} discovery).");
+    else         Warn($"netsh UDP rule returned exit {rc}");
+}
+
 static void AddAppRunKey()
 {
     // HKLM Run key → starts the app (which has a built-in tray icon) at every user logon.
