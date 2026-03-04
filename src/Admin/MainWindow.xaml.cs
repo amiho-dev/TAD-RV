@@ -363,6 +363,10 @@ public partial class MainWindow : Window
         SetStatus(string.IsNullOrEmpty(_selectedRoom)
             ? "Showing all rooms"
             : $"Filtering room: {_selectedRoom}");
+
+        // Notify the WebView of the active room name
+        if (_webViewReady)
+            PostJsonMessage(new { type = "set_room", name = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom });
     }
 
     // ─── WebView2 Initialization ──────────────────────────────────────
@@ -396,7 +400,8 @@ public partial class MainWindow : Window
                 else if (_webViewReady)
                 {
                     TADLogger.Info("Posting config (production mode)");
-                    PostJsonMessage(new { type = "config", demoMode = false, version = GetRunningVersion() });
+                    PostJsonMessage(new { type = "config", demoMode = false, version = GetRunningVersion(),
+                        room = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom });
 
                     // Flush any students already discovered before the WebView was ready.
                     // Without this, students that connected before NavigationCompleted
@@ -573,22 +578,16 @@ public partial class MainWindow : Window
                     else _tcpManager!.UnfreezeStudent(msg.Target);
                     break;
                 case "blank":
-                    if (!_isDemoMode)
-                    {
-                        var blFrame = TadFrameCodec.Encode(TadCommand.BlankScreen);
-                        bool blSent = _tcpManager!.SendCommandToStudent(msg.Target, blFrame);
-                        if (!blSent) ShowToast($"Failed: {msg.Target} not reachable", "error");
-                    }
-                    SetStatus($"Blanked screen: {msg.Target}");
+                    // Blanking merged into Lock
+                    if (_isDemoMode) _demoManager!.LockStudent(msg.Target);
+                    else _tcpManager!.LockStudent(msg.Target);
+                    SetStatus($"Locked: {msg.Target}");
                     break;
                 case "unblank":
-                    if (!_isDemoMode)
-                    {
-                        var ubFrame = TadFrameCodec.Encode(TadCommand.UnblankScreen);
-                        bool ubSent = _tcpManager!.SendCommandToStudent(msg.Target, ubFrame);
-                        if (!ubSent) ShowToast($"Failed: {msg.Target} not reachable", "error");
-                    }
-                    SetStatus($"Restored screen: {msg.Target}");
+                    // Blanking merged into Lock
+                    if (_isDemoMode) _demoManager!.UnlockStudent(msg.Target);
+                    else _tcpManager!.UnlockStudent(msg.Target);
+                    SetStatus($"Unlocked: {msg.Target}");
                     break;
                 case "message":
                     if (!string.IsNullOrWhiteSpace(msg.Payload))
@@ -687,31 +686,11 @@ public partial class MainWindow : Window
                     }
                     break;
                 case "blank_all_confirmed":
-                    {
-                        _allBlanked = true;
-                        if (_isDemoMode) _demoManager!.BroadcastBlankScreen();
-                        else
-                        {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.BlankScreen);
-                            ShowToast(n > 0 ? $"Blank sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
-                        }
-                        PostJsonMessage(new { type = "blank_all", blanked = true });
-                        SetStatus("Blanked all screens");
-                    }
-                    break;
+                    // Blanking merged into Lock — treat as lock
+                    goto case "lock_all_confirmed";
                 case "unblank_all":
-                    {
-                        _allBlanked = false;
-                        if (_isDemoMode) _demoManager!.BroadcastUnblankScreen();
-                        else
-                        {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.UnblankScreen);
-                            ShowToast(n > 0 ? $"Unblank sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
-                        }
-                        PostJsonMessage(new { type = "blank_all", blanked = false });
-                        SetStatus("Restored all screens");
-                    }
-                    break;
+                    // Blanking merged into Lock — treat as unlock
+                    goto case "unlock_all";
 
                 // ── Per-student Internetsperre / Programmsperre ───────────
                 case "internet_block":

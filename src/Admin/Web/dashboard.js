@@ -47,7 +47,6 @@ window.chrome.webview.addEventListener('message', (event) => {
         case 'config':
             isDemoMode = !!msg.demoMode;
             if (msg.version) {
-                // Strip leading 'v' if present, then strip component suffix (e.g. '-admin')
                 let ver = msg.version.startsWith('v') ? msg.version.substring(1) : msg.version;
                 const di = ver.indexOf('-');
                 if (di > 0) ver = ver.substring(0, di);
@@ -55,9 +54,20 @@ window.chrome.webview.addEventListener('message', (event) => {
                 const verEl = document.getElementById('aboutVersion');
                 if (verEl) verEl.textContent = 'v' + appVersion;
             }
+            if (msg.room) {
+                const rl = document.getElementById('roomLabel');
+                if (rl) rl.textContent = msg.room;
+            }
             if (isDemoMode) {
                 const hint = document.getElementById('emptyHint');
                 if (hint) hint.textContent = 'Demo mode — synthetic students will appear shortly.';
+            }
+            break;
+
+        case 'set_room':
+            {
+                const rl = document.getElementById('roomLabel');
+                if (rl) rl.textContent = msg.name || 'All Rooms';
             }
             break;
 
@@ -173,14 +183,20 @@ function renderTile(student) {
             <div class="tile-hand-indicator" style="display:none">&#xE768;</div>
         </div>
         <div class="tile-body">
+            <div class="tile-status-dot"></div>
             <div class="tile-main-row">
                 <div class="tile-identity">
                     <span class="tile-hostname">${student.ip}</span>
                     <span class="tile-user">—</span>
                 </div>
-                <div class="tile-status-dot"></div>
             </div>
             <div class="tile-indicators"></div>
+            <div class="tile-actions">
+                <button class="tile-act-btn act-lock" onclick="event.stopPropagation(); lockStudent('${student.ip}')" title="Lock">&#xE72E;</button>
+                <button class="tile-act-btn act-unlock" onclick="event.stopPropagation(); unlockStudent('${student.ip}')" title="Unlock">&#xE785;</button>
+                <button class="tile-act-btn act-msg" onclick="event.stopPropagation(); messageStudent('${student.ip}')" title="Message">&#xE8BD;</button>
+                <button class="tile-act-btn" onclick="event.stopPropagation(); openDevicePanel('${student.ip}')" title="Details">&#xE946;</button>
+            </div>
         </div>
         <div class="tile-ctx-menu" style="display:none">
             <button onclick="event.stopPropagation(); startRv('${student.ip}')">&#xE7B3; Remote View</button>
@@ -191,8 +207,6 @@ function renderTile(student) {
             <button onclick="event.stopPropagation(); freezeStudent('${student.ip}')">&#xE7AD; Freeze</button>
             <button onclick="event.stopPropagation(); unfreezeStudent('${student.ip}')">&#xE77A; Unfreeze</button>
             <div class="ctx-sep"></div>
-            <button onclick="event.stopPropagation(); blankStudent('${student.ip}')">&#xE747; Blank Screen</button>
-            <button onclick="event.stopPropagation(); unblankStudent('${student.ip}')">&#xE793; Restore Screen</button>
             <button onclick="event.stopPropagation(); messageStudent('${student.ip}')">&#xE8BD; Send Message</button>
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; Internetsperre</button>
@@ -1308,17 +1322,13 @@ function closeAbout(event) {
 
 function updateStats() {
     const now = Date.now();
-    let online = 0, locked = 0, frozen = 0, streaming = 0, handRaised = 0, offline = 0, connecting = 0;
+    let online = 0, offline = 0, connecting = 0;
 
     students.forEach(s => {
         const neverSeen = s.lastSeen === 0;
         const isOnline = !neverSeen && s.status && (now - s.lastSeen < 10000);
         if (isOnline) {
             online++;
-            if (s.status.IsLocked) locked++;
-            if (s.status.IsFrozen) frozen++;
-            if (s.status.IsStreaming) streaming++;
-            if (s.status.IsHandRaised) handRaised++;
         } else if (neverSeen) {
             connecting++;
         } else {
@@ -1326,20 +1336,12 @@ function updateStats() {
         }
     });
 
-    document.getElementById('statOnline').textContent = online + (connecting > 0 ? ` (+${connecting})` : '');
-    document.getElementById('statLocked').textContent = locked;
-    document.getElementById('statFrozen').textContent = frozen;
-    document.getElementById('statStreaming').textContent = streaming;
-    document.getElementById('statHandRaised').textContent = handRaised;
-    document.getElementById('statOffline').textContent = offline;
-
-    // Re-apply filter so newly-offline tiles get hidden/shown per toggle
+    // Re-apply filter so newly-offline tiles get hidden/shown
     students.forEach(s => applyFilter(s));
 
-    // "Hide if all offline" toggle: show empty state when every PC is offline
+    // "Hide if all offline" toggle
     const emptyEl = document.getElementById('emptyState');
     if (hideIfAllOffline && students.size > 0 && online === 0 && connecting === 0) {
-        // All students are offline — show empty state over the grid
         if (emptyEl) {
             emptyEl.style.display = '';
             emptyEl.querySelector('h2').textContent = 'All Students Offline';
@@ -1569,20 +1571,8 @@ function handleConfirmAction(action) {
                 { showDuration: true, confirmText: '❄ Freeze All' });
             break;
         case 'blank_all':
-            showConfirm('⬛ Blank All Screens',
-                'Blank all student screens? All monitors will go black.',
-                (duration) => {
-                    sendToHost({ action: 'blank_all_confirmed' });
-                    showToast('Blank All command sent', 'success');
-                    if (duration > 0) {
-                        const t = setTimeout(() => {
-                            sendToHost({ action: 'unblank_all' });
-                            showToast('Auto-unblank: duration expired', 'info');
-                        }, duration * 1000);
-                        _activeDurationTimers.push(t);
-                    }
-                },
-                { showDuration: true, confirmText: '⬛ Blank All' });
+            // Blanking merged into Lock — no longer a separate action
+            handleConfirmAction('lock_all');
             break;
     }
 }
