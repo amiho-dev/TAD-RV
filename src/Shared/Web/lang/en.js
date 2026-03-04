@@ -239,6 +239,72 @@ const TAD_LANG_EN = {
     'room.desks': '{count} desk',
     'room.desksPlural': '{count} desks',
 
+    // ── Teacher: Toolbar Actions ────────────────────────────────
+    'toolbar.lockAll': 'Lock All',
+    'toolbar.unlockAll': 'Unlock All',
+    'toolbar.freezeAll': 'Freeze All',
+    'toolbar.unfreezeAll': 'Unfreeze All',
+    'toolbar.message': 'Message',
+    'toolbar.filters': 'Filters',
+    'toolbar.searchPlaceholder': 'Search students...',
+
+    // ── Teacher: Context Menu ───────────────────────────────────
+    'ctx.remoteView': 'Remote View',
+    'ctx.details': 'Details',
+    'ctx.lock': 'Lock',
+    'ctx.unlock': 'Unlock',
+    'ctx.freeze': 'Freeze',
+    'ctx.unfreeze': 'Unfreeze',
+    'ctx.sendMessage': 'Send Message',
+    'ctx.webLock': 'Web-Lock',
+    'ctx.programLock': 'Program-Lock',
+
+    // ── Teacher: Tile Indicators ────────────────────────────────
+    'ind.locked': 'Locked',
+    'ind.frozen': 'Frozen',
+    'ind.blanked': 'Blanked',
+    'ind.webLock': 'Web-Lock',
+    'ind.programLock': 'Program-Lock',
+    'ind.streaming': 'Streaming',
+    'ind.handRaised': 'Hand Raised',
+
+    // ── Teacher: Blocklist / Content Filters ────────────────────
+    'blocklist.title': 'Content Filters',
+    'blocklist.blockedPrograms': 'Blocked Programs',
+    'blocklist.blockedWebsites': 'Blocked Websites',
+    'blocklist.progHint': 'Process names without .exe (e.g. "fortnite", "steam", "minecraft")',
+    'blocklist.siteHint': 'Domain names matched in browser titles (e.g. "youtube.com", "tiktok.com")',
+    'blocklist.addProgPlaceholder': 'Add program name...',
+    'blocklist.addSitePlaceholder': 'Add website domain...',
+    'blocklist.add': 'Add',
+    'blocklist.applyAll': 'Apply to All Students',
+    'blocklist.clearAll': 'Clear All',
+    'blocklist.noPrograms': 'No programs blocked',
+    'blocklist.noWebsites': 'No websites blocked',
+
+    // ── Teacher: Confirm Dialog ─────────────────────────────────
+    'confirm.title': 'Confirm Action',
+    'confirm.confirm': 'Confirm',
+    'confirm.duration': 'Duration',
+    'confirm.untilReversed': 'Until manually reversed',
+    'confirm.5min': '5 minutes',
+    'confirm.10min': '10 minutes',
+    'confirm.15min': '15 minutes',
+    'confirm.30min': '30 minutes',
+    'confirm.1hour': '1 hour',
+
+    // ── Teacher: Empty State ────────────────────────────────────
+    'empty.noStudents': 'No Students Connected',
+    'empty.waiting': 'Waiting for student endpoints to come online...',
+
+    // ── Teacher: Announcement ───────────────────────────────────
+    'announce.frozen': 'All screens frozen — Eyes on the teacher!',
+
+    // ── Teacher: About ──────────────────────────────────────────
+    'about.subtitle': 'Teacher Controller',
+    'about.desc': 'Next-generation classroom management.',
+    'about.whatsNew': "What's New",
+
     // ── Language ────────────────────────────────────────────────
     'lang.label': 'Language',
 };

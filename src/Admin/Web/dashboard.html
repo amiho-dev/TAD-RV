@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TAD.RV Teacher Dashboard</title>
     <!-- INLINE_CSS -->
+    <!-- INLINE_I18N -->
 </head>
 <body>
     <!-- Announcement Banner (hidden by default) -->
     <div class="announcement-bar" id="announcementBar" style="display:none">
         <span class="announcement-icon">&#xE7AD;</span>
-        <span id="announcementText">All screens frozen — Eyes on the teacher!</span>
+        <span id="announcementText" data-i18n="announce.frozen">All screens frozen — Eyes on the teacher!</span>
         <button class="announcement-dismiss" onclick="dismissAnnouncement()">&#xE711;</button>
     </div>
 
@@ -29,27 +30,42 @@
         <div class="stats-right">
             <div class="stats-actions">
                 <button class="stats-action-btn" onclick="handleConfirmAction('lock_all')" title="Lock all student screens">
-                    <span class="sai">&#xE72E;</span> Lock All
+                    <span class="sai">&#xE72E;</span> <span data-i18n="toolbar.lockAll">Lock All</span>
                 </button>
                 <button class="stats-action-btn" onclick="sendToHost({action:'unlock_all'}); showToast('Unlock All sent','success')" title="Unlock all screens">
-                    <span class="sai">&#xE785;</span> Unlock All
+                    <span class="sai">&#xE785;</span> <span data-i18n="toolbar.unlockAll">Unlock All</span>
                 </button>
                 <button class="stats-action-btn" onclick="handleConfirmAction('freeze_all')" title="Freeze all student screens">
-                    <span class="sai">&#xE7AD;</span> Freeze All
+                    <span class="sai">&#xE7AD;</span> <span data-i18n="toolbar.freezeAll">Freeze All</span>
                 </button>
                 <button class="stats-action-btn" onclick="sendToHost({action:'unfreeze_all'}); showToast('Unfreeze All sent','success')" title="Unfreeze all screens">
-                    <span class="sai">&#xE77A;</span> Unfreeze All
+                    <span class="sai">&#xE77A;</span> <span data-i18n="toolbar.unfreezeAll">Unfreeze All</span>
                 </button>
                 <button class="stats-action-btn" onclick="openMessageDialog()" title="Broadcast a message to all students">
-                    <span class="sai">&#xE8BD;</span> Message
+                    <span class="sai">&#xE8BD;</span> <span data-i18n="toolbar.message">Message</span>
                 </button>
                 <button class="stats-action-btn" onclick="openBlocklistModal()" title="Content filters &amp; blocklist">
-                    <span class="sai">&#xE8D7;</span> Filters
+                    <span class="sai">&#xE8D7;</span> <span data-i18n="toolbar.filters">Filters</span>
                 </button>
+                <!-- Language Selector -->
+                <div class="lang-selector" id="langSelector">
+                    <button class="stats-action-btn lang-btn" onclick="toggleLangDropdown()" title="Language">
+                        <span class="sai">&#xE774;</span> <span id="langCode">EN</span>
+                    </button>
+                    <div class="lang-dropdown" id="langDropdown" style="display:none">
+                        <button class="lang-option" data-lang="en">🇬🇧 English</button>
+                        <button class="lang-option" data-lang="de">🇩🇪 Deutsch</button>
+                        <button class="lang-option" data-lang="fr">🇫🇷 Français</button>
+                        <button class="lang-option" data-lang="nl">🇳🇱 Nederlands</button>
+                        <button class="lang-option" data-lang="es">🇪🇸 Español</button>
+                        <button class="lang-option" data-lang="it">🇮🇹 Italiano</button>
+                        <button class="lang-option" data-lang="pl">🇵🇱 Polski</button>
+                    </div>
+                </div>
             </div>
             <div class="search-box">
                 <span class="search-icon">&#xE721;</span>
-                <input type="text" id="searchInput" placeholder="Search students..."
+                <input type="text" id="searchInput" data-i18n-placeholder="toolbar.searchPlaceholder" placeholder="Search students..."
                        oninput="filterStudents(this.value)" />
             </div>
         </div>
@@ -59,8 +75,8 @@
     <div class="student-grid" id="studentGrid">
         <div class="empty-state" id="emptyState">
             <div class="empty-icon">&#xE7EF;</div>
-            <h2>No Students Connected</h2>
-            <p>Waiting for student endpoints to come online...</p>
+            <h2 data-i18n="empty.noStudents">No Students Connected</h2>
+            <p data-i18n="empty.waiting">Waiting for student endpoints to come online...</p>
             <p class="empty-hint" id="emptyHint"></p>
         </div>
     </div>
@@ -159,16 +175,16 @@
     <div class="modal-overlay" id="blocklistModal" style="display:none" onclick="if(event.target===this)closeBlocklistModal()">
         <div class="modal-content modal-blocklist">
             <div class="modal-header">
-                <span>&#xE8D7; Content Filters</span>
+                <span>&#xE8D7; <span data-i18n="blocklist.title">Content Filters</span></span>
                 <button class="modal-btn" onclick="closeBlocklistModal()">&#xE711;</button>
             </div>
             <div class="modal-body-form blocklist-body">
                 <div class="blocklist-section">
-                    <h4>&#xE74C; Blocked Programs</h4>
-                    <p class="blocklist-hint">Process names without .exe (e.g. "fortnite", "steam", "minecraft")</p>
+                    <h4>&#xE74C; <span data-i18n="blocklist.blockedPrograms">Blocked Programs</span></h4>
+                    <p class="blocklist-hint" data-i18n="blocklist.progHint">Process names without .exe (e.g. "fortnite", "steam", "minecraft")</p>
                     <div class="blocklist-add-row">
-                        <input type="text" id="blockProgInput" placeholder="Add program name..." />
-                        <button class="btn btn-primary btn-sm" onclick="addBlockedProgram()">&#xE710; Add</button>
+                        <input type="text" id="blockProgInput" data-i18n-placeholder="blocklist.addProgPlaceholder" placeholder="Add program name..." />
+                        <button class="btn btn-primary btn-sm" onclick="addBlockedProgram()">&#xE710; <span data-i18n="blocklist.add">Add</span></button>
                     </div>
                     <div class="blocklist-presets">
                         <button class="preset-chip" onclick="addPresetProgram('steam')">Steam</button>
@@ -182,11 +198,11 @@
                     <ul class="blocklist-items" id="blockedProgramsList"></ul>
                 </div>
                 <div class="blocklist-section">
-                    <h4>&#xE774; Blocked Websites</h4>
-                    <p class="blocklist-hint">Domain names matched in browser titles (e.g. "youtube.com", "tiktok.com")</p>
+                    <h4>&#xE774; <span data-i18n="blocklist.blockedWebsites">Blocked Websites</span></h4>
+                    <p class="blocklist-hint" data-i18n="blocklist.siteHint">Domain names matched in browser titles (e.g. "youtube.com", "tiktok.com")</p>
                     <div class="blocklist-add-row">
-                        <input type="text" id="blockSiteInput" placeholder="Add website domain..." />
-                        <button class="btn btn-primary btn-sm" onclick="addBlockedWebsite()">&#xE710; Add</button>
+                        <input type="text" id="blockSiteInput" data-i18n-placeholder="blocklist.addSitePlaceholder" placeholder="Add website domain..." />
+                        <button class="btn btn-primary btn-sm" onclick="addBlockedWebsite()">&#xE710; <span data-i18n="blocklist.add">Add</span></button>
                     </div>
                     <div class="blocklist-presets">
                         <button class="preset-chip" onclick="addPresetWebsite('youtube.com')">YouTube</button>
@@ -201,12 +217,12 @@
                 </div>
                 <div class="form-actions">
                     <button class="btn btn-primary" onclick="applyBlocklist()">
-                        &#xE724; Apply to All Students
+                        &#xE724; <span data-i18n="blocklist.applyAll">Apply to All Students</span>
                     </button>
                     <button class="btn btn-danger" onclick="clearBlocklist()">
-                        &#xE74D; Clear All
+                        &#xE74D; <span data-i18n="blocklist.clearAll">Clear All</span>
                     </button>
-                    <button class="btn btn-secondary" onclick="closeBlocklistModal()">Close</button>
+                    <button class="btn btn-secondary" onclick="closeBlocklistModal()" data-i18n="common.close">Close</button>
                 </div>
             </div>
         </div>
@@ -218,17 +234,17 @@
             <div class="about-body">
                 <div class="about-logo">&#xE71E;</div>
                 <h1 class="about-title">TAD.RV</h1>
-                <p class="about-subtitle">Teacher Controller</p>
+                <p class="about-subtitle" data-i18n="about.subtitle">Teacher Controller</p>
                 <p class="about-version" id="aboutVersion">v26700.192</p>
                 <div class="about-divider"></div>
-                <p class="about-desc">Next-generation classroom management.<br/>
+                <p class="about-desc" data-i18n="about.desc">Next-generation classroom management.<br/>
                    Real-time monitoring, screen capture, remote view,<br/>
                    and endpoint control for up to 50 students.</p>
                 <div class="about-divider"></div>
                 <p class="about-copyright">(C) 2026 TAD Europe — https://tad-it.eu</p>
                 <div class="about-buttons">
-                    <button class="btn btn-primary" onclick="showChangelog()">What's New</button>
-                    <button class="btn btn-secondary" onclick="document.getElementById('aboutModal').style.display='none'">Close</button>
+                    <button class="btn btn-primary" onclick="showChangelog()" data-i18n="about.whatsNew">What's New</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('aboutModal').style.display='none'" data-i18n="common.close">Close</button>
                 </div>
             </div>
         </div>
@@ -383,25 +399,25 @@
     <div class="modal-overlay" id="confirmModal" style="display:none" onclick="if(event.target===this)cancelConfirm()">
         <div class="modal-content modal-confirm">
             <div class="modal-header">
-                <span id="confirmTitle">Confirm Action</span>
+                <span id="confirmTitle" data-i18n="confirm.title">Confirm Action</span>
                 <button class="modal-btn" onclick="cancelConfirm()">&#xE711;</button>
             </div>
             <div class="modal-body-form">
                 <p id="confirmMessage" class="confirm-msg"></p>
                 <div id="confirmDurationRow" class="confirm-duration-row" style="display:none">
-                    <label class="confirm-duration-label">Duration</label>
+                    <label class="confirm-duration-label" data-i18n="confirm.duration">Duration</label>
                     <select id="confirmDuration" class="confirm-select">
-                        <option value="0">Until manually reversed</option>
-                        <option value="300">5 minutes</option>
-                        <option value="600">10 minutes</option>
-                        <option value="900">15 minutes</option>
-                        <option value="1800">30 minutes</option>
-                        <option value="3600">1 hour</option>
+                        <option value="0" data-i18n="confirm.untilReversed">Until manually reversed</option>
+                        <option value="300" data-i18n="confirm.5min">5 minutes</option>
+                        <option value="600" data-i18n="confirm.10min">10 minutes</option>
+                        <option value="900" data-i18n="confirm.15min">15 minutes</option>
+                        <option value="1800" data-i18n="confirm.30min">30 minutes</option>
+                        <option value="3600" data-i18n="confirm.1hour">1 hour</option>
                     </select>
                 </div>
                 <div class="form-actions">
-                    <button class="btn btn-primary" id="confirmOk" onclick="executeConfirm()">Confirm</button>
-                    <button class="btn btn-secondary" onclick="cancelConfirm()">Cancel</button>
+                    <button class="btn btn-primary" id="confirmOk" onclick="executeConfirm()" data-i18n="confirm.confirm">Confirm</button>
+                    <button class="btn btn-secondary" onclick="cancelConfirm()" data-i18n="common.cancel">Cancel</button>
                 </div>
             </div>
         </div>

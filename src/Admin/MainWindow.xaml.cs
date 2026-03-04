@@ -513,7 +513,24 @@ public partial class MainWindow : Window
         var html = LoadResource(asm, "TADAdmin.Web.dashboard.html");
         TADLogger.Info($"LoadEmbeddedHtml: HTML {html.Length} chars");
 
+        // Load i18n module + language packs
+        var i18nJs = LoadResource(asm, "TADAdmin.Web.i18n.js");
+        string[] langCodes = { "en", "de", "fr", "nl", "es", "it", "pl" };
+        var langScripts = new StringBuilder();
+        langScripts.AppendLine($"<script>{i18nJs}</script>");
+        foreach (var lang in langCodes)
+        {
+            var langJs = LoadResource(asm, $"TADAdmin.Web.lang.{lang}.js");
+            langScripts.AppendLine($"<script>{langJs}</script>");
+        }
+        // Init script: build translation packs object and initialize i18n
+        langScripts.AppendLine("<script>");
+        langScripts.AppendLine("const translationPacks = { en: TAD_LANG_EN, de: TAD_LANG_DE, fr: TAD_LANG_FR, nl: TAD_LANG_NL, es: TAD_LANG_ES, it: TAD_LANG_IT, pl: TAD_LANG_PL };");
+        langScripts.AppendLine("TAD_I18N.init(translationPacks);");
+        langScripts.AppendLine("</script>");
+
         html = html.Replace("<!-- INLINE_CSS -->", $"<style>{css}</style>");
+        html = html.Replace("<!-- INLINE_I18N -->", langScripts.ToString());
         html = html.Replace("<!-- INLINE_JS -->",  $"<script>{js}</script>");
         return html;
     }
@@ -695,42 +712,43 @@ public partial class MainWindow : Window
                     // Blanking merged into Lock — treat as unlock
                     goto case "unlock_all";
 
-                // ── Per-student Internetsperre / Programmsperre ───────────
+                // ── Per-student Web-Lock / Program-Lock ──────────────────
                 case "internet_block":
                     if (!_isDemoMode)
                     {
-                        var ibFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
-                            new BlocklistUpdate { BlockedWebsites = new List<string> { "*" } });
-                        _tcpManager!.SendCommandToStudent(msg.Target, ibFrame);
+                        var wlFrame = TadFrameCodec.Encode(TadCommand.WebLock);
+                        _tcpManager!.SendCommandToStudent(msg.Target, wlFrame);
                     }
-                    SetStatus($"Internet blocked for {msg.Target}");
+                    SetStatus($"Web-Lock enabled for {msg.Target}");
                     break;
                 case "internet_unblock":
                     if (!_isDemoMode)
                     {
-                        var iuFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
-                            new BlocklistUpdate { BlockedWebsites = new List<string>() });
-                        _tcpManager!.SendCommandToStudent(msg.Target, iuFrame);
+                        var wuFrame = TadFrameCodec.Encode(TadCommand.WebUnlock);
+                        _tcpManager!.SendCommandToStudent(msg.Target, wuFrame);
                     }
-                    SetStatus($"Internet unblocked for {msg.Target}");
+                    SetStatus($"Web-Lock disabled for {msg.Target}");
                     break;
                 case "program_block":
                     if (!_isDemoMode)
                     {
-                        var pbFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
-                            new BlocklistUpdate { BlockedPrograms = new List<string> { "*" } });
-                        _tcpManager!.SendCommandToStudent(msg.Target, pbFrame);
+                        // Send the teacher's configured blocked-programs list via ProgramLock
+                        var plPayload = msg.Payload ?? "{}";
+                        BlocklistUpdate plBl;
+                        try { plBl = JsonSerializer.Deserialize<BlocklistUpdate>(plPayload, s_jsonOptions) ?? new(); }
+                        catch { plBl = new BlocklistUpdate(); }
+                        var plFrame = TadFrameCodec.EncodeJson(TadCommand.ProgramLock, plBl);
+                        _tcpManager!.SendCommandToStudent(msg.Target, plFrame);
                     }
-                    SetStatus($"Programs blocked for {msg.Target}");
+                    SetStatus($"Program-Lock enabled for {msg.Target}");
                     break;
                 case "program_unblock":
                     if (!_isDemoMode)
                     {
-                        var puFrame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist,
-                            new BlocklistUpdate { BlockedPrograms = new List<string>() });
+                        var puFrame = TadFrameCodec.Encode(TadCommand.ProgramUnlock);
                         _tcpManager!.SendCommandToStudent(msg.Target, puFrame);
                     }
-                    SetStatus($"Programs unblocked for {msg.Target}");
+                    SetStatus($"Program-Lock disabled for {msg.Target}");
                     break;
             }
         }

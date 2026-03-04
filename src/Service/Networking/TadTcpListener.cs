@@ -50,6 +50,8 @@ public sealed class TadTcpListener : BackgroundService
     // Blocklist enforcement
     private BlocklistUpdate _blocklist = new();
     private readonly object _blocklistLock = new();
+    private volatile bool _isWebLocked;
+    private volatile bool _isProgramLocked;
 
     // CPU usage tracking via PerformanceCounter-free approach
     private TimeSpan _prevCpuTotal;
@@ -159,6 +161,8 @@ public sealed class TadTcpListener : BackgroundService
             if (_isLocked)  ExecuteUnlock();
             if (_isBlanked) ExecuteUnblankScreen();
             if (_isFrozen)  ExecuteUnfreeze();
+            if (_isWebLocked) ExecuteWebUnlock();
+            if (_isProgramLocked) ExecuteProgramUnlock();
         }
     }
 
@@ -293,6 +297,30 @@ public sealed class TadTcpListener : BackgroundService
                 {
                     _log.LogWarning(ex, "Bad SetBlocklist payload");
                 }
+                break;
+
+            case TadCommand.WebLock:
+                ExecuteWebLock();
+                break;
+
+            case TadCommand.WebUnlock:
+                ExecuteWebUnlock();
+                break;
+
+            case TadCommand.ProgramLock:
+                try
+                {
+                    var pl = JsonSerializer.Deserialize<BlocklistUpdate>(payload.Span);
+                    if (pl != null) ExecuteProgramLock(pl);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogWarning(ex, "Bad ProgramLock payload");
+                }
+                break;
+
+            case TadCommand.ProgramUnlock:
+                ExecuteProgramUnlock();
                 break;
 
             default:
@@ -861,6 +889,8 @@ public sealed class TadTcpListener : BackgroundService
             IsFrozen       = _isFrozen,
             IsStreaming    = _isStreaming,
             IsBlankScreen  = _isBlanked,
+            IsWebLocked    = _isWebLocked,
+            IsProgramLocked = _isProgramLocked,
             ActiveWindow   = GetForegroundWindowTitle(),
             CpuUsage       = cpuUsage,
             RamUsedMb      = ramUsedMb,
@@ -1027,6 +1057,114 @@ public sealed class TadTcpListener : BackgroundService
             }
             catch { /* access denied or already exited */ }
         }
+    }
+
+    // ─── Web-Lock (Firewall-based internet block) ─────────────────────
+
+    private const string FW_RULE_BLOCK = "TAD-WebLock-Block";
+    private const string FW_RULE_ALLOW_PRIVATE = "TAD-WebLock-AllowPrivate";
+
+    private void ExecuteWebLock()
+    {
+        if (_isWebLocked)
+        {
+            _log.LogDebug("Web-Lock already active, skipping");
+            return;
+        }
+
+        try
+        {
+            // 1) Add outbound allow rule for private/local subnets (evaluated before block)
+            RunNetsh($"advfirewall firewall add rule name=\"{FW_RULE_ALLOW_PRIVATE}\" " +
+                     "dir=out action=allow " +
+                     "remoteip=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,169.254.0.0/16,localsubnet " +
+                     "enable=yes");
+
+            // 2) Block ALL outbound public internet traffic
+            //    Public ranges: everything except private (10/8, 127/8, 172.16/12, 192.168/16, 169.254/16)
+            RunNetsh($"advfirewall firewall add rule name=\"{FW_RULE_BLOCK}\" " +
+                     "dir=out action=block " +
+                     "remoteip=1.0.0.0-9.255.255.255,11.0.0.0-126.255.255.255," +
+                     "128.0.0.0-172.15.255.255,172.32.0.0-191.255.255.255," +
+                     "192.0.0.0-192.167.255.255,192.169.0.0-223.255.255.255 " +
+                     "enable=yes");
+
+            _isWebLocked = true;
+            _log.LogInformation("Web-Lock enabled — internet blocked, local/domain preserved");
+            SendStatusNow();
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Failed to enable Web-Lock");
+        }
+    }
+
+    private void ExecuteWebUnlock()
+    {
+        if (!_isWebLocked)
+        {
+            _log.LogDebug("Web-Lock not active, skipping unlock");
+            return;
+        }
+
+        try
+        {
+            RunNetsh($"advfirewall firewall delete rule name=\"{FW_RULE_BLOCK}\"");
+            RunNetsh($"advfirewall firewall delete rule name=\"{FW_RULE_ALLOW_PRIVATE}\"");
+
+            _isWebLocked = false;
+            _log.LogInformation("Web-Lock disabled — internet restored");
+            SendStatusNow();
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Failed to disable Web-Lock");
+        }
+    }
+
+    private static void RunNetsh(string arguments)
+    {
+        var psi = new ProcessStartInfo("netsh", arguments)
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        using var proc = Process.Start(psi);
+        proc?.WaitForExit(5000);
+    }
+
+    // ─── Program-Lock (per-student program kill) ──────────────────────
+
+    private void ExecuteProgramLock(BlocklistUpdate bl)
+    {
+        lock (_blocklistLock)
+        {
+            _blocklist = new BlocklistUpdate
+            {
+                BlockedPrograms = bl.BlockedPrograms,
+                BlockedWebsites = _blocklist.BlockedWebsites
+            };
+        }
+        _isProgramLocked = bl.BlockedPrograms.Count > 0;
+        _log.LogInformation("Program-Lock: blocking {Count} programs", bl.BlockedPrograms.Count);
+        SendStatusNow();
+    }
+
+    private void ExecuteProgramUnlock()
+    {
+        lock (_blocklistLock)
+        {
+            _blocklist = new BlocklistUpdate
+            {
+                BlockedPrograms = new List<string>(),
+                BlockedWebsites = _blocklist.BlockedWebsites
+            };
+        }
+        _isProgramLocked = false;
+        _log.LogInformation("Program-Lock disabled");
+        SendStatusNow();
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────

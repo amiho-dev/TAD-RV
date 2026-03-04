@@ -39,6 +39,10 @@ public enum TadCommand : byte
     Snapshot        = 0x50,     // Request a JPEG screenshot from the endpoint
     KillProcess     = 0x51,     // Kill a process on student by PID
     SetBlocklist    = 0x52,     // Set blocked programs/websites list
+    WebLock         = 0x53,     // Block internet access (firewall rules), keep local/domain
+    WebUnlock       = 0x54,     // Remove internet block firewall rules
+    ProgramLock     = 0x55,     // Send specific program list to block
+    ProgramUnlock   = 0x56,     // Remove program blocks
 
     // Student → Teacher
     Pong            = 0x81,
@@ -72,6 +76,8 @@ public sealed class StudentStatus
     public int FreezeSecondsRemaining { get; set; }
     public bool IsHandRaised { get; set; }
     public bool IsBlankScreen { get; set; }
+    public bool IsWebLocked { get; set; }
+    public bool IsProgramLocked { get; set; }
     public string ActiveWindow { get; set; } = "";
     public double CpuUsage { get; set; }
     public long RamUsedMb { get; set; }

@@ -10,7 +10,7 @@
 //
 // Features: Remote View, Lock/Unlock, Freeze, Blank Screen, Hand Raise,
 //           Broadcast Message, Search/Filter, Main-Stream focus decoding,
-//           Per-student Internetsperre/Programmsperre, Context menus.
+//           Per-student Web-Lock/Program-Lock, Context menus, i18n.
 // ═══════════════════════════════════════════════════════════════════════
 
 'use strict';
@@ -28,8 +28,14 @@ let showOffline = true;               // Show offline/connecting tiles by defaul
 let hideIfAllOffline = false;         // Toggle: show nothing if every PC is offline
 
 // Per-student block state (tracked teacher-side)
-const internetBlocked = new Set();    // IPs with Internetsperre active
-const programBlocked = new Set();     // IPs with Programmsperre active
+const internetBlocked = new Set();    // IPs with Web-Lock active
+const programBlocked = new Set();     // IPs with Program-Lock active
+
+// ── i18n helper (delegates to TAD_I18N if loaded, else returns key) ──
+function t(key, replacements) {
+    if (typeof TAD_I18N !== 'undefined') return TAD_I18N.t(key, replacements);
+    return key;
+}
 
 // ── Message Bridge (C# → JS) ────────────────────────────────────────
 
@@ -145,6 +151,11 @@ function handleStatusUpdate(ip, data) {
 
     student.status = data;
     student.lastSeen = Date.now();
+
+    // Sync local lock sets from server-reported status
+    if (data.IsWebLocked) internetBlocked.add(ip); else internetBlocked.delete(ip);
+    if (data.IsProgramLocked) programBlocked.add(ip); else programBlocked.delete(ip);
+
     updateTileUI(student);
     updateStats();
 
@@ -192,25 +203,25 @@ function renderTile(student) {
             </div>
             <div class="tile-indicators"></div>
             <div class="tile-actions">
-                <button class="tile-act-btn act-lock" onclick="event.stopPropagation(); lockStudent('${student.ip}')" title="Lock">&#xE72E;</button>
-                <button class="tile-act-btn act-unlock" onclick="event.stopPropagation(); unlockStudent('${student.ip}')" title="Unlock">&#xE785;</button>
-                <button class="tile-act-btn act-msg" onclick="event.stopPropagation(); messageStudent('${student.ip}')" title="Message">&#xE8BD;</button>
-                <button class="tile-act-btn" onclick="event.stopPropagation(); openDevicePanel('${student.ip}')" title="Details">&#xE946;</button>
+                <button class="tile-act-btn act-lock" onclick="event.stopPropagation(); lockStudent('${student.ip}')" title="${t('ctx.lock')}">&#xE72E;</button>
+                <button class="tile-act-btn act-unlock" onclick="event.stopPropagation(); unlockStudent('${student.ip}')" title="${t('ctx.unlock')}">&#xE785;</button>
+                <button class="tile-act-btn act-msg" onclick="event.stopPropagation(); messageStudent('${student.ip}')" title="${t('ctx.sendMessage')}">&#xE8BD;</button>
+                <button class="tile-act-btn" onclick="event.stopPropagation(); openDevicePanel('${student.ip}')" title="${t('ctx.details')}">&#xE946;</button>
             </div>
         </div>
         <div class="tile-ctx-menu" style="display:none">
-            <button onclick="event.stopPropagation(); startRv('${student.ip}')">&#xE7B3; Remote View</button>
-            <button onclick="event.stopPropagation(); openDevicePanel('${student.ip}')">&#xE946; Details</button>
+            <button onclick="event.stopPropagation(); startRv('${student.ip}')">&#xE7B3; ${t('ctx.remoteView')}</button>
+            <button onclick="event.stopPropagation(); openDevicePanel('${student.ip}')">&#xE946; ${t('ctx.details')}</button>
             <div class="ctx-sep"></div>
-            <button onclick="event.stopPropagation(); lockStudent('${student.ip}')">&#xE72E; Lock</button>
-            <button onclick="event.stopPropagation(); unlockStudent('${student.ip}')">&#xE785; Unlock</button>
-            <button onclick="event.stopPropagation(); freezeStudent('${student.ip}')">&#xE7AD; Freeze</button>
-            <button onclick="event.stopPropagation(); unfreezeStudent('${student.ip}')">&#xE77A; Unfreeze</button>
+            <button onclick="event.stopPropagation(); lockStudent('${student.ip}')">&#xE72E; ${t('ctx.lock')}</button>
+            <button onclick="event.stopPropagation(); unlockStudent('${student.ip}')">&#xE785; ${t('ctx.unlock')}</button>
+            <button onclick="event.stopPropagation(); freezeStudent('${student.ip}')">&#xE7AD; ${t('ctx.freeze')}</button>
+            <button onclick="event.stopPropagation(); unfreezeStudent('${student.ip}')">&#xE77A; ${t('ctx.unfreeze')}</button>
             <div class="ctx-sep"></div>
-            <button onclick="event.stopPropagation(); messageStudent('${student.ip}')">&#xE8BD; Send Message</button>
+            <button onclick="event.stopPropagation(); messageStudent('${student.ip}')">&#xE8BD; ${t('ctx.sendMessage')}</button>
             <div class="ctx-sep"></div>
-            <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; Internetsperre</button>
-            <button onclick="event.stopPropagation(); toggleProgramBlock('${student.ip}')">&#xE74C; Programmsperre</button>
+            <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; ${t('ctx.webLock')}</button>
+            <button onclick="event.stopPropagation(); toggleProgramBlock('${student.ip}')">&#xE74C; ${t('ctx.programLock')}</button>
         </div>
     `;
 
@@ -295,13 +306,13 @@ function updateTileUI(student) {
     const indicators = tile.querySelector('.tile-indicators');
     let html = '';
 
-    if (s.IsLocked) html += '<span class="ind ind-locked" title="Locked">&#xE72E;</span>';
-    if (s.IsFrozen) html += '<span class="ind ind-frozen" title="Frozen">&#xE7AD;</span>';
-    if (s.IsBlankScreen) html += '<span class="ind ind-blank" title="Blanked">&#xE7B3;</span>';
-    if (internetBlocked.has(student.ip)) html += '<span class="ind ind-inet" title="Internetsperre">&#xE774;</span>';
-    if (programBlocked.has(student.ip)) html += '<span class="ind ind-prog" title="Programmsperre">&#xE74C;</span>';
-    if (s.IsStreaming) html += '<span class="ind ind-stream" title="Streaming">&#xE714;</span>';
-    if (s.IsHandRaised) html += '<span class="ind ind-hand" title="Hand Raised">&#xE768;</span>';
+    if (s.IsLocked) html += `<span class="ind ind-locked" title="${t('ind.locked')}">&#xE72E;</span>`;
+    if (s.IsFrozen) html += `<span class="ind ind-frozen" title="${t('ind.frozen')}">&#xE7AD;</span>`;
+    if (s.IsBlankScreen) html += `<span class="ind ind-blank" title="${t('ind.blanked')}">&#xE7B3;</span>`;
+    if (s.IsWebLocked || internetBlocked.has(student.ip)) html += `<span class="ind ind-inet" title="${t('ind.webLock')}">&#xE774;</span>`;
+    if (s.IsProgramLocked || programBlocked.has(student.ip)) html += `<span class="ind ind-prog" title="${t('ind.programLock')}">&#xE74C;</span>`;
+    if (s.IsStreaming) html += `<span class="ind ind-stream" title="${t('ind.streaming')}">&#xE714;</span>`;
+    if (s.IsHandRaised) html += `<span class="ind ind-hand" title="${t('ind.handRaised')}">&#xE768;</span>`;
 
     indicators.innerHTML = html;
 
@@ -1076,8 +1087,15 @@ function toggleProgramBlock(ip) {
         programBlocked.delete(ip);
         sendToHost({ action: 'program_unblock', target: ip });
     } else {
+        // Send teacher's configured blocked programs list
+        if (blockedPrograms.length === 0) {
+            showToast(t('blocklist.noPrograms'), 'warning');
+            closeAllContextMenus();
+            return;
+        }
         programBlocked.add(ip);
-        sendToHost({ action: 'program_block', target: ip });
+        const payload = JSON.stringify({ BlockedPrograms: blockedPrograms, BlockedWebsites: [] });
+        sendToHost({ action: 'program_block', target: ip, payload: payload });
     }
     const student = students.get(ip);
     if (student) updateTileUI(student);
@@ -1199,13 +1217,13 @@ function renderBlocklistLists() {
     const siteList = document.getElementById('blockedWebsitesList');
 
     progList.innerHTML = blockedPrograms.length === 0
-        ? '<li class="blocklist-empty">No programs blocked</li>'
+        ? `<li class="blocklist-empty">${t('blocklist.noPrograms')}</li>`
         : blockedPrograms.map((p, i) =>
             `<li class="blocklist-item"><span>${escapeHtml(p)}</span><button class="blocklist-remove" onclick="removeBlockedProgram(${i})">&#xE74D;</button></li>`
         ).join('');
 
     siteList.innerHTML = blockedWebsites.length === 0
-        ? '<li class="blocklist-empty">No websites blocked</li>'
+        ? `<li class="blocklist-empty">${t('blocklist.noWebsites')}</li>`
         : blockedWebsites.map((s, i) =>
             `<li class="blocklist-item"><span>${escapeHtml(s)}</span><button class="blocklist-remove" onclick="removeBlockedWebsite(${i})">&#xE74D;</button></li>`
         ).join('');
@@ -1629,5 +1647,44 @@ function updateConnectionBadge() {
 
 // Keep badge in sync with status updates
 setInterval(updateConnectionBadge, 2000);
+
+// ── Language Selector ────────────────────────────────────────────────
+
+function toggleLangDropdown() {
+    const dd = document.getElementById('langDropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+function updateLanguageIndicator(lang) {
+    const el = document.getElementById('langCode');
+    if (el) el.textContent = lang.toUpperCase();
+    document.querySelectorAll('.lang-option').forEach(opt => {
+        opt.classList.toggle('active', opt.dataset.lang === lang);
+    });
+}
+
+// Initialize language selector
+(function initLangSelector() {
+    if (typeof TAD_I18N === 'undefined') return;
+    const currentLang = TAD_I18N.getLanguage();
+    updateLanguageIndicator(currentLang);
+
+    document.querySelectorAll('.lang-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            const newLang = opt.dataset.lang;
+            TAD_I18N.setLanguage(newLang, translationPacks);
+            updateLanguageIndicator(newLang);
+            document.getElementById('langDropdown').style.display = 'none';
+        });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const sel = document.getElementById('langSelector');
+        if (sel && !sel.contains(e.target)) {
+            document.getElementById('langDropdown').style.display = 'none';
+        }
+    });
+})();
 
 console.log('[TAD.RV] Teacher Dashboard initialized');

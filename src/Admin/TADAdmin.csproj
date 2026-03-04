@@ -45,6 +45,18 @@
     <EmbeddedResource Include="Web\dashboard.css" />
   </ItemGroup>
 
+  <!-- Shared i18n module + language packs -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\Shared\Web\i18n.js" Link="Web\i18n.js" />
+    <EmbeddedResource Include="..\Shared\Web\lang\en.js" Link="Web\lang\en.js" />
+    <EmbeddedResource Include="..\Shared\Web\lang\de.js" Link="Web\lang\de.js" />
+    <EmbeddedResource Include="..\Shared\Web\lang\fr.js" Link="Web\lang\fr.js" />
+    <EmbeddedResource Include="..\Shared\Web\lang\nl.js" Link="Web\lang\nl.js" />
+    <EmbeddedResource Include="..\Shared\Web\lang\es.js" Link="Web\lang\es.js" />
+    <EmbeddedResource Include="..\Shared\Web\lang\it.js" Link="Web\lang\it.js" />
+    <EmbeddedResource Include="..\Shared\Web\lang\pl.js" Link="Web\lang\pl.js" />
+  </ItemGroup>
+
   <!-- Embedded branding assets -->
   <ItemGroup>
     <EmbeddedResource Include="..\Shared\logo32.b64" Link="Assets\logo32.b64" />
