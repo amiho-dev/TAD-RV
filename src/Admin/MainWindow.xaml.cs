@@ -631,7 +631,12 @@ public partial class MainWindow : Window
                 case "message_student":
                     if (!string.IsNullOrWhiteSpace(msg.Payload) && !string.IsNullOrEmpty(msg.Target))
                     {
-                        if (!_isDemoMode)
+                        if (_isDemoMode)
+                        {
+                            _demoManager!.SendMessageToStudent(msg.Target, msg.Payload);
+                            ShowToast($"Message sent to {msg.Target}", "success");
+                        }
+                        else
                         {
                             var pmFrame = TadFrameCodec.EncodeJson(TadCommand.PushMessage,
                                 new PushMessageRequest { Message = msg.Payload });
@@ -665,7 +670,11 @@ public partial class MainWindow : Window
                     break;
                 case "lock_all_confirmed":
                     {
-                        if (_isDemoMode) _demoManager!.BroadcastLock();
+                        if (_isDemoMode)
+                        {
+                            _demoManager!.BroadcastLock();
+                            ShowToast($"Lock sent to {_demoManager.ConnectedCount} student(s)", "success");
+                        }
                         else
                         {
                             int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Lock);
@@ -676,7 +685,11 @@ public partial class MainWindow : Window
                     break;
                 case "unlock_all":
                     {
-                        if (_isDemoMode) _demoManager!.BroadcastUnlock();
+                        if (_isDemoMode)
+                        {
+                            _demoManager!.BroadcastUnlock();
+                            ShowToast($"Unlock sent to {_demoManager.ConnectedCount} student(s)", "success");
+                        }
                         else
                         {
                             int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
@@ -692,7 +705,11 @@ public partial class MainWindow : Window
                 case "freeze_all_confirmed":
                     {
                         // Freeze merged into Lock — treat as Lock All
-                        if (_isDemoMode) _demoManager!.BroadcastLock();
+                        if (_isDemoMode)
+                        {
+                            _demoManager!.BroadcastLock();
+                            ShowToast($"Lock sent to {_demoManager.ConnectedCount} student(s)", "success");
+                        }
                         else
                         {
                             int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Lock);
@@ -704,7 +721,11 @@ public partial class MainWindow : Window
                 case "unfreeze_all":
                     {
                         // Freeze merged into Lock — treat as Unlock All
-                        if (_isDemoMode) _demoManager!.BroadcastUnlock();
+                        if (_isDemoMode)
+                        {
+                            _demoManager!.BroadcastUnlock();
+                            ShowToast($"Unlock sent to {_demoManager.ConnectedCount} student(s)", "success");
+                        }
                         else
                         {
                             int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
@@ -722,7 +743,9 @@ public partial class MainWindow : Window
 
                 // ── Per-student Web-Lock / Program-Lock ──────────────────
                 case "internet_block":
-                    if (!_isDemoMode)
+                    if (_isDemoMode)
+                        _demoManager!.WebLockStudent(msg.Target);
+                    else
                     {
                         var wlFrame = TadFrameCodec.Encode(TadCommand.WebLock);
                         _tcpManager!.SendCommandToStudent(msg.Target, wlFrame);
@@ -730,7 +753,9 @@ public partial class MainWindow : Window
                     SetStatus($"Web-Lock enabled for {msg.Target}");
                     break;
                 case "internet_unblock":
-                    if (!_isDemoMode)
+                    if (_isDemoMode)
+                        _demoManager!.WebUnlockStudent(msg.Target);
+                    else
                     {
                         var wuFrame = TadFrameCodec.Encode(TadCommand.WebUnlock);
                         _tcpManager!.SendCommandToStudent(msg.Target, wuFrame);
@@ -738,7 +763,9 @@ public partial class MainWindow : Window
                     SetStatus($"Web-Lock disabled for {msg.Target}");
                     break;
                 case "program_block":
-                    if (!_isDemoMode)
+                    if (_isDemoMode)
+                        _demoManager!.ProgramLockStudent(msg.Target);
+                    else
                     {
                         // Send the teacher's configured blocked-programs list via ProgramLock
                         var plPayload = msg.Payload ?? "{}";
@@ -751,7 +778,9 @@ public partial class MainWindow : Window
                     SetStatus($"Program-Lock enabled for {msg.Target}");
                     break;
                 case "program_unblock":
-                    if (!_isDemoMode)
+                    if (_isDemoMode)
+                        _demoManager!.ProgramUnlockStudent(msg.Target);
+                    else
                     {
                         var puFrame = TadFrameCodec.Encode(TadCommand.ProgramUnlock);
                         _tcpManager!.SendCommandToStudent(msg.Target, puFrame);
@@ -761,7 +790,9 @@ public partial class MainWindow : Window
 
                 // ── Logoff / Reboot / Shutdown ───────────────────────────
                 case "logoff":
-                    if (!_isDemoMode)
+                    if (_isDemoMode)
+                        _demoManager!.LogoffStudent(msg.Target);
+                    else
                     {
                         var loFrame = TadFrameCodec.Encode(TadCommand.Logoff);
                         _tcpManager!.SendCommandToStudent(msg.Target, loFrame);
@@ -769,7 +800,9 @@ public partial class MainWindow : Window
                     SetStatus($"Logoff sent to {msg.Target}");
                     break;
                 case "reboot":
-                    if (!_isDemoMode)
+                    if (_isDemoMode)
+                        _demoManager!.RebootStudent(msg.Target);
+                    else
                     {
                         var rbFrame = TadFrameCodec.Encode(TadCommand.Reboot);
                         _tcpManager!.SendCommandToStudent(msg.Target, rbFrame);
@@ -777,7 +810,9 @@ public partial class MainWindow : Window
                     SetStatus($"Reboot sent to {msg.Target}");
                     break;
                 case "shutdown":
-                    if (!_isDemoMode)
+                    if (_isDemoMode)
+                        _demoManager!.ShutdownStudent(msg.Target);
+                    else
                     {
                         var sdFrame = TadFrameCodec.Encode(TadCommand.Shutdown);
                         _tcpManager!.SendCommandToStudent(msg.Target, sdFrame);

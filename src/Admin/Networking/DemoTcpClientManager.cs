@@ -153,6 +153,9 @@ public sealed class DemoTcpClientManager : IDisposable
                 IsFrozen = student.IsFrozen,
                 FreezeSecondsRemaining = student.FreezeSecondsRemaining,
                 IsBlankScreen = student.IsBlankScreen,
+                IsWebLocked = student.IsWebLocked,
+                IsProgramLocked = student.IsProgramLocked,
+                IsNetworkConnected = true,
                 Timestamp = DateTime.UtcNow,
             };
 
@@ -283,6 +286,70 @@ public sealed class DemoTcpClientManager : IDisposable
 
     public void BroadcastPushMessage(string message) { /* No-op in demo — message is shown via JS announcement */ }
 
+    public void SendMessageToStudent(string ip, string message) { /* No-op in demo — toast shown by C# */ }
+
+    // ─── Web-Lock / Program-Lock ─────────────────────────────────────
+
+    public void WebLockStudent(string ip)
+    {
+        if (_students.TryGetValue(ip, out var s)) s.IsWebLocked = true;
+    }
+
+    public void WebUnlockStudent(string ip)
+    {
+        if (_students.TryGetValue(ip, out var s)) s.IsWebLocked = false;
+    }
+
+    public void ProgramLockStudent(string ip)
+    {
+        if (_students.TryGetValue(ip, out var s)) s.IsProgramLocked = true;
+    }
+
+    public void ProgramUnlockStudent(string ip)
+    {
+        if (_students.TryGetValue(ip, out var s)) s.IsProgramLocked = false;
+    }
+
+    // ─── Logoff / Reboot / Shutdown (simulated reconnect) ────────────
+
+    public void LogoffStudent(string ip) => SimulateReconnect(ip, 3000);
+    public void RebootStudent(string ip) => SimulateReconnect(ip, 6000);
+    public void ShutdownStudent(string ip) => SimulateDisconnect(ip);
+
+    private void SimulateReconnect(string ip, int offlineMs)
+    {
+        if (!_students.TryGetValue(ip, out var s)) return;
+        s.IsConnected = false;
+        s.IsLocked = false;
+        s.IsWebLocked = false;
+        s.IsProgramLocked = false;
+        // Re-appear after the simulated offline period
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(offlineMs);
+            if (_students.TryGetValue(ip, out var s2))
+            {
+                s2.IsConnected = true;
+                s2.Username = DemoUsers[s2.Index]; // "re-login" with same user
+            }
+        });
+    }
+
+    private void SimulateDisconnect(string ip)
+    {
+        if (!_students.TryGetValue(ip, out var s)) return;
+        s.IsConnected = false;
+        s.IsLocked = false;
+        s.IsWebLocked = false;
+        s.IsProgramLocked = false;
+        // Stay offline for 10s, then come back (simulating power-on)
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(10000);
+            if (_students.TryGetValue(ip, out var s2)) s2.IsConnected = true;
+        });
+    }
+
     public void PingAll()
     {
         // Force a status + frame update cycle
@@ -312,6 +379,8 @@ public sealed class DemoTcpClientManager : IDisposable
         public bool IsStreaming { get; set; }
         public bool IsFrozen { get; set; }
         public bool IsBlankScreen { get; set; }
+        public bool IsWebLocked { get; set; }
+        public bool IsProgramLocked { get; set; }
         public int FreezeSecondsRemaining { get; set; }
         public double CpuUsage { get; set; }
         public long RamUsedMb { get; set; }

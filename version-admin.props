@@ -8,8 +8,8 @@
   -->
   <PropertyGroup>
     <Version>26.3.30</Version>
-    <FileVersion>26.3.30.7</FileVersion>
-    <InformationalVersion>v26.3.04.127-admin</InformationalVersion>
+    <FileVersion>26.3.30.8</FileVersion>
+    <InformationalVersion>v26.3.05.128-admin</InformationalVersion>
   </PropertyGroup>
 
 </Project>

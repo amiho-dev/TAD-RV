@@ -11,7 +11,7 @@
   <PropertyGroup>
     <Version>26.3.30</Version>
     <FileVersion>26.3.30.6</FileVersion>
-    <InformationalVersion>v26.3.04.127-client</InformationalVersion>
+    <InformationalVersion>v26.3.05.128-client</InformationalVersion>
   </PropertyGroup>
 
 </Project>
