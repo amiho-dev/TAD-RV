@@ -1,0 +1,52 @@
+name: Publish Wiki
+
+on:
+  push:
+    paths:
+      - '.github/wiki/**'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  publish-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Push wiki pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure git
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git"
+          WIKI_DIR="/tmp/wiki-publish"
+
+          # Clone existing wiki (or init fresh if first time)
+          git clone "$REPO_URL" "$WIKI_DIR" 2>/dev/null || (
+            mkdir -p "$WIKI_DIR"
+            cd "$WIKI_DIR"
+            git init
+            git remote add origin "$REPO_URL"
+          )
+
+          # Copy all wiki source files
+          cp .github/wiki/*.md "$WIKI_DIR/"
+
+          cd "$WIKI_DIR"
+
+          # Stage and commit if there are changes
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to wiki — skipping commit"
+          else
+            git commit -m "Update wiki from source [automated]"
+            git push origin HEAD:master 2>/dev/null || git push origin HEAD:main
+          fi
