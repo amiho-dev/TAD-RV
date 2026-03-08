@@ -7,11 +7,13 @@
         -p:SetupTarget=Admin           -p:AssemblyName=TADAdminSetup
         -p:SetupTarget=DomainController -p:AssemblyName=TADDomainControllerSetup
     -->
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
 
     <!-- Fallback name when building directly (not via build.sh) -->
     <AssemblyName Condition="'$(AssemblyName)'==''">TADSetup</AssemblyName>

@@ -90,6 +90,8 @@ public sealed class StudentStatus
     public long DiskTotalGb { get; set; }
     public List<OpenWindowInfo> OpenWindows { get; set; } = new();
     public string ServiceVersion { get; set; } = "";
+    public string OsInfo { get; set; } = "";
+    public string CpuModel { get; set; } = "";
     public string Role { get; set; } = "Student";
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

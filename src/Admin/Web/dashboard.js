@@ -154,6 +154,11 @@ function handleStatusUpdate(ip, data) {
         renderTile(student);
     }
 
+    const prevNet = student.status && student.status.IsNetworkConnected !== undefined ? student.status.IsNetworkConnected : true;
+    if (prevNet === true && data.IsNetworkConnected === false) {
+        showToast("⚠️ Network disconnected on " + (data.Username || ip), "warning");
+    }
+
     student.status = data;
     student.lastSeen = Date.now();
 
@@ -1383,6 +1388,8 @@ function refreshDevicePanel() {
     document.getElementById('dpUser').textContent = s.Username || '—';
     document.getElementById('dpIp').textContent = s.IpAddress || devicePanelIp;
     document.getElementById('dpVersion').textContent = s.ServiceVersion || '—';
+    document.getElementById('dpOs').textContent = s.OsInfo || '—';
+    document.getElementById('dpCpuModel').textContent = s.CpuModel || '—';
 
     // CPU bar
     const cpuPct = Math.round(s.CpuUsage || 0);

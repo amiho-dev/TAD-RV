@@ -995,8 +995,24 @@ public sealed class TadTcpListener : BackgroundService
             DiskTotalGb    = diskTotalGb,
             OpenWindows    = openWindows,
             ServiceVersion = GetServiceVersion(),
+            OsInfo         = GetOsInfo(),
+            CpuModel       = GetCpuModel(),
             Timestamp      = DateTime.UtcNow
         };
+    }
+
+    private string GetOsInfo() {
+        try { return Environment.OSVersion.VersionString; }
+        catch { return "Windows"; }
+    }
+    private string GetCpuModel() {
+        try {
+            using var searcher = new System.Management.ManagementObjectSearcher("select Name from Win32_Processor");
+            foreach (var item in searcher.Get()) {
+                if (item["Name"] != null) return item["Name"].ToString();
+            }
+            return "Unknown CPU";
+        } catch { return "Unknown CPU"; }
     }
 
     /// <summary>

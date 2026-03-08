@@ -26,6 +26,7 @@ using System.Reflection;
 using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Win32;
+using System.IO;
 
 // ── Compile-time target configuration ────────────────────────────────────────
 
@@ -37,7 +38,7 @@ const string SetupBinaryName = "TADAdminSetup.exe";
 const string AssetPrefix     = "TADAdminSetup";       // GitHub release asset prefix
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.Admin";
 const bool   IsService       = false;
-const bool   CreateShortcut  = true;
+bool  CreateShortcut  = true;
 const string ShortcutName    = "TAD.RV Admin.lnk";
 const string ShortcutDesc    = "TAD.RV Admin Dashboard";
 #elif SETUP_DC
@@ -48,7 +49,7 @@ const string SetupBinaryName = "TADDomainControllerSetup.exe";
 const string AssetPrefix     = "TADDomainControllerSetup"; // GitHub release asset prefix
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.DomainController";
 const bool   IsService       = false;
-const bool   CreateShortcut  = true;
+bool  CreateShortcut  = true;
 const string ShortcutName    = "TAD.RV Domain Controller.lnk";
 const string ShortcutDesc    = "TAD.RV Domain Controller Console";
 #else  // SETUP_CLIENT (default)
@@ -59,7 +60,7 @@ const string SetupBinaryName = "TADClientSetup.exe";
 const string AssetPrefix     = "TADClientSetup";      // GitHub release asset prefix
 const string UninstallSubKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\TAD.Client";
 const bool   IsService       = true;
-const bool   CreateShortcut  = true;
+bool  CreateShortcut  = true;
 const string ShortcutName    = "TAD.RV Client.lnk";
 const string ShortcutDesc    = "TAD.RV Client System Tray";
 #endif
@@ -134,17 +135,41 @@ if (uninstall)
 
 if (!silent)
 {
-    Console.WriteLine($"  Component    : {AppDisplayName}");
-    Console.WriteLine($"  Install path : {InstallDir()}");
-    if (IsService)
-        Console.WriteLine($"  Service      : {ServiceName}  →  {VirtualAccount}  (delayed-auto)");
-    if (CreateShortcut)
-        Console.WriteLine($"  Start Menu   : {StartMenuFolder} → {Path.GetFileNameWithoutExtension(ShortcutName)}");
-    Console.WriteLine();
-    Console.Write("Proceed? [Y/n]: ");
-    var answer = Console.ReadLine()?.Trim().ToUpperInvariant();
-    if (answer is "N" or "NO") { Console.WriteLine("Cancelled."); return 0; }
-    Console.WriteLine();
+    System.Windows.Forms.Application.EnableVisualStyles();
+    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+    using var wizard = new TADSetup.SetupWizard(AppDisplayName, InstallDir(), IsService);
+    if (wizard.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+    {
+        return 0; // cancelled
+    }
+    
+    // Pass user preferences
+    CreateShortcut = wizard.CreateDesktopShortcut;
+    
+    bool success = RunInstall();
+    
+    if (success)
+    {
+        if (wizard.LaunchImmediately)
+        {
+            if (IsService)
+            {
+                // Start the service manually using sc or net start if needed (tray is launched below anyway)
+            }
+            else
+            {
+                try { Process.Start(new ProcessStartInfo(InstallBin(BinaryName)) { UseShellExecute = true }); } catch { }
+            }
+        }
+        System.Windows.Forms.MessageBox.Show($"{AppDisplayName} installed successfully!\n\nLocation: {InstallDir()}",
+            "Setup Complete", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+    }
+    else
+    {
+        System.Windows.Forms.MessageBox.Show($"Failed to install {AppDisplayName}. Check logs.",
+            "Setup Error", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+    }
+    return success ? 0 : 1;
 }
 
 return RunInstall() ? 0 : 1;
@@ -282,7 +307,7 @@ static bool RunUpdate()
 // INSTALL
 // ═════════════════════════════════════════════════════════════════════════════
 
-static bool RunInstall()
+bool RunInstall()
 {
 #if SETUP_CLIENT
     int totalSteps = CreateShortcut ? 8 : 7;
@@ -903,8 +928,13 @@ static void Warn(string msg)
 
 static void Pause()
 {
-    Console.WriteLine("  Press any key to exit...");
-    Console.ReadKey(true);
+    try {
+        if (Environment.UserInteractive && Console.OpenStandardInput() != Stream.Null)
+        {
+            Console.WriteLine("  Press any key to exit...");
+            Console.ReadKey(true);
+        }
+    } catch { } // Ignore if headless
 }
 
 static bool IsAdmin()

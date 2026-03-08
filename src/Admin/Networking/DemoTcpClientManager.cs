@@ -155,7 +155,7 @@ public sealed class DemoTcpClientManager : IDisposable
                 IsBlankScreen = student.IsBlankScreen,
                 IsWebLocked = student.IsWebLocked,
                 IsProgramLocked = student.IsProgramLocked,
-                IsNetworkConnected = true,
+                IsNetworkConnected = true, OsInfo = "Windows 11 (Demo)", CpuModel = "Intel Core i5-14600K",
                 Timestamp = DateTime.UtcNow,
             };
 
