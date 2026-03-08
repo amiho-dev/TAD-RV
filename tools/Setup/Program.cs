@@ -110,6 +110,58 @@ if (!IsAdmin())
     }
 }
 
+// ── Hardware Check ────────────────────────────────────────────────────────────
+if (!uninstall && !statusOnly)
+{
+    bool isTooOld = false;
+    // Check OS version - Require Windows 10 (10.0) or newer
+    if (Environment.OSVersion.Version.Major < 10) isTooOld = true;
+    
+    // Check basic hardware requirement (e.g., at least 2 logical processors)
+    if (Environment.ProcessorCount < 2) isTooOld = true;
+
+    if (isTooOld)
+    {
+        if (!silent)
+        {
+            System.Windows.Forms.Application.EnableVisualStyles();
+            System.Windows.Forms.MessageBox.Show(":( Oh no! Your PC is not supported by TAD-RV anymore!\n\nWe are working on a LTS release for older devices.", "Unsupported Hardware", 
+                System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+        }
+        else
+        {
+            Err(":( Oh no! Your PC is not supported by TAD-RV anymore!");
+        }
+        return 1;
+    }
+}
+
+// ── Hardware Check ────────────────────────────────────────────────────────────
+if (!uninstall && !statusOnly)
+{
+    bool isTooOld = false;
+    // Check OS version - Require Windows 10 (10.0) or newer
+    if (Environment.OSVersion.Version.Major < 10) isTooOld = true;
+    
+    // Check basic hardware requirement (e.g., at least 2 logical processors)
+    if (Environment.ProcessorCount < 2) isTooOld = true;
+
+    if (isTooOld)
+    {
+        if (!silent)
+        {
+            System.Windows.Forms.Application.EnableVisualStyles();
+            System.Windows.Forms.MessageBox.Show(":( Oh no! Your PC is not supported by TAD-RV anymore!\n\nWe are working on a LTS release for older devices.", "Unsupported Hardware", 
+                System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+        }
+        else
+        {
+            Err(":( Oh no! Your PC is not supported by TAD-RV anymore!");
+        }
+        return 1;
+    }
+}
+
 // ── Dispatch ──────────────────────────────────────────────────────────────────
 if (update)
 {
