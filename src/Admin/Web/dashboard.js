@@ -234,6 +234,9 @@ function renderTile(student) {
             <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; ${t('ctx.webLock')}</button>
             <button onclick="event.stopPropagation(); toggleProgramBlock('${student.ip}')">&#xE74C; ${t('ctx.programLock')}</button>
             <div class="ctx-sep"></div>
+            <button onclick="event.stopPropagation(); launchAppStudent('${student.ip}')">&#xE7B8; Launch App / CMD</button>
+            <button onclick="event.stopPropagation(); launchUrlStudent('${student.ip}')">&#xE71B; Launch URL</button>
+            <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); logoffStudent('${student.ip}')">&#xE7E8; ${t('ctx.logoff')}</button>
             <button onclick="event.stopPropagation(); rebootStudent('${student.ip}')">&#xE777; ${t('ctx.reboot')}</button>
             <button onclick="event.stopPropagation(); shutdownStudent('${student.ip}')">&#xE7E8; ${t('ctx.shutdown')}</button>
@@ -1123,6 +1126,30 @@ function rebootStudent(ip) {
     sendToHost({ action: 'reboot', target: ip });
     closeAllContextMenus();
     showToast(t('toast.rebootSent', { name: getStudentName(ip) }), 'success');
+}
+
+function launchAppStudent(ip) {
+    let cmd = prompt('Enter command or app path to execute:');
+    if (cmd) sendToHost({ action: 'launch_app', target: ip, payload: cmd });
+    closeAllContextMenus();
+}
+
+function launchUrlStudent(ip) {
+    let url = prompt('Enter URL to open:');
+    if (url) sendToHost({ action: 'launch_url', target: ip, payload: url });
+    closeAllContextMenus();
+}
+
+function launchAppStudent(ip) {
+    let cmd = prompt('Enter command or app path to execute:');
+    if (cmd) sendToHost({ action: 'launch_app', target: ip, payload: cmd });
+    closeAllContextMenus();
+}
+
+function launchUrlStudent(ip) {
+    let url = prompt('Enter URL to open:');
+    if (url) sendToHost({ action: 'launch_url', target: ip, payload: url });
+    closeAllContextMenus();
 }
 
 function shutdownStudent(ip) {

@@ -285,13 +285,21 @@ public sealed class TadTcpListener : BackgroundService
             case TadCommand.KillProcess:
                 try
                 {
-                    var req = JsonSerializer.Deserialize<KillProcessRequest>(payload.Span);
+                    var req = System.Text.Json.JsonSerializer.Deserialize<KillProcessRequest>(payload.Span);
                     if (req != null && req.ProcessId > 0) ExecuteKillProcess(req.ProcessId);
                 }
                 catch (Exception ex)
                 {
                     _log.LogWarning(ex, "Bad KillProcess payload");
                 }
+                break;
+
+            case TadCommand.LaunchApp:
+                ExecuteLaunchApp(System.Text.Encoding.UTF8.GetString(payload.Span));
+                break;
+
+            case TadCommand.LaunchUrl:
+                ExecuteLaunchUrl(System.Text.Encoding.UTF8.GetString(payload.Span));
                 break;
 
             case TadCommand.SetBlocklist:
@@ -362,16 +370,91 @@ public sealed class TadTcpListener : BackgroundService
             var proc = Process.GetProcessById(pid);
             string name = proc.ProcessName;
             proc.Kill();
-            proc.WaitForExit(3000);
-            _log.LogInformation("Killed process {Name} (PID {Pid}) by teacher request", name, pid);
-        }
-        catch (ArgumentException)
-        {
-            _log.LogWarning("KillProcess: PID {Pid} not found", pid);
+            _log.LogInformation("Killed process {Name} (PID {Pid})", name, pid);
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "Failed to kill PID {Pid}", pid);
+        }
+    }
+
+    private void ExecuteLaunchApp(string cmdOrPath)
+    {
+        try
+        {
+            _log.LogInformation("Executing Launch App: {Cmd}", cmdOrPath);
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c start "" "{cmdOrPath}"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to launch app");
+        }
+    }
+
+    private void ExecuteLaunchUrl(string url)
+    {
+        try
+        {
+            _log.LogInformation("Executing Launch URL: {Url}", url);
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c start "" "{url}"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to launch URL");
+        }
+    }
+
+    private void ExecuteLaunchApp(string cmdOrPath)
+    {
+        try
+        {
+            _log.LogInformation("Executing Launch App: {Cmd}", cmdOrPath);
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c start "" "{cmdOrPath}"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to launch app");
+        }
+    }
+
+    private void ExecuteLaunchUrl(string url)
+    {
+        try
+        {
+            _log.LogInformation("Executing Launch URL: {Url}", url);
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c start "" "{url}"",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Failed to launch URL");
         }
     }
 
