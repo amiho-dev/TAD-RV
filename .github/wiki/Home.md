@@ -9,6 +9,7 @@ Welcome to the **TAD-RV** Documentation!
 ## Navigation
 
 - [Installation & Requirements](Installation)
+- [Device Compatibility Matrix](Compatibility)
 - [Teacher Guide](Teacher-Guide)
 - [Changelog](Changelog)
 - [Support for Older Devices](LTS-Release) (No longer actively updated)
