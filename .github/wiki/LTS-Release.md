@@ -1,25 +1,25 @@
 # Beta-LTS Release Policy
 
-Beta-LTS ist ein eigener Wartungskanal fuer Umgebungen mit hohem Stabilitaetsbedarf.
+Beta-LTS is a separate maintenance stream for environments with strict stability requirements.
 
-## Ziel
+## Goal
 
-- Weniger Funktionswechsel
-- Gezielte Sicherheits- und Stabilitaetsfixes
-- Planbare Rollouts fuer Schulen mit festen Pruefungszeitrraeumen
+- Lower feature churn
+- Targeted security and reliability fixes
+- Predictable rollout windows for schools and exam periods
 
-## Unterschiede zu Stable
+## Difference from Stable
 
-- Stable: schnellere Feature-Folge
-- Beta-LTS: strengere Freigabe, laengerer Vorabtest
+- Stable: faster feature cadence
+- Beta-LTS: stricter gate, longer pre-release validation
 
-## Tagging-Empfehlung
+## Tagging Guidance
 
-- Stable: `v26.04.XX.XXX`
-- Beta-LTS: gleicher Versionstamm plus Release-Hinweis im Titel, z. B. `[Beta-LTS]`
+- Stable: v26.04.XX.XXX
+- Beta-LTS: same version family with explicit release title marker, for example [Beta-LTS]
 
-## Rollout-Empfehlung
+## Rollout Guidance
 
-1. Erst Pilotraum aktualisieren.
-2. 3 bis 5 Schultage beobachten.
-3. Danach auf restliche Geraete ausrollen.
+1. Update one pilot classroom first.
+2. Observe for 3 to 5 school days.
+3. Roll out to remaining endpoints after validation.

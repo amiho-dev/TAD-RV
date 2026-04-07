@@ -1,59 +1,57 @@
 # TAD-RV
 
-TAD-RV ist eine Windows-Plattform fuer Klassenraum- und Endpoint-Management.
-Sie besteht aus drei Hauptteilen:
+TAD-RV is a Windows platform for classroom and endpoint management.
+It has three primary components:
 
-- TADAdmin: Live-Uebersicht, Fernsicht, Sperren, Nachrichten, Filter
-- TADDomainController: Deployment, Richtlinien, Update-Steuerung, Betriebsprotokolle
-- TADBridgeService: Dienst auf den Clients, der Befehle annimmt und Status liefert
+- TADAdmin: live grid, remote view, lock controls, messaging, filtering
+- TADDomainController: deployment, policy operations, update orchestration, operational logs
+- TADBridgeService: endpoint service that receives commands and reports status
 
-## Was ist neu im aktuellen Stand
+## Current Highlights
 
-- Einheitliches Release-Schema: `v26.04.XX.XXX`
-- In-Place-Updater fuer alle Editionen (Admin, DC, Client-Service)
-- Kritische Patches koennen als Force-Update markiert werden (ohne Bestaetigungsdialog)
-- Admin-Dashboard mit neuer Settings-Flaeche und Game-Filter-Schaltern
-- Domain-Controller mit One-Click-Optionen fuer USB-Block, Update-Push und Log-Einblick
-- Erweiterte Passwort-Redaction-Fallbacks im RV-Stream
+- Unified release naming: v26.04.XX.XXX
+- In-place updater across all editions (Admin, Domain Controller, Client Service)
+- Critical patch support through force-update markers
+- Admin dashboard additions: game filter controls and settings modal
+- Domain Controller additions: one-click USB policy toggle, update queueing, operational log refresh
+- Improved privacy redaction fallback for login/password windows in remote view
 
-## GUI-First Bedienung
+## GUI-First Operations
 
-Alltaegliche Aufgaben sind auf GUI ausgelegt:
+Daily operations are designed around the UI, not CLI workflows:
 
-- Deployment im Domain Controller ueber die Seite Deploy
-- Richtlinien ueber Schalter statt Bitmasken-CLI
-- Updates ueber integrierte Update-Hinweise und Auto-Install fuer kritische Releases
-- Troubleshooting ueber sichtbare Statuskarten und Log-Ansichten
+- Deployment through the Domain Controller Deploy page
+- Policy operations through toggles and guided actions
+- Update visibility and critical update enforcement from in-app flows
+- Troubleshooting through status cards and integrated logs
 
-## Update-Kanaele
+## Update Streams
 
-Wir trennen zwei Linien klar:
+Two update streams are intended:
 
-- Stable: regulare Produktion (`v26.04.XX.XXX`)
-- Beta-LTS: laenger stabilisierte Linie fuer sensible Umgebungen, eigener Tag-Kanal
+- Stable: standard production stream (v26.04.XX.XXX)
+- Beta-LTS: slower-moving stability-focused stream for sensitive environments
 
-Empfehlung:
+Recommended usage:
 
-- Standard-Schulen: Stable
-- Pruefungs-/Langzeitlabore: Beta-LTS nach internem Testfenster
+- Standard school environments: Stable
+- Exam periods / long-term lab environments: Beta-LTS after pilot validation
 
-## Kompatibilitaet (Kurzfassung)
+## Compatibility (Short)
 
-- Voll unterstuetzt: Windows 10/11 x64, 2+ Kerne
-- Eingeschraenkt: ARM64 ueber Emulation
-- LTS-only: Legacy-Hardware und alte OS-Linien
-- Nicht unterstuetzt: Single-Core und veraltete Plattformen
+- Fully supported: Windows 10/11 x64, 2+ CPU cores
+- Limited: Windows 11 ARM64 via x64 emulation
+- LTS-only: legacy hardware and legacy OS lines
+- Not supported: single-core and obsolete platforms
 
-Details: siehe `docs/Deployment-Guide.md` und Wiki-Kompatibilitaetsseite.
+## Documentation
 
-## Dokumentation
+- docs/Architecture.md: plain-language architecture overview
+- docs/Deployment-Guide.md: rollout and operational flow
+- docs/Teacher-Guide.md: Admin/Teacher workflows
+- docs/Console-Guide.md: Domain Controller workflows
+- .github/wiki/: quick operational references and release policy pages
 
-- `docs/Architecture.md`: Architektur in Klartext
-- `docs/Deployment-Guide.md`: Rollout und Betriebsablauf
-- `docs/Teacher-Guide.md`: Admin-/Lehrer-Workflows
-- `docs/Console-Guide.md`: Domain-Controller-Workflows
-- `.github/wiki/`: Kurzanleitungen fuer Betrieb und Release-Politik
+## License
 
-## Lizenz
-
-Proprietaer. Alle Rechte vorbehalten. (C) 2026 TAD Europe
+Proprietary. All rights reserved. (C) 2026 TAD Europe

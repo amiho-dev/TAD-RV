@@ -1,31 +1,31 @@
 # Installation & Requirements
 
-## Mindestanforderungen
+## Minimum Requirements
 
-- OS: Windows 10 oder Windows 11
-- CPU: mindestens 2 Kerne
-- Speicher: mindestens 100 MB frei
-- Updates: keine offenen kritischen Windows-Updates
+- OS: Windows 10 or Windows 11
+- CPU: at least 2 cores
+- Disk: at least 100 MB free
+- System state: no pending critical Windows updates
 
-## Empfohlener Ablauf (GUI)
+## Recommended GUI Rollout
 
-1. Domain Controller starten.
-2. Auf die Seite Deploy wechseln.
-3. Service-Pfad und Zielpfad eintragen.
-4. Optional aktivieren:
-	- USB-Block fuer Schueler
-	- Update-Push nach Deployment
-5. Deploy Now klicken.
-6. Deployment-Log pruefen.
+1. Start TADDomainController.
+2. Open the Deploy page.
+3. Enter service path and target install path.
+4. Optionally enable:
+   - USB block for student endpoints
+   - Update push after deployment
+5. Select Deploy Now.
+6. Review the deployment log.
 
-## Nach der Installation pruefen
+## Post-Install Validation
 
-- Im Dashboard ist der Service online.
-- Client-Endpunkte erscheinen im Admin-Grid.
-- Ein Testbefehl (z. B. Nachricht) kommt am Client an.
+- Service status is healthy on the dashboard.
+- Managed clients appear in the Admin grid.
+- A test command (for example Message or Lock) is applied successfully.
 
-## Wenn etwas nicht funktioniert
+## If Something Fails
 
-- Netzwerksegment pruefen (Admin und Clients im gleichen VLAN/LAN)
-- Firewall-Regeln fuer Discovery/Control pruefen
-- Im Domain Controller die Betriebsprotokolle aktualisieren
+- Confirm Admin and clients are in the same network segment.
+- Check firewall rules for discovery and control channels.
+- Refresh operational logs in Domain Controller and inspect recent events.

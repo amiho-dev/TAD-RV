@@ -1,31 +1,31 @@
 # Teacher Guide
 
-Der Admin/Teacher-Bildschirm ist fuer den Unterrichtsbetrieb gedacht.
+The Admin/Teacher dashboard is designed for daily classroom operations.
 
-## Typischer Ablauf pro Stunde
+## Typical Class Flow
 
-1. TADAdmin starten.
-2. Pruefen, ob alle Schueler-Kacheln online sind.
-3. Bei Bedarf Game Filter einschalten.
-4. Fuer Erklaerphasen Freeze verwenden.
-5. Am Ende alle Sperren aufheben.
+1. Start TADAdmin.
+2. Verify student tiles are online.
+3. Enable game filter if needed.
+4. Use Freeze during instruction phases.
+5. Remove all restrictions at class end.
 
-## Filter und Sperren
+## Filters and Controls
 
-- Web-Lock: Browserzugriffe blockieren
-- Program-Lock: unerwuenschte Programme blockieren
-- Game Filter On/Off: vordefinierte Spieleliste zentral umschalten
+- Web-Lock: blocks browser access
+- Program-Lock: blocks unauthorized applications
+- Game Filter On/Off: toggles predefined game launcher/app list globally
 
-## Dashboard-Einstellungen
+## Dashboard Settings
 
-Ueber Settings koennen Sie:
+Use Settings to:
 
-- Sprache waehlen
-- Toolbar kompakter machen
-- leere Hinweisflaechen ausblenden
+- Choose language
+- Enable compact toolbar mode
+- Hide empty-state helper text
 
 ## Troubleshooting
 
-- Keine Schueler sichtbar: Netzwerksegment und Dienststatus pruefen
-- RV zeigt nichts: Port-Freigaben und Client-Service pruefen
-- Sperrbefehle greifen nicht: Client offline oder Verbindung instabil
+- No students visible: check network segment and endpoint service status
+- Remote View is blank: check ports and client service availability
+- Lock actions do not apply: verify endpoint is online and connection is healthy

@@ -1,23 +1,22 @@
 # Changelog
 
 ## v26.04.07.001 (Latest)
-- Stabilitaets-Update fuer Dashboard, Client-Routing und Remote-Aktionen.
-- In-Place-Updater fuer alle Editionen weiter vereinheitlicht.
-- Force-Update-Unterstuetzung fuer kritische Releases erweitert.
-- Verbesserungen bei Filtersteuerung und Deployment-Workflows.
-- Release tags: `Bug Fix`, `Cumulative Update`
-- Switched to April 2026 release naming scheme:
-	- admin: `v26.04.07.001-admin`
-	- client: `v26.04.07.001-client`
-	- dc: `v26.04.07.001-dc`
+- Stability updates for dashboard behavior, client routing, and remote actions
+- In-place updater flow unified further across editions
+- Critical force-update support improved
+- Filtering and deployment workflow improvements
+- Release tags: Bug Fix, Cumulative Update
+- April naming scheme:
+  - admin: v26.04.07.001-admin
+  - client: v26.04.07.001-client
+  - dc: v26.04.07.001-dc
 
 ## v26.3.10.131
-- Feature-Finalisierung fuer Dashboard-Aktionen.
-- Launch-App/URL aus dem Dashboard integriert.
-- Frontend-zu-Service-Aktionspfad stabilisiert.
-
+- Dashboard action flow finalized
+- Launch-App and Launch-URL support integrated from dashboard actions
+- Frontend-to-service action bridge stabilized
 
 ## v26.3.08.130
-- GUI-Installer als Standard eingefuehrt.
-- Mindestplattform auf moderne Windows-Systeme angehoben.
-- Demo-Modus und Dashboard-Basisfunktionen stabilisiert.
+- GUI installer introduced as default path
+- Minimum platform moved to modern Windows baseline
+- Demo mode and dashboard foundation stabilized

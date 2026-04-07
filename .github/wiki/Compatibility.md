@@ -1,21 +1,21 @@
 # Compatibility Matrix
 
-Diese Tabelle zeigt, welche Umgebungen fuer den produktiven Betrieb sinnvoll sind.
+This table summarizes practical support status for production operations.
 
-| Plattform | Status | Empfohlener Kanal | Hinweis |
+| Platform | Status | Recommended Stream | Notes |
 | --- | --- | --- | --- |
-| Windows 11 x64, moderne Intel/AMD CPU | Optimal | Stable | Beste Leistung fuer RV und Filter |
-| Windows 10 x64, 2+ Kerne | Supported | Stable | Voll einsetzbar in Schulen |
-| Windows 11 ARM64 (x64-Emulation) | Eingeschraenkt | Stable mit Testphase | Vorher Pilotklasse testen |
-| Legacy-Hardware mit altem OS | LTS-only | Beta-LTS | Nur Basisfunktionen, keine neuen Features |
-| Single-Core oder sehr alte Systeme | Nicht unterstuetzt | Kein Kanal | Setup sollte blockieren |
+| Windows 11 x64 with modern Intel/AMD CPU | Optimal | Stable | Best performance for remote view and filtering |
+| Windows 10 x64 with 2+ cores | Supported | Stable | Suitable for standard school deployments |
+| Windows 11 ARM64 (x64 emulation) | Limited | Stable after pilot | Validate in pilot classrooms first |
+| Legacy hardware with legacy OS lines | LTS-only | Beta-LTS | Basic capability only, reduced feature scope |
+| Single-core or obsolete systems | Unsupported | None | Installation should be blocked |
 
-## Kanal-Regeln
+## Stream Rules
 
-- Stable: regulaere Updates und Bug-Fixes
-- Beta-LTS: konservativer Kanal mit laengerem Testfenster und weniger Feature-Wechseln
+- Stable: regular feature and bug-fix flow
+- Beta-LTS: slower change velocity and longer validation windows
 
-## Entscheidungshilfe
+## Decision Guidance
 
-- Wenn Betriebssicherheit wichtiger ist als neue Features: Beta-LTS
-- Wenn neue Funktionen schnell gebraucht werden: Stable
+- Prefer Beta-LTS when stability outweighs new features.
+- Prefer Stable when fast feature delivery is needed.

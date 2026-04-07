@@ -1,19 +1,19 @@
 # TAD-RV Wiki
 
-Diese Wiki ist fuer Betriebsteams, Lehrkraefte und Admins geschrieben.
-Fokus ist praktische Arbeit im GUI, nicht Kommandozeilen-Betrieb.
+This wiki is written for operations teams, teachers, and administrators.
+The focus is practical GUI workflows rather than command-line operations.
 
-## Schnellstart
+## Quick Navigation
 
-- [Installation](Installation): Voraussetzungen und erster Rollout
-- [Compatibility](Compatibility): welche Hardware/OS sinnvoll ist
-- [Teacher Guide](Teacher-Guide): taegliche Bedienung im Unterricht
-- [LTS Release](LTS-Release): getrennte Beta-LTS-Strategie
-- [Changelog](Changelog): Release-Historie im Format `v26.04.XX.XXX`
+- Installation: requirements and first rollout
+- Compatibility: platform support and stream guidance
+- Teacher Guide: daily classroom usage
+- LTS Release: Beta-LTS stream policy
+- Changelog: release history in v26.04.XX.XXX format
 
-## Betriebsprinzip
+## Operating Principles
 
-- Eine Plattform, drei Rollen: Admin, Domain Controller, Client-Service
-- In-Place-Updates fuer alle Editionen
-- Kritische Fixes koennen als Force-Update ausgerollt werden
-- Datenschutz: Passwortfelder werden vor Stream-Transfer maskiert
+- One platform, three roles: Admin, Domain Controller, Client Service
+- In-place updates across all editions
+- Critical fixes can be delivered as force updates
+- Privacy redaction masks credential-sensitive content before stream transfer
