@@ -165,6 +165,25 @@ public partial class App : Application
             {
                 TADLogger.Info($"Update available: v{update.Version}");
 
+                if (update.IsForceUpdate)
+                {
+                    TADLogger.Warn("Critical force update detected. Bypassing consent and installing now.");
+                    bool launched = await Updater.DownloadAndRunSetupAsync(update);
+                    if (launched)
+                    {
+                        await mainWindow.Dispatcher.InvokeAsync(() =>
+                        {
+                            MessageBox.Show(
+                                "A critical TAD.RV update will be installed now.",
+                                "TAD.RV Critical Update",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                            Application.Current.Shutdown();
+                        });
+                        return;
+                    }
+                }
+
                 // Also notify the WebView2 dashboard (shows banner in the JS UI)
                 await mainWindow.NotifyUpdateAvailable(update.Version, update.ReleaseNotes, update.HtmlUrl);
 

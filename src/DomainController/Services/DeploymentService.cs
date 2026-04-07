@@ -11,6 +11,7 @@
 
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Microsoft.Win32;
 
 namespace TADDomainController.Services;
@@ -35,6 +36,8 @@ public sealed class DeploymentConfig
     public string TargetDir        { get; set; } = @"C:\Program Files\TAD";
     public string DomainController { get; set; } = "dc01.school.local";
     public bool   InstallService   { get; set; } = true;
+    public bool   BlockUsbStorageForStudents { get; set; }
+    public bool   PushClientUpdateAfterDeploy { get; set; }
 }
 
 public sealed class DeploymentService
@@ -148,7 +151,89 @@ public sealed class DeploymentService
         }));
         ReportProgress();
 
+        // ── 6. Optional domain-wide USB storage policy flag ──────────
+        if (config.BlockUsbStorageForStudents)
+        {
+            results.Add(await RunStepAsync("Set USB Storage Policy", async () =>
+            {
+                await SetUsbBlockPolicyAsync(true);
+                Log("  USB storage block policy flag enabled (domain scope).\n  Clients enforce on next policy sync.");
+            }));
+        }
+
+        // ── 7. Optional client force-update queue flag ───────────────
+        if (config.PushClientUpdateAfterDeploy)
+        {
+            results.Add(await RunStepAsync("Queue Client Force Update", async () =>
+            {
+                await QueueClientForceUpdateAsync();
+                Log("  Force-update queue flag written. Connected clients will apply updates without user consent.");
+            }));
+        }
+
         return results;
+    }
+
+    public Task SetUsbBlockPolicyAsync(bool enabled)
+    {
+        using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\TAD_RV\Policy", writable: true)
+            ?? throw new InvalidOperationException("Cannot open policy registry key");
+        key.SetValue("BlockUsbStorage", enabled ? 1 : 0, RegistryValueKind.DWord);
+        key.SetValue("BlockUsbStorageSetAt", DateTime.UtcNow.ToString("o"), RegistryValueKind.String);
+        return Task.CompletedTask;
+    }
+
+    public Task QueueClientForceUpdateAsync()
+    {
+        using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\TAD_RV\Policy", writable: true)
+            ?? throw new InvalidOperationException("Cannot open policy registry key");
+        key.SetValue("ForceUpdateQueued", 1, RegistryValueKind.DWord);
+        key.SetValue("ForceUpdateQueuedAt", DateTime.UtcNow.ToString("o"), RegistryValueKind.String);
+        return Task.CompletedTask;
+    }
+
+    public List<string> CollectOperationalLogs(int maxEntries = 150)
+    {
+        var logs = new List<string>();
+
+        try
+        {
+            using var sec = new EventLog("Security");
+            foreach (EventLogEntry entry in sec.Entries.Cast<EventLogEntry>().Reverse())
+            {
+                // 4624 = logon, 4634 = logoff, 4647 = user initiated logoff
+                if (entry.InstanceId is 4624 or 4634 or 4647)
+                {
+                    logs.Add($"[{entry.TimeGenerated:yyyy-MM-dd HH:mm:ss}] User session event {entry.InstanceId}: {entry.Message.Split('\n').FirstOrDefault()?.Trim()}");
+                }
+                if (logs.Count >= maxEntries) break;
+            }
+        }
+        catch (Exception ex)
+        {
+            logs.Add("[WARN] Could not read Security log: " + ex.Message);
+        }
+
+        try
+        {
+            using var app = new EventLog("Application");
+            foreach (EventLogEntry entry in app.Entries.Cast<EventLogEntry>().Reverse())
+            {
+                if (entry.Message.Contains("print", StringComparison.OrdinalIgnoreCase) ||
+                    entry.Source.Contains("Print", StringComparison.OrdinalIgnoreCase) ||
+                    entry.Source.Contains("TAD", StringComparison.OrdinalIgnoreCase))
+                {
+                    logs.Add($"[{entry.TimeGenerated:yyyy-MM-dd HH:mm:ss}] {entry.Source}: {entry.Message.Split('\n').FirstOrDefault()?.Trim()}");
+                }
+                if (logs.Count >= maxEntries) break;
+            }
+        }
+        catch (Exception ex)
+        {
+            logs.Add("[WARN] Could not read Application log: " + ex.Message);
+        }
+
+        return logs;
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────

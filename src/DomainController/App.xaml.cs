@@ -5,13 +5,14 @@
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Windows;
+using TADBridge.Shared;
 using TADBridge.Shared.Licensing;
 
 namespace TADDomainController;
 
 public partial class App : Application
 {
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -82,6 +83,31 @@ public partial class App : Application
             }
 
             Shutdown();
+            return;
+        }
+
+        try
+        {
+            var updater = new UpdateManager("dc");
+            var update = await updater.CheckForUpdateAsync();
+            if (update is { IsForceUpdate: true })
+            {
+                bool launched = await updater.DownloadAndRunSetupAsync(update);
+                if (launched)
+                {
+                    MessageBox.Show(
+                        "A critical TAD.RV update is required and will now be installed.",
+                        "TAD.RV Critical Update",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    Shutdown();
+                    return;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore update errors on startup; normal UI can continue.
         }
     }
 }

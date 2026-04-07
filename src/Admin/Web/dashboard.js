@@ -27,6 +27,7 @@ let appVersion = '26700.192';         // Updated by config message
 let showOffline = true;               // Show offline/connecting tiles by default
 let hideIfAllOffline = false;         // Toggle: show nothing if every PC is offline
 let thumbMode = true;                 // Start in thumbnail view (live previews)
+let compactToolbar = false;
 
 // Per-student block state (tracked teacher-side)
 const internetBlocked = new Set();    // IPs with Web-Lock active
@@ -1469,6 +1470,11 @@ function escapeHtml(str) {
 
 let blockedPrograms = [];
 let blockedWebsites = [];
+const gameFilterPrograms = [
+    'steam', 'EpicGamesLauncher', 'FortniteClient-Win64-Shipping', 'minecraft',
+    'RobloxPlayerBeta', 'riotclientservices', 'LeagueClientUx', 'valorant',
+    'discord', 'battle.net', 'origin', 'uplay'
+];
 
 function openBlocklistModal() {
     document.getElementById('blocklistModal').style.display = 'flex';
@@ -1553,6 +1559,76 @@ function applyBlocklist() {
     sendToHost({ action: 'set_blocklist', target: '', payload: payload });
     closeBlocklistModal();
 }
+
+function enableGameFilterAll() {
+    const payload = JSON.stringify({
+        BlockedPrograms: [...new Set(gameFilterPrograms)],
+        BlockedWebsites: []
+    });
+    sendToHost({ action: 'game_filter_enable', payload });
+    showToast('Game filter enabled for all students', 'success');
+}
+
+function disableGameFilterAll() {
+    sendToHost({ action: 'game_filter_disable' });
+    showToast('Game filter disabled for all students', 'info');
+}
+
+function openSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    const lang = (typeof TAD_I18N !== 'undefined' && TAD_I18N.getLanguage)
+        ? TAD_I18N.getLanguage()
+        : 'en';
+
+    const langSel = document.getElementById('settingsLanguage');
+    const compact = document.getElementById('settingsCompactToolbar');
+    const hideHint = document.getElementById('settingsHideEmptyHint');
+
+    if (langSel) langSel.value = lang;
+    if (compact) compact.checked = compactToolbar;
+    if (hideHint) hideHint.checked = hideIfAllOffline;
+
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function applyDashboardSettings() {
+    const langSel = document.getElementById('settingsLanguage');
+    const compact = document.getElementById('settingsCompactToolbar');
+    const hideHint = document.getElementById('settingsHideEmptyHint');
+
+    if (langSel && typeof TAD_I18N !== 'undefined' && TAD_I18N.setLanguage) {
+        const newLang = langSel.value;
+        TAD_I18N.setLanguage(newLang, translationPacks);
+        updateLanguageIndicator(newLang);
+    }
+
+    compactToolbar = !!(compact && compact.checked);
+    hideIfAllOffline = !!(hideHint && hideHint.checked);
+
+    document.body.classList.toggle('compact-toolbar', compactToolbar);
+    const emptyHint = document.getElementById('emptyHint');
+    if (emptyHint) emptyHint.style.display = hideIfAllOffline ? 'none' : '';
+
+    localStorage.setItem('tad.dashboard.compactToolbar', compactToolbar ? '1' : '0');
+    localStorage.setItem('tad.dashboard.hideEmptyHint', hideIfAllOffline ? '1' : '0');
+
+    closeSettingsModal();
+    showToast('Settings updated', 'success');
+}
+
+(function initDashboardSettings() {
+    compactToolbar = localStorage.getItem('tad.dashboard.compactToolbar') === '1';
+    hideIfAllOffline = localStorage.getItem('tad.dashboard.hideEmptyHint') === '1';
+
+    document.body.classList.toggle('compact-toolbar', compactToolbar);
+    const emptyHint = document.getElementById('emptyHint');
+    if (emptyHint && hideIfAllOffline) emptyHint.style.display = 'none';
+})();
 
 function clearBlocklist() {
     blockedPrograms = [];

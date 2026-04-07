@@ -10,7 +10,15 @@
 
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock Text="Target Path" FontSize="12"
+                    <TextBlock Text="Service Publish Path" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
+                    <TextBox Text="{Binding ServicePublishPath, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="13" Padding="8,6"
+                         Background="#0D1117"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         BorderBrush="{StaticResource BorderBrush}" />
+
+                    <TextBlock Text="Target Install Path" FontSize="12"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
                     <TextBox Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}"
                              FontSize="13" Padding="8,6"
@@ -18,10 +26,36 @@
                              Foreground="{StaticResource TextPrimaryBrush}"
                              BorderBrush="{StaticResource BorderBrush}" />
 
+                    <TextBlock Text="Domain Controller Host" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,12,0,6" />
+                    <TextBox Text="{Binding DomainControllerHost, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="13" Padding="8,6"
+                         Background="#0D1117"
+                         Foreground="{StaticResource TextPrimaryBrush}"
+                         BorderBrush="{StaticResource BorderBrush}" />
+
+                    <CheckBox Content="Block USB storage for all student clients"
+                          IsChecked="{Binding BlockUsbStorage}"
+                          Margin="0,14,0,0"
+                          Foreground="{StaticResource TextPrimaryBrush}" />
+
+                    <CheckBox Content="Queue force-update after deployment"
+                          IsChecked="{Binding PushClientUpdate}"
+                          Margin="0,6,0,0"
+                          Foreground="{StaticResource TextPrimaryBrush}" />
+
                     <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                         <Button Content="Deploy Now"
                                 Style="{StaticResource AccentButton}"
                                 Command="{Binding DeployCommand}" />
+                    <Button Content="Toggle USB Policy"
+                        Style="{StaticResource AccentButton}"
+                        Command="{Binding ToggleUsbBlockCommand}"
+                        Margin="12,0,0,0" />
+                    <Button Content="Push Updates"
+                        Style="{StaticResource AccentButton}"
+                        Command="{Binding PushUpdatesCommand}"
+                        Margin="12,0,0,0" />
                         <Button Content="Rollback"
                                 Style="{StaticResource AccentButton}"
                                 Command="{Binding RollbackCommand}"
@@ -36,6 +70,10 @@
                 <StackPanel>
                     <TextBlock Text="Deployment Log" FontSize="14" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
+                        <Button Content="Refresh Operational Logs (logon / print / logoff)"
+                            Style="{StaticResource AccentButton}"
+                            Command="{Binding RefreshOperationalLogsCommand}"
+                            Margin="0,0,0,10" />
                     <ListBox ItemsSource="{Binding LogMessages}"
                              Background="Transparent" BorderThickness="0"
                              Foreground="{StaticResource TextSecondaryBrush}"

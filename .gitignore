@@ -47,3 +47,6 @@ _ReSharper*/
 
 # Release ZIP artifacts (uploaded to GitHub Releases, not stored in repo)
 *.zip
+
+# Local-only tools (never commit)
+.local-tools/

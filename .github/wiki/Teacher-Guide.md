@@ -1,19 +1,31 @@
 # Teacher Guide
 
-The **Teacher Dashboard** provides centralized monitoring and control over student PCs.
+Der Admin/Teacher-Bildschirm ist fuer den Unterrichtsbetrieb gedacht.
 
-## New Dashboard Features
+## Typischer Ablauf pro Stunde
 
-Starting with recent updates, you can now view advanced system information directly from the web dashboard:
-- **Operating System Version**: Verified natively.
-- **CPU Model**: Pulled via WMI for active hardware monitoring.
+1. TADAdmin starten.
+2. Pruefen, ob alle Schueler-Kacheln online sind.
+3. Bei Bedarf Game Filter einschalten.
+4. Fuer Erklaerphasen Freeze verwenden.
+5. Am Ende alle Sperren aufheben.
 
-## Safety Measures
+## Filter und Sperren
 
-If a student removes the LAN cable to bypass controls, the dashboard will immediately show a toast notification: `Warning: Dashboard cannot reach the network (LAN cable removed?)`
+- Web-Lock: Browserzugriffe blockieren
+- Program-Lock: unerwuenschte Programme blockieren
+- Game Filter On/Off: vordefinierte Spieleliste zentral umschalten
 
-## Locking and Unlocking
+## Dashboard-Einstellungen
 
-Use the provided locks to keep students focused:
-- **Web-Lock**: Disables all browser access natively through the driver filter.
-- **Program-Lock**: Prevents launching any unauthorized user-mode applications.
+Ueber Settings koennen Sie:
+
+- Sprache waehlen
+- Toolbar kompakter machen
+- leere Hinweisflaechen ausblenden
+
+## Troubleshooting
+
+- Keine Schueler sichtbar: Netzwerksegment und Dienststatus pruefen
+- RV zeigt nichts: Port-Freigaben und Client-Service pruefen
+- Sperrbefehle greifen nicht: Client offline oder Verbindung instabil

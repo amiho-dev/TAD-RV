@@ -1,7 +1,25 @@
-# LTS Release for Older Devices
+# Beta-LTS Release Policy
 
-If your hardware does not meet the new bare minimum requirement (Windows 10, Multi-core), you are trying to install on an unsupported machine.
+Beta-LTS ist ein eigener Wartungskanal fuer Umgebungen mit hohem Stabilitaetsbedarf.
 
-An LTS (Long Term Support) setup guide is available for older devices (Windows 7/8), but these versions will **no longer receive active feature updates** and are limited to basic connectivity and locking.
+## Ziel
 
-We strongly encourage upgrading to Windows 10 or Windows 11 to receive the latest TAD-RV improvements.
+- Weniger Funktionswechsel
+- Gezielte Sicherheits- und Stabilitaetsfixes
+- Planbare Rollouts fuer Schulen mit festen Pruefungszeitrraeumen
+
+## Unterschiede zu Stable
+
+- Stable: schnellere Feature-Folge
+- Beta-LTS: strengere Freigabe, laengerer Vorabtest
+
+## Tagging-Empfehlung
+
+- Stable: `v26.04.XX.XXX`
+- Beta-LTS: gleicher Versionstamm plus Release-Hinweis im Titel, z. B. `[Beta-LTS]`
+
+## Rollout-Empfehlung
+
+1. Erst Pilotraum aktualisieren.
+2. 3 bis 5 Schultage beobachten.
+3. Danach auf restliche Geraete ausrollen.

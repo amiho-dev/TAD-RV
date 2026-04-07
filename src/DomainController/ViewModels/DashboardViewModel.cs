@@ -76,7 +76,9 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
 
             if (update != null)
             {
-                UpdateStatus = $"Update available: v{update.Version} — {update.Title}";
+                UpdateStatus = update.IsForceUpdate
+                    ? $"CRITICAL update required: v{update.Version} — install enforced"
+                    : $"Update available: v{update.Version} — {update.Title}";
                 ReleaseNotes = update.ReleaseNotes;
                 UpdateAvailable = true;
             }

@@ -1,19 +1,19 @@
 # TAD-RV Wiki
 
-Welcome to the **TAD-RV** Documentation!
+Diese Wiki ist fuer Betriebsteams, Lehrkraefte und Admins geschrieben.
+Fokus ist praktische Arbeit im GUI, nicht Kommandozeilen-Betrieb.
 
-**TAD-RV** is a comprehensive school IT management solution. Starting from version `v26.3.08.130`, we have fundamentally re-engineered the project to provide optimal performance and security. 
+## Schnellstart
 
-> **Important**: The bare minimum requirement for **TAD-RV** is now **Windows 10**.
+- [Installation](Installation): Voraussetzungen und erster Rollout
+- [Compatibility](Compatibility): welche Hardware/OS sinnvoll ist
+- [Teacher Guide](Teacher-Guide): taegliche Bedienung im Unterricht
+- [LTS Release](LTS-Release): getrennte Beta-LTS-Strategie
+- [Changelog](Changelog): Release-Historie im Format `v26.04.XX.XXX`
 
-## Navigation
+## Betriebsprinzip
 
-- [Installation & Requirements](Installation)
-- [Device Compatibility Matrix](Compatibility)
-- [Teacher Guide](Teacher-Guide)
-- [Changelog](Changelog)
-- [Support for Older Devices](LTS-Release) (No longer actively updated)
-
-## Core Philosophy
-
-Our goal is to ensure classes run smoothly without technical hiccups. By trimming down legacy support (Windows 7/8/8.1, single-core CPUs), we can focus entirely on delivering a high-quality experience on modern Windows 10 and 11 environments.
+- Eine Plattform, drei Rollen: Admin, Domain Controller, Client-Service
+- In-Place-Updates fuer alle Editionen
+- Kritische Fixes koennen als Force-Update ausgerollt werden
+- Datenschutz: Passwortfelder werden vor Stream-Transfer maskiert

@@ -58,8 +58,6 @@ public partial class MainWindow : Window
     // System tray icon
     private NotifyIcon? _trayIcon;
 
-    private bool _allFrozen;
-    private bool _allBlanked;
     private bool _exitRequested;  // true only when "Exit" from tray — X button hides to tray
     private DateTime? _statusMessageExpiry;
 
@@ -214,8 +212,6 @@ public partial class MainWindow : Window
                 int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
                 ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
             }
-            _allFrozen = false;
-            _allBlanked = false;
             PostJsonMessage(new { type = "freeze_all", frozen = false });
             PostJsonMessage(new { type = "blank_all", blanked = false });
             SetStatus("Unlocked all screens");
@@ -695,8 +691,6 @@ public partial class MainWindow : Window
                             int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
                             ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
                         }
-                        _allFrozen = false;
-                        _allBlanked = false;
                         PostJsonMessage(new { type = "freeze_all", frozen = false });
                         PostJsonMessage(new { type = "blank_all", blanked = false });
                         SetStatus("Unlocked all screens");
@@ -786,6 +780,31 @@ public partial class MainWindow : Window
                         _tcpManager!.SendCommandToStudent(msg.Target, puFrame);
                     }
                     SetStatus($"Program-Lock disabled for {msg.Target}");
+                    break;
+                case "game_filter_enable":
+                    {
+                        var payload = msg.Payload ?? "{}";
+                        BlocklistUpdate bl;
+                        try { bl = JsonSerializer.Deserialize<BlocklistUpdate>(payload, s_jsonOptions) ?? new(); }
+                        catch { bl = new BlocklistUpdate(); }
+
+                        int n;
+                        if (_isDemoMode) n = _demoManager!.BroadcastProgramLock(bl);
+                        else n = _tcpManager!.BroadcastProgramLock(bl);
+
+                        ShowToast(n > 0 ? $"Game filter enabled for {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        SetStatus("Game filter enabled for all students");
+                    }
+                    break;
+                case "game_filter_disable":
+                    {
+                        int n;
+                        if (_isDemoMode) n = _demoManager!.BroadcastProgramUnlock();
+                        else n = _tcpManager!.BroadcastProgramUnlock();
+
+                        ShowToast(n > 0 ? $"Game filter disabled for {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
+                        SetStatus("Game filter disabled for all students");
+                    }
                     break;
 
                 // ── Logoff / Reboot / Shutdown ───────────────────────────

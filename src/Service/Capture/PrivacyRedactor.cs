@@ -21,6 +21,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using TADBridge.Shared;
@@ -230,7 +231,49 @@ public sealed class PrivacyRedactor : IDisposable
         if (results.Count > 0)
             _log.LogDebug("Privacy redactor found {Count} password fields", results.Count);
 
+        // Fallback: some browsers/apps do not expose IsPassword reliably in UIA.
+        // In that case, redact the central credential area when the active window
+        // title strongly indicates a login/password view.
+        if (results.Count == 0 && TryGetLoginWindowFallback(out var fallbackRect))
+        {
+            results.Add(fallbackRect);
+            _log.LogDebug("Privacy redactor fallback applied for login window title");
+        }
+
         return results;
+    }
+
+    private static bool TryGetLoginWindowFallback([NotNullWhen(true)] out RedactionRect rect)
+    {
+        rect = default;
+
+        IntPtr hwnd = NativeWin.GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return false;
+
+        string title = NativeWin.GetWindowTitle(hwnd);
+        if (string.IsNullOrWhiteSpace(title)) return false;
+
+        string t = title.ToLowerInvariant();
+        bool likelyLogin = t.Contains("password") || t.Contains("passwort") ||
+                           t.Contains("login") || t.Contains("sign in") ||
+                           t.Contains("anmelden") || t.Contains("2fa") ||
+                           t.Contains("verification");
+        if (!likelyLogin) return false;
+
+        if (!NativeWin.TryGetWindowRect(hwnd, out var wr)) return false;
+
+        int w = Math.Max(0, wr.Right - wr.Left);
+        int h = Math.Max(0, wr.Bottom - wr.Top);
+        if (w < 200 || h < 150) return false;
+
+        rect = new RedactionRect
+        {
+            X = wr.Left + (int)(w * 0.2),
+            Y = wr.Top + (int)(h * 0.25),
+            Width = (int)(w * 0.6),
+            Height = (int)(h * 0.5)
+        };
+        return true;
     }
 
     public void Dispose()
@@ -240,6 +283,36 @@ public sealed class PrivacyRedactor : IDisposable
         catch (AggregateException) { }
         catch (OperationCanceledException) { }
         _cts?.Dispose();
+    }
+}
+
+file static class NativeWin
+{
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int maxCount);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    public static string GetWindowTitle(IntPtr hWnd)
+    {
+        var sb = new System.Text.StringBuilder(512);
+        _ = GetWindowText(hWnd, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    public static bool TryGetWindowRect(IntPtr hWnd, out (int Left, int Top, int Right, int Bottom) rect)
+    {
+        rect = default;
+        if (!GetWindowRect(hWnd, out var r)) return false;
+        rect = (r.Left, r.Top, r.Right, r.Bottom);
+        return true;
     }
 }
 

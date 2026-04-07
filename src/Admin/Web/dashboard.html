@@ -41,6 +41,12 @@
                 <button class="stats-action-btn" onclick="openBlocklistModal()" title="Content filters &amp; blocklist">
                     <span class="sai">&#xE8D7;</span> <span data-i18n="toolbar.filters">Filters</span>
                 </button>
+                <button class="stats-action-btn" onclick="enableGameFilterAll()" title="Enable game filter for all students">
+                    <span class="sai">&#xE7FC;</span> <span>Game Filter On</span>
+                </button>
+                <button class="stats-action-btn" onclick="disableGameFilterAll()" title="Disable game filter for all students">
+                    <span class="sai">&#xE711;</span> <span>Game Filter Off</span>
+                </button>
                 <!-- Language Selector -->
                 <div class="lang-selector" id="langSelector">
                     <button class="stats-action-btn lang-btn" onclick="toggleLangDropdown()" title="Language">
@@ -56,6 +62,9 @@
                         <button class="lang-option" data-lang="pl">🇵🇱 Polski</button>
                     </div>
                 </div>
+                <button class="stats-action-btn" onclick="openSettingsModal()" title="Open dashboard settings">
+                    <span class="sai">&#xE713;</span> <span>Settings</span>
+                </button>
             </div>
             <button class="stats-action-btn" id="viewModeBtn" onclick="toggleViewMode()" title="Toggle view">
                 <span class="sai" id="viewModeIcon">&#xE8A9;</span>
@@ -64,6 +73,42 @@
                 <span class="search-icon">&#xE721;</span>
                 <input type="text" id="searchInput" data-i18n-placeholder="toolbar.searchPlaceholder" placeholder="Search students..."
                        oninput="filterStudents(this.value)" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal" style="display:none" onclick="if(event.target===this)closeSettingsModal()">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <span>&#xE713; Dashboard Settings</span>
+                <button class="modal-btn" onclick="closeSettingsModal()">&#xE711;</button>
+            </div>
+            <div class="modal-body-form">
+                <div class="settings-row">
+                    <label for="settingsLanguage">Language</label>
+                    <select id="settingsLanguage">
+                        <option value="en">English</option>
+                        <option value="de">Deutsch</option>
+                        <option value="fr">Français</option>
+                        <option value="nl">Nederlands</option>
+                        <option value="es">Español</option>
+                        <option value="it">Italiano</option>
+                        <option value="pl">Polski</option>
+                    </select>
+                </div>
+                <div class="settings-row checkbox-row">
+                    <input type="checkbox" id="settingsCompactToolbar" />
+                    <label for="settingsCompactToolbar">Compact toolbar (save homepage space)</label>
+                </div>
+                <div class="settings-row checkbox-row">
+                    <input type="checkbox" id="settingsHideEmptyHint" />
+                    <label for="settingsHideEmptyHint">Hide empty-state helper text</label>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="applyDashboardSettings()">Apply</button>
+                    <button class="btn btn-secondary" onclick="closeSettingsModal()">Close</button>
+                </div>
             </div>
         </div>
     </div>

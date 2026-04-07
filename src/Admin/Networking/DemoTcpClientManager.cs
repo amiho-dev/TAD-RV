@@ -310,6 +310,18 @@ public sealed class DemoTcpClientManager : IDisposable
         if (_students.TryGetValue(ip, out var s)) s.IsProgramLocked = false;
     }
 
+    public int BroadcastProgramLock(BlocklistUpdate _)
+    {
+        foreach (var s in _students.Values) s.IsProgramLocked = true;
+        return ConnectedCount;
+    }
+
+    public int BroadcastProgramUnlock()
+    {
+        foreach (var s in _students.Values) s.IsProgramLocked = false;
+        return ConnectedCount;
+    }
+
     // ─── Logoff / Reboot / Shutdown (simulated reconnect) ────────────
 
     public void LogoffStudent(string ip) => SimulateReconnect(ip, 3000);

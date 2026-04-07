@@ -133,6 +133,17 @@ public sealed class TcpClientManager : IDisposable
         BroadcastRaw(frame);
     }
 
+    public int BroadcastProgramLock(BlocklistUpdate blocklist)
+    {
+        var frame = TadFrameCodec.EncodeJson(TadCommand.ProgramLock, blocklist);
+        return BroadcastRawCounted(frame);
+    }
+
+    public int BroadcastProgramUnlock()
+    {
+        return BroadcastCommandCounted(TadCommand.ProgramUnlock);
+    }
+
     // ─── Networking Core ──────────────────────────────────────────────
 
     private async Task ConnectLoopAsync(StudentConnection conn, CancellationToken ct)

@@ -509,6 +509,43 @@ body {
     margin-top: 12px;
 }
 
+.settings-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.settings-row label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.settings-row select {
+    width: 100%;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    padding: 10px 12px;
+}
+
+.settings-row.checkbox-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.compact-toolbar .stats-actions .stats-action-btn span:last-child {
+    display: none;
+}
+
+.compact-toolbar .stats-actions .stats-action-btn {
+    min-width: 36px;
+    padding: 6px 8px;
+}
+
 /* ── Buttons ──────────────────────────────────────────────────────────── */
 
 .btn {

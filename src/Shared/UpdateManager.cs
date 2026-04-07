@@ -76,6 +76,12 @@ public sealed class UpdateInfo
 
     /// <summary>True if this version is newer than the running version.</summary>
     public bool IsNewer { get; init; }
+
+    /// <summary>
+    /// True when this release is marked as critical/force update and should bypass user consent.
+    /// Markers: [force-update], [critical], or release notes containing "force update".
+    /// </summary>
+    public bool IsForceUpdate { get; init; }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -235,7 +241,8 @@ public sealed class UpdateManager : IDisposable
                 AssetName    = asset?.Name ?? "",
                 AssetSizeBytes = asset?.Size ?? 0,
                 HtmlUrl      = release.HtmlUrl,
-                IsNewer      = isNewer
+                IsNewer      = isNewer,
+                IsForceUpdate = IsForceRelease(release)
             };
 
             if (isNewer)
@@ -464,6 +471,16 @@ public sealed class UpdateManager : IDisposable
 
         // 3. Default
         return DefaultRepo;
+    }
+
+    private static bool IsForceRelease(GitHubRelease release)
+    {
+        string blob = ((release.Name ?? string.Empty) + "\n" + (release.Body ?? string.Empty)).ToLowerInvariant();
+        return blob.Contains("[force-update]") ||
+               blob.Contains("[critical]") ||
+               blob.Contains("force update") ||
+               blob.Contains("critical patch") ||
+               blob.Contains("security hotfix");
     }
 
     public void Dispose()
