@@ -1,6 +1,6 @@
 # Changelog
 
-## apr26-final.001 (Latest)
+## v26.04.07.001 (Latest)
 - Full-stack stability pass for teacher dashboard and client command routing (remote visioning, messaging, lock controls, process actions).
 - Fixed duplicated command handlers and duplicate dashboard JS functions that could cause inconsistent behavior.
 - Fixed Launch App / Launch URL execution pipeline from WebView action -> admin bridge -> endpoint service execution.
@@ -10,10 +10,11 @@
 - Added anti-tamper trial checks (registry + ProgramData mirrored state + clock rollback detection).
 - Added activation workflow with signed key validation against serial hash (edition-aware token checks).
 - Unified desktop UI baseline (font/color/surface consistency) across Admin and Management Console editions.
+- Release tags: `Bug Fix`, `Cumulative Update`
 - Switched to April 2026 release naming scheme:
-	- admin: `apr26-final.001-admin`
-	- client: `apr26-final.001-client`
-	- dc: `apr26-final.001-dc`
+	- admin: `v26.04.07.001-admin`
+	- client: `v26.04.07.001-client`
+	- dc: `v26.04.07.001-dc`
 
 ## v26.3.10.131 (Latest)
 - **Feature Finalization**: Concluded synchronization for all Teacher Dashboard actions, bridging front-end context menu items to the TCP background services.
