@@ -24,6 +24,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
   <!-- WinForms for NotifyIcon (system tray) -->
@@ -36,6 +37,8 @@
     <Compile Include="..\Shared\TADSharedInterop.cs" Link="Shared\TADSharedInterop.cs" />
     <Compile Include="..\Shared\TADProtocol.cs" Link="Shared\TADProtocol.cs" />
     <Compile Include="..\Shared\UpdateManager.cs" Link="Shared\UpdateManager.cs" />
+    <Compile Include="..\Shared\Licensing\TadLicenseManager.cs" Link="Shared\Licensing\TadLicenseManager.cs" />
+    <Compile Include="..\Shared\Licensing\TadLicenseDialogs.cs" Link="Shared\Licensing\TadLicenseDialogs.cs" />
   </ItemGroup>
 
   <!-- Embedded WebView2 dashboard -->

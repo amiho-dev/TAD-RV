@@ -19,6 +19,7 @@ using TADBridge.Cache;
 using TADBridge.Capture;
 using TADBridge.Networking;
 using TADBridge.Tray;
+using TADBridge.Shared.Licensing;
 
 // ── Tray-only mode (launched at user logon via HKLM Run key) ───────────────
 // This bypasses the full service startup and just shows a system tray icon
@@ -32,6 +33,13 @@ const string SecretExitPassword = "YIw3Iv#a3wVQycNovomyT&*O";
 if (args.Any(a => a.Equals("--tray", StringComparison.OrdinalIgnoreCase)))
 {
     RunTrayHelper();
+    return;
+}
+
+var licenseState = TadLicenseManager.EnsureLicense("client");
+if (!licenseState.IsLicensed)
+{
+    Console.Error.WriteLine("TAD.RV Client licensing failed: " + licenseState.Message);
     return;
 }
 

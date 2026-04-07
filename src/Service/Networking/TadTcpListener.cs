@@ -383,10 +383,11 @@ public sealed class TadTcpListener : BackgroundService
         try
         {
             _log.LogInformation("Executing Launch App: {Cmd}", cmdOrPath);
+            string safe = (cmdOrPath ?? string.Empty).Replace("\"", "");
             var psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = $"/c start "" "{cmdOrPath}"",
+                Arguments = $"/c start \"\" \"{safe}\"",
                 CreateNoWindow = true,
                 UseShellExecute = false
             };
@@ -403,50 +404,11 @@ public sealed class TadTcpListener : BackgroundService
         try
         {
             _log.LogInformation("Executing Launch URL: {Url}", url);
+            string safe = (url ?? string.Empty).Replace("\"", "");
             var psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
-                Arguments = $"/c start "" "{url}"",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            };
-            Process.Start(psi);
-        }
-        catch (Exception ex)
-        {
-            _log.LogWarning(ex, "Failed to launch URL");
-        }
-    }
-
-    private void ExecuteLaunchApp(string cmdOrPath)
-    {
-        try
-        {
-            _log.LogInformation("Executing Launch App: {Cmd}", cmdOrPath);
-            var psi = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c start "" "{cmdOrPath}"",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            };
-            Process.Start(psi);
-        }
-        catch (Exception ex)
-        {
-            _log.LogWarning(ex, "Failed to launch app");
-        }
-    }
-
-    private void ExecuteLaunchUrl(string url)
-    {
-        try
-        {
-            _log.LogInformation("Executing Launch URL: {Url}", url);
-            var psi = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c start "" "{url}"",
+                Arguments = $"/c start \"\" \"{safe}\"",
                 CreateNoWindow = true,
                 UseShellExecute = false
             };

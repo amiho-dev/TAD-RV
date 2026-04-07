@@ -1140,18 +1140,6 @@ function launchUrlStudent(ip) {
     closeAllContextMenus();
 }
 
-function launchAppStudent(ip) {
-    let cmd = prompt('Enter command or app path to execute:');
-    if (cmd) sendToHost({ action: 'launch_app', target: ip, payload: cmd });
-    closeAllContextMenus();
-}
-
-function launchUrlStudent(ip) {
-    let url = prompt('Enter URL to open:');
-    if (url) sendToHost({ action: 'launch_url', target: ip, payload: url });
-    closeAllContextMenus();
-}
-
 function shutdownStudent(ip) {
     if (!confirm(t('confirm.shutdownDesc', { name: getStudentName(ip) }))) return;
     sendToHost({ action: 'shutdown', target: ip });

@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.Security.Principal;
 using System.Windows;
+using TADBridge.Shared.Licensing;
 
 namespace TADDomainController;
 
@@ -13,6 +14,39 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        while (true)
+        {
+            var license = TadLicenseManager.EnsureLicense("dc");
+            if (license.IsLicensed)
+            {
+                if (license.IsTrial)
+                {
+                    TadLicenseDialogs.ShowInfo(
+                        $"Free trial active. {license.TrialDaysRemaining} day(s) remaining.\n\nDevice serial:\n{license.DeviceSerial}",
+                        "TAD.RV Management Console - Trial");
+                }
+                break;
+            }
+
+            string? key = TadLicenseDialogs.PromptForActivationKey(
+                license.DeviceSerial,
+                "TAD.RV Management Console - Activation Required");
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                Shutdown();
+                return;
+            }
+
+            if (TadLicenseManager.TryActivate(key, "dc", out string activationError))
+            {
+                TadLicenseDialogs.ShowInfo("Activation successful.", "TAD.RV Management Console");
+                continue;
+            }
+
+            TadLicenseDialogs.ShowError("Activation failed: " + activationError, "TAD.RV Management Console");
+        }
 
         // Check if running with administrator privileges
         var identity = WindowsIdentity.GetCurrent();

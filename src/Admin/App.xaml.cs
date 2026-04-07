@@ -11,6 +11,7 @@
 using System.Windows;
 using System.Windows.Threading;
 using TADBridge.Shared;
+using TADBridge.Shared.Licensing;
 
 namespace TADAdmin;
 
@@ -56,6 +57,40 @@ public partial class App : Application
             a.Equals("--emulate", StringComparison.OrdinalIgnoreCase));
 
         TADLogger.Info($"IsDemoMode={IsDemoMode}  args=[{string.Join(", ", e.Args)}]");
+
+        // Product key / 40-day trial gate
+        while (true)
+        {
+            var license = TadLicenseManager.EnsureLicense("admin");
+            if (license.IsLicensed)
+            {
+                if (license.IsTrial)
+                {
+                    TadLicenseDialogs.ShowInfo(
+                        $"Free trial active. {license.TrialDaysRemaining} day(s) remaining.\n\nDevice serial:\n{license.DeviceSerial}",
+                        "TAD.RV Admin - Trial");
+                }
+                break;
+            }
+
+            string? key = TadLicenseDialogs.PromptForActivationKey(
+                license.DeviceSerial,
+                "TAD.RV Admin - Activation Required");
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                Shutdown(2);
+                return;
+            }
+
+            if (TadLicenseManager.TryActivate(key, "admin", out string activationError))
+            {
+                TadLicenseDialogs.ShowInfo("Activation successful.", "TAD.RV Admin");
+                continue;
+            }
+
+            TadLicenseDialogs.ShowError("Activation failed: " + activationError, "TAD.RV Admin");
+        }
 
         // ── Show Splash ───────────────────────────────────────────────
         TADLogger.Info("Creating SplashScreen");

@@ -1,17 +1,14 @@
 <Project>
 
   <!--
-    Version for client-side endpoint components:
-      - TADBridgeService (Windows service)
-      - TADBootstrap (GPO bootstrap loader)
-    Bump this independently when the client components change.
-
-    Format: v{year}.{month}.{day:00}.{patch:000}
+    April 2026 naming scheme:
+    Version/FileVersion remain numeric for Windows metadata.
+    InformationalVersion uses release channel naming.
   -->
   <PropertyGroup>
-    <Version>26.3.30</Version>
-    <FileVersion>26.3.30.6</FileVersion>
-    <InformationalVersion>v26.3.05.130-client</InformationalVersion>
+    <Version>26.4.7</Version>
+    <FileVersion>26.4.7.1</FileVersion>
+    <InformationalVersion>apr26-final.001-client</InformationalVersion>
   </PropertyGroup>
 
 </Project>

@@ -825,22 +825,6 @@ public partial class MainWindow : Window
                         SetStatus($"Launched URL on {msg.Target}");
                     }
                     break;
-                case "launch_app":
-                    if (!_isDemoMode && !string.IsNullOrWhiteSpace(msg.Payload))
-                    {
-                        var laFrame = TadFrameCodec.Encode(TadCommand.LaunchApp, System.Text.Encoding.UTF8.GetBytes(msg.Payload));
-                        _tcpManager!.SendCommandToStudent(msg.Target, laFrame);
-                        SetStatus($"Launched App on {msg.Target}");
-                    }
-                    break;
-                case "launch_url":
-                    if (!_isDemoMode && !string.IsNullOrWhiteSpace(msg.Payload))
-                    {
-                        var luFrame = TadFrameCodec.Encode(TadCommand.LaunchUrl, System.Text.Encoding.UTF8.GetBytes(msg.Payload));
-                        _tcpManager!.SendCommandToStudent(msg.Target, luFrame);
-                        SetStatus($"Launched URL on {msg.Target}");
-                    }
-                    break;
                 case "shutdown":
                     if (_isDemoMode)
                         _demoManager!.ShutdownStudent(msg.Target);

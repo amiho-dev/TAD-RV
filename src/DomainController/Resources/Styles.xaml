@@ -19,6 +19,21 @@
     <SolidColorBrush x:Key="CardBrush"           Color="#161B22" />
     <SolidColorBrush x:Key="HoverBrush"          Color="#1F2937" />
 
+    <Style TargetType="Window">
+        <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+    </Style>
+
+    <Style TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
+    </Style>
+
+    <Style TargetType="Button">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+    </Style>
+
     <!-- ═══ NavButton — Sidebar navigation RadioButton style ═════════ -->
     <Style x:Key="NavButton" TargetType="RadioButton">
         <Setter Property="Height"            Value="42" />
