@@ -46,6 +46,8 @@ public enum TadCommand : byte
     Logoff          = 0x57,     // Log off the current user session
     Reboot          = 0x58,     // Reboot the student machine
     Shutdown        = 0x59,     // Shut down the student machine
+    AcademicWebLock = 0x5A,     // Enable non-academic website filter (title-based enforcement)
+    AcademicWebUnlock = 0x5B,   // Disable non-academic website filter
 
     // Student → Teacher
     Pong            = 0x81,
@@ -81,7 +83,11 @@ public sealed class StudentStatus
     public bool IsBlankScreen { get; set; }
     public bool IsWebLocked { get; set; }
     public bool IsProgramLocked { get; set; }
+    public bool IsAcademicWebFilterEnabled { get; set; }
     public bool IsNetworkConnected { get; set; } = true;
+    public bool IsSecurityCountdownActive { get; set; }
+    public int SecurityCountdownSecondsRemaining { get; set; }
+    public string SecurityCountdownReason { get; set; } = "";
     public string ActiveWindow { get; set; } = "";
     public double CpuUsage { get; set; }
     public long RamUsedMb { get; set; }

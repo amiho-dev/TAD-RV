@@ -24,7 +24,7 @@ public sealed class DeployViewModel : INotifyPropertyChanged
     public DeployViewModel()
     {
         DeployCommand = new RelayCommand(async () => await DeployNowAsync(), () => !IsDeploying);
-        RollbackCommand = new RelayCommand(async () => await RollbackAsync(), () => !IsDeploying);
+        RollbackCommand = new RelayCommand(() => LogMessages.Add("Rollback is planned for next update wave."), () => !IsDeploying);
         ToggleUsbBlockCommand = new RelayCommand(async () => await ToggleUsbBlockAsync(), () => !IsDeploying);
         PushUpdatesCommand = new RelayCommand(async () => await PushUpdatesAsync(), () => !IsDeploying);
         RefreshOperationalLogsCommand = new RelayCommand(RefreshOperationalLogs, () => !IsDeploying);
@@ -139,25 +139,6 @@ public sealed class DeployViewModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             LogMessages.Add("Force update queue failed: " + ex.Message);
-        }
-        finally
-        {
-            IsDeploying = false;
-        }
-    }
-
-    private async Task RollbackAsync()
-    {
-        IsDeploying = true;
-        try
-        {
-            LogMessages.Add("Starting rollback...");
-            await _deploymentService.RollbackLastDeploymentAsync(TargetPath, CancellationToken.None);
-            LogMessages.Add("Rollback completed.");
-        }
-        catch (Exception ex)
-        {
-            LogMessages.Add("Rollback failed: " + ex.Message);
         }
         finally
         {

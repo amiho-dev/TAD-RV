@@ -42,9 +42,6 @@ public sealed class DeploymentConfig
 
 public sealed class DeploymentService
 {
-    private const string ServiceFolderName = "Service";
-    private const string RollbackFolderName = "Service.rollback";
-
     public event Action<DeploymentStepResult>? StepCompleted;
     public event Action<string>? LogMessage;
 
@@ -77,13 +74,8 @@ public sealed class DeploymentService
             ct.ThrowIfCancellationRequested();
             results.Add(await RunStepAsync("Copy Service Binaries", async () =>
             {
-                if (!Directory.Exists(config.ServicePath))
-                    throw new DirectoryNotFoundException($"Service publish path not found: {config.ServicePath}");
-
-                string svcDir = Path.Combine(config.TargetDir, ServiceFolderName);
+                string svcDir = Path.Combine(config.TargetDir, "Service");
                 Directory.CreateDirectory(svcDir);
-
-                CreateServiceBackup(config.TargetDir);
 
                 CopyDirectory(config.ServicePath, svcDir);
                 Log($"  Copied service binaries → {svcDir}");
@@ -99,7 +91,26 @@ public sealed class DeploymentService
             ct.ThrowIfCancellationRequested();
             results.Add(await RunStepAsync("Register Bridge Service", async () =>
             {
-                await EnsureBridgeServiceRegisteredAndRunningAsync(config.TargetDir);
+                await RemoveServiceAsync("TADBridgeService");
+
+                string svcExe = Path.Combine(config.TargetDir, "Service", "TADBridgeService.exe");
+
+                await RunScExeAsync("create", "TADBridgeService",
+                    $"binPath=\"{svcExe}\" start=auto obj=LocalSystem DisplayName=\"TAD.RV Bridge Service\"");
+
+                await RunScExeAsync("description", "TADBridgeService",
+                    "\"Runs the TAD.RV user-mode protection service with Active Directory integration.\"");
+
+                await RunScExeAsync("sidtype", "TADBridgeService", "unrestricted");
+                await RunScExeAsync("failureflag", "TADBridgeService", "1");
+
+                await RunScExeAsync("failure", "TADBridgeService",
+                    "reset=86400 actions=restart/5000/restart/10000/restart/30000");
+
+                Log("  TADBridgeService registered with auto-restart");
+
+                await RunScExeAsync("start", "TADBridgeService", "");
+                Log("  TADBridgeService started");
             }));
             ReportProgress();
         }
@@ -161,42 +172,6 @@ public sealed class DeploymentService
         }
 
         return results;
-    }
-
-    public async Task RollbackLastDeploymentAsync(string targetDir, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(targetDir))
-            throw new ArgumentException("Target directory is required for rollback.", nameof(targetDir));
-
-        string serviceDir = Path.Combine(targetDir, ServiceFolderName);
-        string rollbackDir = Path.Combine(targetDir, RollbackFolderName);
-
-        if (!Directory.Exists(rollbackDir))
-            throw new DirectoryNotFoundException(
-                $"Rollback backup not found at {rollbackDir}. Run a deployment first to create a backup.");
-
-        Log("Starting rollback pipeline...");
-        ct.ThrowIfCancellationRequested();
-
-        await StopServiceAsync("TADBridgeService");
-
-        if (Directory.Exists(serviceDir))
-        {
-            Log("  Removing current service binaries...");
-            Directory.Delete(serviceDir, recursive: true);
-        }
-
-        Log("  Restoring previous service binaries from rollback backup...");
-        CopyDirectory(rollbackDir, serviceDir);
-
-        ct.ThrowIfCancellationRequested();
-        await EnsureBridgeServiceRegisteredAndRunningAsync(targetDir);
-
-        using var key = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\TAD_RV", writable: true);
-        key?.SetValue("RolledBackAt", DateTime.Now.ToString("o"), RegistryValueKind.String);
-        key?.SetValue("DeployedAt", DateTime.Now.ToString("o"), RegistryValueKind.String);
-
-        Log("Rollback completed — previous service version is now active.");
     }
 
     public Task SetUsbBlockPolicyAsync(bool enabled)
@@ -320,50 +295,6 @@ public sealed class DeploymentService
             await RunScExeAsync("delete", name, "");
         }
         catch { }
-    }
-
-    private async Task EnsureBridgeServiceRegisteredAndRunningAsync(string targetDir)
-    {
-        await RemoveServiceAsync("TADBridgeService");
-
-        string svcExe = Path.Combine(targetDir, ServiceFolderName, "TADBridgeService.exe");
-        if (!File.Exists(svcExe))
-            throw new FileNotFoundException("TADBridgeService.exe not found in target directory.", svcExe);
-
-        await RunScExeAsync("create", "TADBridgeService",
-            $"binPath=\"{svcExe}\" start=auto obj=LocalSystem DisplayName=\"TAD.RV Bridge Service\"");
-
-        await RunScExeAsync("description", "TADBridgeService",
-            "\"Runs the TAD.RV user-mode protection service with Active Directory integration.\"");
-
-        await RunScExeAsync("sidtype", "TADBridgeService", "unrestricted");
-        await RunScExeAsync("failureflag", "TADBridgeService", "1");
-
-        await RunScExeAsync("failure", "TADBridgeService",
-            "reset=86400 actions=restart/5000/restart/10000/restart/30000");
-
-        Log("  TADBridgeService registered with auto-restart");
-
-        await RunScExeAsync("start", "TADBridgeService", "");
-        Log("  TADBridgeService started");
-    }
-
-    private void CreateServiceBackup(string targetDir)
-    {
-        string serviceDir = Path.Combine(targetDir, ServiceFolderName);
-        string rollbackDir = Path.Combine(targetDir, RollbackFolderName);
-
-        if (!Directory.Exists(serviceDir))
-            return;
-
-        if (!Directory.EnumerateFileSystemEntries(serviceDir).Any())
-            return;
-
-        if (Directory.Exists(rollbackDir))
-            Directory.Delete(rollbackDir, recursive: true);
-
-        CopyDirectory(serviceDir, rollbackDir);
-        Log($"  Rollback backup updated → {rollbackDir}");
     }
 
     private static async Task RunScExeAsync(string verb, string serviceName, string args)

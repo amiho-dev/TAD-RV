@@ -32,7 +32,6 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -178,8 +177,7 @@ public sealed class UpdateManager : IDisposable
     /// <param name="repoSlug">Override GitHub repo (e.g., "org/repo"). If null, reads from registry/env.</param>
     public UpdateManager(string component, string? currentVersion = null, string? repoSlug = null)
     {
-        string candidateRepo = repoSlug ?? ResolveRepoSlug();
-        _repoSlug = IsValidRepoSlug(candidateRepo) ? candidateRepo : DefaultRepo;
+        _repoSlug = repoSlug ?? ResolveRepoSlug();
         _currentVersion = currentVersion ?? GetAssemblyVersion();
         _componentPrefix = component.ToLowerInvariant() switch
         {
@@ -268,21 +266,13 @@ public sealed class UpdateManager : IDisposable
         string? destinationDir = null,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(update.DownloadUrl) ||
-            !IsTrustedDownloadUrl(update.DownloadUrl))
+        if (string.IsNullOrEmpty(update.DownloadUrl))
             return null;
-
-        string safeAssetName = Path.GetFileName(update.AssetName);
-        if (string.IsNullOrWhiteSpace(safeAssetName) ||
-            !string.Equals(safeAssetName, update.AssetName, StringComparison.Ordinal))
-        {
-            return null;
-        }
 
         destinationDir ??= Path.Combine(Path.GetTempPath(), "TAD_RV_Update");
         Directory.CreateDirectory(destinationDir);
 
-        string filePath = Path.Combine(destinationDir, safeAssetName);
+        string filePath = Path.Combine(destinationDir, update.AssetName);
 
         try
         {
@@ -427,8 +417,8 @@ public sealed class UpdateManager : IDisposable
         a = a.TrimStart('v', 'V');
         b = b.TrimStart('v', 'V');
 
-        var partsA = ParseVersionParts(a);
-        var partsB = ParseVersionParts(b);
+        var partsA = a.Split('.').Select(s => int.TryParse(s, out int v) ? v : 0).ToArray();
+        var partsB = b.Split('.').Select(s => int.TryParse(s, out int v) ? v : 0).ToArray();
 
         int maxLen = Math.Max(partsA.Length, partsB.Length);
 
@@ -452,9 +442,6 @@ public sealed class UpdateManager : IDisposable
         if (attr != null)
         {
             string ver = attr.InformationalVersion.TrimStart('v', 'V');
-            // Strip build metadata: "26.3.02.004+abcdef" → "26.3.02.004"
-            int plus = ver.IndexOf('+');
-            if (plus > 0) ver = ver[..plus];
             // Strip component suffix: "26.3.02.004-admin" → "26.3.02.004"
             int dash = ver.IndexOf('-');
             return dash > 0 ? ver[..dash] : ver;
@@ -484,57 +471,6 @@ public sealed class UpdateManager : IDisposable
 
         // 3. Default
         return DefaultRepo;
-    }
-
-    private static int[] ParseVersionParts(string version)
-    {
-        return version.Split('.').Select(ParseLeadingInt).ToArray();
-    }
-
-    private static int ParseLeadingInt(string segment)
-    {
-        if (string.IsNullOrEmpty(segment)) return 0;
-
-        var digits = new StringBuilder(segment.Length);
-        foreach (char ch in segment)
-        {
-            if (!char.IsDigit(ch)) break;
-            digits.Append(ch);
-        }
-
-        return digits.Length > 0 && int.TryParse(digits.ToString(), out int value)
-            ? value
-            : 0;
-    }
-
-    private static bool IsValidRepoSlug(string repoSlug)
-    {
-        if (string.IsNullOrWhiteSpace(repoSlug)) return false;
-        var parts = repoSlug.Split('/');
-        return parts.Length == 2 &&
-               IsRepoSegment(parts[0]) &&
-               IsRepoSegment(parts[1]);
-    }
-
-    private static bool IsRepoSegment(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return false;
-        foreach (char ch in value)
-        {
-            if (!(char.IsLetterOrDigit(ch) || ch is '-' or '_' or '.'))
-                return false;
-        }
-        return true;
-    }
-
-    private static bool IsTrustedDownloadUrl(string url)
-    {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
-        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) return false;
-
-        return uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
-               uri.Host.Equals("objects.githubusercontent.com", StringComparison.OrdinalIgnoreCase) ||
-               uri.Host.Equals("github-releases.githubusercontent.com", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsForceRelease(GitHubRelease release)

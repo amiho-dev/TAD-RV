@@ -18,7 +18,6 @@
 // ── State ────────────────────────────────────────────────────────────
 
 const students = new Map();           // ip → { status, canvas, decoder, ... }
-const roomLayoutOrder = new Map();    // host key → seat order (1..N)
 let activeRvIp = null;                // Currently viewed remote view IP
 let rvDecoder = null;                 // WebCodecs VideoDecoder for fullscreen RV
 let rvMainDecoder = null;             // Main-stream decoder (30fps 720p)
@@ -26,15 +25,17 @@ let isDemoMode = false;               // Set by config message from C#
 let currentFilter = '';               // Search filter string
 let appVersion = '26700.192';         // Updated by config message
 let showOffline = true;               // Show offline/connecting tiles by default
-let hideEmptyHint = false;            // Toggle: hide helper text in empty state only
+let hideIfAllOffline = false;         // Toggle: show nothing if every PC is offline
 let thumbMode = true;                 // Start in thumbnail view (live previews)
 let compactToolbar = false;
-let captureMode = 'live';             // 'live' or 'snapshot'
-let snapshotIntervalSec = 15;         // Snapshot cadence in seconds when snapshot mode is active
 
 // Per-student block state (tracked teacher-side)
 const internetBlocked = new Set();    // IPs with Web-Lock active
 const programBlocked = new Set();     // IPs with Program-Lock active
+const academicBlocked = new Set();    // IPs with non-academic filter active
+const securityCountdownState = new Map(); // ip -> { active, lastMinuteNotified }
+
+let rvSnapshotTimer = null;
 
 // Per-student screen recording state
 const activeRecordings = new Map();   // ip → { recorder, chunks, startTime, canvas }
@@ -76,13 +77,6 @@ window.chrome.webview.addEventListener('message', (event) => {
                 const hint = document.getElementById('emptyHint');
                 if (hint) hint.textContent = 'Demo mode — synthetic students will appear shortly.';
             }
-            if (msg.captureMode || msg.snapshotIntervalSec) {
-                applyCaptureModeFromHost(msg.captureMode, msg.snapshotIntervalSec);
-            }
-            break;
-
-        case 'capture_mode':
-            applyCaptureModeFromHost(msg.mode, msg.snapshotIntervalSec);
             break;
 
         case 'set_room':
@@ -90,10 +84,6 @@ window.chrome.webview.addEventListener('message', (event) => {
                 const rl = document.getElementById('roomLabel');
                 if (rl) rl.textContent = msg.name || 'All Rooms';
             }
-            break;
-
-        case 'room_layout':
-            applyRoomLayout(msg.seats || []);
             break;
 
         case 'status':
@@ -171,7 +161,7 @@ function handleStatusUpdate(ip, data) {
 
     const prevNet = student.status && student.status.IsNetworkConnected !== undefined ? student.status.IsNetworkConnected : true;
     if (prevNet === true && data.IsNetworkConnected === false) {
-        showToast("⚠️ Network disconnected on " + (data.Username || ip), "warning");
+        showToast("Network disconnected on " + (data.Username || ip), "warning");
     }
 
     student.status = data;
@@ -180,9 +170,31 @@ function handleStatusUpdate(ip, data) {
     // Sync local lock sets from server-reported status
     if (data.IsWebLocked) internetBlocked.add(ip); else internetBlocked.delete(ip);
     if (data.IsProgramLocked) programBlocked.add(ip); else programBlocked.delete(ip);
+    if (data.IsAcademicWebFilterEnabled) academicBlocked.add(ip); else academicBlocked.delete(ip);
+
+    const prevCountdown = securityCountdownState.get(ip) || { active: false, lastMinuteNotified: -1 };
+    if (data.IsSecurityCountdownActive) {
+        const remainSec = Math.max(0, data.SecurityCountdownSecondsRemaining || 0);
+        const remainMin = Math.max(1, Math.ceil(remainSec / 60));
+        if (!prevCountdown.active || prevCountdown.lastMinuteNotified !== remainMin) {
+            const who = data.Hostname || data.Username || ip;
+            const why = data.SecurityCountdownReason ? ` (${data.SecurityCountdownReason})` : '';
+            showToast(`Security countdown on ${who}: ${remainMin} minute(s) remaining${why}`, 'warning', 4500);
+        }
+        securityCountdownState.set(ip, { active: true, lastMinuteNotified: remainMin });
+    } else {
+        if (prevCountdown.active) {
+            const who = data.Hostname || data.Username || ip;
+            if (data.IsLocked) {
+                showToast(`Security lock enforced on ${who}`, 'error', 5000);
+            } else {
+                showToast(`Security countdown cleared on ${who}`, 'success', 3000);
+            }
+        }
+        securityCountdownState.set(ip, { active: false, lastMinuteNotified: -1 });
+    }
 
     updateTileUI(student);
-    reorderTile(student);
     updateStats();
 
     // Auto-refresh device details panel if it's open for this student
@@ -227,6 +239,17 @@ function renderTile(student) {
                     <span class="tile-hostname">${student.ip}</span>
                     <span class="tile-user">—</span>
                 </div>
+                <div class="tile-transfer" title="Transfer activity"><span class="tx">TX</span><span class="rx">RX</span></div>
+            </div>
+            <div class="tile-meters">
+                <div class="meter-row">
+                    <span class="meter-label">CPU</span>
+                    <div class="segmented-track"><div class="segmented-fill cpu"></div></div>
+                </div>
+                <div class="meter-row">
+                    <span class="meter-label">RAM</span>
+                    <div class="segmented-track"><div class="segmented-fill ram"></div></div>
+                </div>
             </div>
             <div class="tile-indicators"></div>
             <div class="tile-actions">
@@ -248,6 +271,7 @@ function renderTile(student) {
             <button onclick="event.stopPropagation(); messageStudent('${student.ip}')">&#xE8BD; ${t('ctx.sendMessage')}</button>
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); toggleInternetBlock('${student.ip}')">&#xE774; ${t('ctx.webLock')}</button>
+            <button onclick="event.stopPropagation(); toggleAcademicFilter('${student.ip}')">&#xE8D7; Academic Web Filter</button>
             <button onclick="event.stopPropagation(); toggleProgramBlock('${student.ip}')">&#xE74C; ${t('ctx.programLock')}</button>
             <div class="ctx-sep"></div>
             <button onclick="event.stopPropagation(); launchAppStudent('${student.ip}')">&#xE7B8; Launch App / CMD</button>
@@ -282,7 +306,7 @@ function renderTile(student) {
         tile.querySelector('.tile-ctx-menu').style.display = 'none';
     });
 
-    insertTileByLayoutOrder(grid, tile, student);
+    grid.appendChild(tile);
     student.tileEl = tile;
     student.canvas = tile.querySelector('canvas');
     student.ctx = student.canvas.getContext('2d');
@@ -321,6 +345,24 @@ function updateTileUI(student) {
     if (s.IsNetworkConnected === false) tile.classList.add('net-disconnected');
     else tile.classList.remove('net-disconnected');
 
+    if (s.IsSecurityCountdownActive) tile.classList.add('security-countdown');
+    else tile.classList.remove('security-countdown');
+
+    const transfer = tile.querySelector('.tile-transfer');
+    if (transfer) {
+        transfer.classList.toggle('active', !!s.IsStreaming || s.IsNetworkConnected !== false);
+        transfer.classList.toggle('offline', s.IsNetworkConnected === false);
+    }
+
+    const cpuPct = Math.max(0, Math.min(100, Math.round(s.CpuUsage || 0)));
+    const ramPct = (s.RamTotalMb && s.RamTotalMb > 0)
+        ? Math.max(0, Math.min(100, Math.round((s.RamUsedMb / s.RamTotalMb) * 100)))
+        : 0;
+    const cpuMeter = tile.querySelector('.segmented-fill.cpu');
+    const ramMeter = tile.querySelector('.segmented-fill.ram');
+    if (cpuMeter) cpuMeter.style.width = cpuPct + '%';
+    if (ramMeter) ramMeter.style.width = ramPct + '%';
+
     // Determine real connectivity
     const now = Date.now();
     const neverSeen = student.lastSeen === 0;
@@ -347,9 +389,15 @@ function updateTileUI(student) {
     if (s.IsNetworkConnected === false) html += `<span class="ind ind-disconnected" title="${t('ind.disconnected')}">&#xE871;</span>`;
     if (s.IsBlankScreen) html += `<span class="ind ind-blank" title="${t('ind.blanked')}">&#xE7B3;</span>`;
     if (s.IsWebLocked || internetBlocked.has(student.ip)) html += `<span class="ind ind-inet" title="${t('ind.webLock')}">&#xE774;</span>`;
+    if (s.IsAcademicWebFilterEnabled || academicBlocked.has(student.ip)) html += `<span class="ind ind-academic" title="Academic Web Filter">&#xE8D7;</span>`;
     if (s.IsProgramLocked || programBlocked.has(student.ip)) html += `<span class="ind ind-prog" title="${t('ind.programLock')}">&#xE74C;</span>`;
     if (s.IsStreaming) html += `<span class="ind ind-stream" title="${t('ind.streaming')}">&#xE714;</span>`;
     if (s.IsHandRaised) html += `<span class="ind ind-hand" title="${t('ind.handRaised')}">&#xE768;</span>`;
+    if (s.IsSecurityCountdownActive) {
+        const remain = Math.max(0, s.SecurityCountdownSecondsRemaining || 0);
+        const min = Math.max(0, Math.ceil(remain / 60));
+        html += `<span class="ind ind-countdown" title="Security countdown active">${min}m</span>`;
+    }
 
     indicators.innerHTML = html;
 
@@ -375,116 +423,12 @@ function removeStudentTile(ip) {
         if (student.tileEl) student.tileEl.remove();
         if (student.decoder) try { student.decoder.close(); } catch {}
         students.delete(ip);
+        internetBlocked.delete(ip);
+        programBlocked.delete(ip);
+        academicBlocked.delete(ip);
+        securityCountdownState.delete(ip);
         updateStats();
     }
-}
-
-function applyRoomLayout(seats) {
-    roomLayoutOrder.clear();
-
-    let order = 0;
-    seats.forEach(seat => {
-        if (!seat || !seat.host) return;
-        order += 1;
-        addLayoutHostKey(seat.host, order);
-    });
-
-    reorderAllTiles();
-}
-
-function addLayoutHostKey(host, order) {
-    normalizeHostKeys(host).forEach(key => {
-        if (!roomLayoutOrder.has(key))
-            roomLayoutOrder.set(key, order);
-    });
-}
-
-function normalizeHostKeys(value) {
-    if (!value) return [];
-
-    const raw = String(value).trim().toLowerCase();
-    if (!raw) return [];
-
-    const keys = new Set();
-    const base = raw.includes(':') ? raw.split(':')[0] : raw;
-
-    keys.add(base);
-
-    const dotIdx = base.indexOf('.');
-    if (dotIdx > 0)
-        keys.add(base.substring(0, dotIdx));
-
-    return Array.from(keys);
-}
-
-function resolveLayoutOrder(student) {
-    const probes = [
-        student.ip,
-        student.status?.IpAddress,
-        student.status?.Hostname
-    ];
-
-    for (const probe of probes) {
-        for (const key of normalizeHostKeys(probe)) {
-            if (roomLayoutOrder.has(key))
-                return roomLayoutOrder.get(key);
-        }
-    }
-
-    return Number.MAX_SAFE_INTEGER;
-}
-
-function compareStudentsForLayout(a, b) {
-    const aOrder = resolveLayoutOrder(a);
-    const bOrder = resolveLayoutOrder(b);
-
-    if (aOrder !== bOrder)
-        return aOrder - bOrder;
-
-    const aName = (a.status?.Hostname || a.ip || '').toLowerCase();
-    const bName = (b.status?.Hostname || b.ip || '').toLowerCase();
-    const nameCmp = aName.localeCompare(bName);
-    if (nameCmp !== 0) return nameCmp;
-
-    return (a.ip || '').localeCompare(b.ip || '');
-}
-
-function insertTileByLayoutOrder(grid, tile, student) {
-    const siblings = Array.from(grid.children);
-
-    for (const sibling of siblings) {
-        if (sibling === tile) continue;
-
-        const other = students.get(sibling.dataset.ip);
-        if (!other) continue;
-
-        if (compareStudentsForLayout(student, other) < 0) {
-            grid.insertBefore(tile, sibling);
-            return;
-        }
-    }
-
-    grid.appendChild(tile);
-}
-
-function reorderTile(student) {
-    if (!student?.tileEl) return;
-
-    const grid = document.getElementById('studentGrid');
-    if (!grid) return;
-
-    insertTileByLayoutOrder(grid, student.tileEl, student);
-}
-
-function reorderAllTiles() {
-    const grid = document.getElementById('studentGrid');
-    if (!grid) return;
-
-    const sorted = Array.from(students.values()).sort(compareStudentsForLayout);
-    sorted.forEach(student => {
-        if (student.tileEl)
-            grid.appendChild(student.tileEl);
-    });
 }
 
 // ── Search / Filter ──────────────────────────────────────────────────
@@ -504,9 +448,8 @@ function toggleOfflineVisibility() {
 }
 
 function toggleHideIfAllOffline(checked) {
-    hideEmptyHint = checked;
-    const emptyHint = document.getElementById('emptyHint');
-    if (emptyHint) emptyHint.style.display = hideEmptyHint ? 'none' : '';
+    hideIfAllOffline = checked;
+    updateStats();
 }
 
 function applyFilter(student) {
@@ -571,60 +514,6 @@ function handleMainFrame(ip, base64Data, isKeyFrame) {
     }
 
     decodeFrame(rvMainDecoder, data, isKeyFrame);
-}
-
-function applyCaptureModeFromHost(mode, intervalSec) {
-    const prevMode = captureMode;
-    const nextMode = (String(mode || '').toLowerCase() === 'snapshot') ? 'snapshot' : 'live';
-    captureMode = nextMode;
-
-    const parsed = Number(intervalSec);
-    if (Number.isFinite(parsed)) {
-        snapshotIntervalSec = Math.max(5, Math.min(120, Math.floor(parsed)));
-    }
-
-    if (isDemoMode || !activeRvIp) return;
-
-    const streamInfo = document.getElementById('rvStreamInfo');
-
-    if (captureMode === 'snapshot') {
-        if (rvDecoder && rvDecoder.state !== 'closed') rvDecoder.close();
-        if (rvMainDecoder && rvMainDecoder.state !== 'closed') rvMainDecoder.close();
-        rvDecoder = null;
-        rvMainDecoder = null;
-
-        if (streamInfo)
-            streamInfo.textContent = `Snapshot mode (${snapshotIntervalSec}s interval)`;
-
-        sendToHost({ action: 'snapshot_now', target: activeRvIp });
-        return;
-    }
-
-    // Mode switched from snapshot -> live while RV is open: restart live streams.
-    if (prevMode === 'snapshot') {
-        const canvas = document.getElementById('rvCanvas');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            rvDecoder = createVideoDecoder(canvas, ctx, 1920, 1080);
-            rvMainDecoder = null;
-        }
-
-        if (streamInfo)
-            streamInfo.textContent = t('rv.subStream');
-
-        sendToHost({ action: 'rv_start', target: activeRvIp });
-        sendToHost({ action: 'focus_start', target: activeRvIp });
-    }
-}
-
-function pushCaptureModeToHost() {
-    sendToHost({
-        action: 'set_capture_mode',
-        payload: JSON.stringify({
-            mode: captureMode,
-            snapshotIntervalSec: snapshotIntervalSec
-        })
-    });
 }
 
 // ── JPEG Thumbnail Rendering (snapshot-based tile previews) ──────────
@@ -722,7 +611,7 @@ function renderDemoDesktop(ctx, w, h, f) {
         ctx.fillStyle = '#F85149';
         ctx.font = `bold ${24 * sx}px Segoe UI, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText('🔒 LOCKED', w / 2, h / 2 - 10 * sy);
+        ctx.fillText('LOCKED', w / 2, h / 2 - 10 * sy);
         ctx.fillStyle = '#8B949E';
         ctx.font = `${11 * sx}px Segoe UI, sans-serif`;
         ctx.fillText('This workstation is locked by the admin', w / 2, h / 2 + 18 * sy);
@@ -737,7 +626,7 @@ function renderDemoDesktop(ctx, w, h, f) {
         ctx.fillStyle = 'rgba(255,255,255,0.25)';
         ctx.font = `bold ${18 * sx}px Segoe UI, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText('⬛ SCREEN BLANKED', w / 2, h / 2 - 8 * sy);
+        ctx.fillText('SCREEN BLANKED', w / 2, h / 2 - 8 * sy);
         ctx.fillStyle = 'rgba(255,255,255,0.15)';
         ctx.font = `${10 * sx}px Segoe UI, sans-serif`;
         ctx.fillText('Eyes on the teacher', w / 2, h / 2 + 14 * sy);
@@ -823,7 +712,7 @@ function renderDemoDesktop(ctx, w, h, f) {
         ctx.fillStyle = '#58A6FF';
         ctx.font = `bold ${18 * sx}px Segoe UI, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText('❄ FROZEN', w / 2, h / 2);
+        ctx.fillText('FROZEN', w / 2, h / 2);
         ctx.textAlign = 'left';
     }
 
@@ -910,7 +799,7 @@ function renderBrowserContent(ctx, x, y, w, h, sx, sy, f) {
         : f.app.includes('Khan') ? 'khanacademy.org/math'
         : f.app.includes('Wiki') ? 'en.wikipedia.org/wiki/...'
         : 'classroom.google.com';
-    ctx.fillText('🔒 ' + url, x + 36 * sx, y + 12 * sy);
+    ctx.fillText('LOCK ' + url, x + 36 * sx, y + 12 * sy);
 
     // Page content
     ctx.fillStyle = '#f0f0f0';
@@ -1175,24 +1064,8 @@ function startRv(ip) {
     streamInfo.textContent = isDemoMode ? t('rv.demoStream') : t('rv.subStream');
     modal.style.display = 'flex';
 
-    // Keep RV record button state in sync regardless of capture mode.
-    const rvRecBtn = document.getElementById('rvRecordBtn');
-    if (rvRecBtn) {
-        const isRec = activeRecordings.has(ip);
-        rvRecBtn.classList.toggle('recording', isRec);
-        rvRecBtn.title = isRec ? t('ctx.stopRecord') : t('ctx.record');
-    }
-
     // In demo mode, the demo_frame handler will paint the RV canvas directly
     if (!isDemoMode) {
-        if (captureMode === 'snapshot') {
-            rvDecoder = null;
-            rvMainDecoder = null;
-            streamInfo.textContent = `Snapshot mode (${snapshotIntervalSec}s interval)`;
-            sendToHost({ action: 'snapshot_now', target: ip });
-            return;
-        }
-
         // Create sub-stream fallback decoder for real mode
         const ctx = canvas.getContext('2d');
         rvDecoder = createVideoDecoder(canvas, ctx, 1920, 1080);
@@ -1203,6 +1076,22 @@ function startRv(ip) {
     // rv_start must arrive before focus_start so _isStreaming is set
     sendToHost({ action: 'rv_start', target: ip });
     sendToHost({ action: 'focus_start', target: ip });
+    sendToHost({ action: 'snapshot_request', target: ip });
+
+    if (rvSnapshotTimer) clearInterval(rvSnapshotTimer);
+    rvSnapshotTimer = setInterval(() => {
+        if (activeRvIp) {
+            sendToHost({ action: 'snapshot_request', target: activeRvIp });
+        }
+    }, 2000);
+
+    // Update record button state if already recording
+    const rvRecBtn = document.getElementById('rvRecordBtn');
+    if (rvRecBtn) {
+        const isRec = activeRecordings.has(ip);
+        rvRecBtn.classList.toggle('recording', isRec);
+        rvRecBtn.title = isRec ? t('ctx.stopRecord') : t('ctx.record');
+    }
 }
 
 function closeRv() {
@@ -1216,14 +1105,16 @@ function closeRv() {
         }
         // Only stop the focus (main-stream 30fps). Keep sub-stream alive
         // for live grid thumbnails (auto sub-stream).
-        if (captureMode === 'live') {
-            sendToHost({ action: 'focus_stop', target: activeRvIp });
-        }
+        sendToHost({ action: 'focus_stop', target: activeRvIp });
     }
     document.getElementById('rvModal').style.display = 'none';
 
     if (rvDecoder && rvDecoder.state !== 'closed') rvDecoder.close();
     if (rvMainDecoder && rvMainDecoder.state !== 'closed') rvMainDecoder.close();
+    if (rvSnapshotTimer) {
+        clearInterval(rvSnapshotTimer);
+        rvSnapshotTimer = null;
+    }
     rvDecoder = null;
     rvMainDecoder = null;
     activeRvIp = null;
@@ -1379,6 +1270,28 @@ function toggleInternetBlock(ip) {
         sendToHost({ action: 'internet_block', target: ip });
     }
     // Refresh tile indicators
+    const student = students.get(ip);
+    if (student) updateTileUI(student);
+    closeAllContextMenus();
+}
+
+function toggleAcademicFilter(ip) {
+    if (academicBlocked.has(ip)) {
+        academicBlocked.delete(ip);
+        sendToHost({ action: 'academic_unblock', target: ip });
+        showToast(`Academic filter disabled for ${getStudentName(ip)}`, 'info');
+    } else {
+        if (blockedWebsites.length === 0) {
+            showToast('Add non-academic domains in Filters first', 'warning');
+            closeAllContextMenus();
+            return;
+        }
+        academicBlocked.add(ip);
+        const payload = JSON.stringify({ BlockedPrograms: [], BlockedWebsites: blockedWebsites });
+        sendToHost({ action: 'academic_block', target: ip, payload: payload });
+        showToast(`Academic filter enabled for ${getStudentName(ip)}`, 'success');
+    }
+
     const student = students.get(ip);
     if (student) updateTileUI(student);
     closeAllContextMenus();
@@ -1769,18 +1682,12 @@ function openSettingsModal() {
         : 'en';
 
     const langSel = document.getElementById('settingsLanguage');
-    const capMode = document.getElementById('settingsCaptureMode');
-    const snapSec = document.getElementById('settingsSnapshotInterval');
     const compact = document.getElementById('settingsCompactToolbar');
     const hideHint = document.getElementById('settingsHideEmptyHint');
 
     if (langSel) langSel.value = lang;
-    if (capMode) capMode.value = captureMode;
-    if (snapSec) snapSec.value = String(snapshotIntervalSec);
     if (compact) compact.checked = compactToolbar;
-    if (hideHint) hideHint.checked = hideEmptyHint;
-
-    onCaptureModeChanged();
+    if (hideHint) hideHint.checked = hideIfAllOffline;
 
     if (modal) modal.style.display = 'flex';
 }
@@ -1792,8 +1699,6 @@ function closeSettingsModal() {
 
 function applyDashboardSettings() {
     const langSel = document.getElementById('settingsLanguage');
-    const capMode = document.getElementById('settingsCaptureMode');
-    const snapSec = document.getElementById('settingsSnapshotInterval');
     const compact = document.getElementById('settingsCompactToolbar');
     const hideHint = document.getElementById('settingsHideEmptyHint');
 
@@ -1804,55 +1709,26 @@ function applyDashboardSettings() {
     }
 
     compactToolbar = !!(compact && compact.checked);
-    hideEmptyHint = !!(hideHint && hideHint.checked);
-
-    captureMode = (capMode && capMode.value === 'snapshot') ? 'snapshot' : 'live';
-
-    const parsedInterval = Number(snapSec ? snapSec.value : snapshotIntervalSec);
-    if (Number.isFinite(parsedInterval)) {
-        snapshotIntervalSec = Math.max(5, Math.min(120, Math.floor(parsedInterval)));
-    }
+    hideIfAllOffline = !!(hideHint && hideHint.checked);
 
     document.body.classList.toggle('compact-toolbar', compactToolbar);
     const emptyHint = document.getElementById('emptyHint');
-    if (emptyHint) emptyHint.style.display = hideEmptyHint ? 'none' : '';
+    if (emptyHint) emptyHint.style.display = hideIfAllOffline ? 'none' : '';
 
     localStorage.setItem('tad.dashboard.compactToolbar', compactToolbar ? '1' : '0');
-    localStorage.setItem('tad.dashboard.hideEmptyHint', hideEmptyHint ? '1' : '0');
-    localStorage.setItem('tad.capture.mode', captureMode);
-    localStorage.setItem('tad.capture.snapshotIntervalSec', String(snapshotIntervalSec));
-
-    pushCaptureModeToHost();
+    localStorage.setItem('tad.dashboard.hideEmptyHint', hideIfAllOffline ? '1' : '0');
 
     closeSettingsModal();
     showToast('Settings updated', 'success');
 }
 
-function onCaptureModeChanged() {
-    const capMode = document.getElementById('settingsCaptureMode');
-    const row = document.getElementById('settingsSnapshotIntervalRow');
-    if (!capMode || !row) return;
-    row.style.display = capMode.value === 'snapshot' ? '' : 'none';
-}
-
 (function initDashboardSettings() {
     compactToolbar = localStorage.getItem('tad.dashboard.compactToolbar') === '1';
-    hideEmptyHint = localStorage.getItem('tad.dashboard.hideEmptyHint') === '1';
-
-    const savedMode = localStorage.getItem('tad.capture.mode');
-    captureMode = (savedMode === 'snapshot') ? 'snapshot' : 'live';
-
-    const savedSec = Number(localStorage.getItem('tad.capture.snapshotIntervalSec'));
-    if (Number.isFinite(savedSec) && savedSec > 0) {
-        snapshotIntervalSec = Math.max(5, Math.min(120, Math.floor(savedSec)));
-    }
+    hideIfAllOffline = localStorage.getItem('tad.dashboard.hideEmptyHint') === '1';
 
     document.body.classList.toggle('compact-toolbar', compactToolbar);
     const emptyHint = document.getElementById('emptyHint');
-    if (emptyHint && hideEmptyHint) emptyHint.style.display = 'none';
-
-    // Persisted UI preference should be pushed to host on startup.
-    pushCaptureModeToHost();
+    if (emptyHint && hideIfAllOffline) emptyHint.style.display = 'none';
 })();
 
 function clearBlocklist() {
@@ -1949,24 +1825,16 @@ function updateStats() {
     // Re-apply filter so newly-offline tiles get hidden/shown
     students.forEach(s => applyFilter(s));
 
-    // Show an explicit offline empty state when every discovered student is offline.
+    // "Hide if all offline" toggle
     const emptyEl = document.getElementById('emptyState');
-    if (students.size > 0 && online === 0 && connecting === 0) {
+    if (hideIfAllOffline && students.size > 0 && online === 0 && connecting === 0) {
         if (emptyEl) {
             emptyEl.style.display = '';
             emptyEl.querySelector('h2').textContent = 'All Students Offline';
             emptyEl.querySelector('p').textContent = 'Every connected PC is currently offline.';
-            const hint = document.getElementById('emptyHint');
-            if (hint) hint.style.display = hideEmptyHint ? 'none' : '';
         }
     } else if (students.size > 0 && emptyEl) {
         emptyEl.style.display = 'none';
-    } else if (students.size === 0 && emptyEl) {
-        emptyEl.style.display = '';
-        emptyEl.querySelector('h2').textContent = 'No Students Connected';
-        emptyEl.querySelector('p').textContent = 'Waiting for student endpoints to come online...';
-        const hint = document.getElementById('emptyHint');
-        if (hint) hint.style.display = hideEmptyHint ? 'none' : '';
     }
 }
 
@@ -2227,7 +2095,6 @@ setInterval(updateConnectionBadge, 2000);
 
 function toggleLangDropdown() {
     const dd = document.getElementById('langDropdown');
-    if (!dd) return;
     dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
 
@@ -2242,7 +2109,6 @@ function updateLanguageIndicator(lang) {
 // Initialize language selector
 (function initLangSelector() {
     if (typeof TAD_I18N === 'undefined') return;
-    if (!document.getElementById('langSelector')) return;
     const currentLang = TAD_I18N.getLanguage();
     updateLanguageIndicator(currentLang);
 

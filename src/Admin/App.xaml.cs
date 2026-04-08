@@ -97,23 +97,17 @@ public partial class App : Application
         var splash = new SplashScreen();
         splash.Show();
 
-        splash.SetProgress(8);
-        splash.SetStatus("Preparing secure startup",
-            IsDemoMode ? "Demo profile enabled - endpoint emulation active" : "Production profile enabled - endpoint channels pending");
+        splash.SetStatus(IsDemoMode ? "Demo mode — no drivers required" : "Connecting to endpoints...");
         TADLogger.Info("Splash step 1");
-        await Task.Delay(650);
+        await Task.Delay(800);
 
-        splash.SetProgress(34);
-        splash.SetStatus("Loading control surface",
-            "Building dashboard shell and command bridges");
+        splash.SetStatus("Loading dashboard...");
         TADLogger.Info("Splash step 2");
-        await Task.Delay(550);
+        await Task.Delay(600);
 
-        splash.SetProgress(68);
-        splash.SetStatus(IsDemoMode ? "Generating demo endpoints" : "Initializing WebView2 runtime",
-            IsDemoMode ? "Synthesizing classroom telemetry and live thumbnails" : "Browser runtime warm-up for the teacher dashboard");
+        splash.SetStatus(IsDemoMode ? "Generating demo students..." : "Initializing WebView2...");
         TADLogger.Info("Splash step 3 — WebView2 init is deferred to Loaded event");
-        await Task.Delay(550);
+        await Task.Delay(600);
 
         // ── Launch Main Window ────────────────────────────────────────
         TADLogger.Info("Creating MainWindow");
@@ -134,9 +128,8 @@ public partial class App : Application
         mainWindow.Show();
         TADLogger.Info("mainWindow.Show() returned — window should be visible");
 
-        splash.SetProgress(100);
-        splash.SetStatus("Launch complete", "Teacher workspace is ready");
-        await Task.Delay(340);
+        splash.SetStatus("Ready!");
+        await Task.Delay(300);
         splash.Close();
         TADLogger.Info("Splash closed");
 

@@ -155,6 +155,7 @@ public sealed class DemoTcpClientManager : IDisposable
                 IsBlankScreen = student.IsBlankScreen,
                 IsWebLocked = student.IsWebLocked,
                 IsProgramLocked = student.IsProgramLocked,
+                IsAcademicWebFilterEnabled = student.IsAcademicWebFilterEnabled,
                 IsNetworkConnected = true, OsInfo = "Windows 11 (Demo)", CpuModel = "Intel Core i5-14600K",
                 Timestamp = DateTime.UtcNow,
             };
@@ -310,6 +311,11 @@ public sealed class DemoTcpClientManager : IDisposable
         if (_students.TryGetValue(ip, out var s)) s.IsProgramLocked = false;
     }
 
+    public void AcademicFilterStudent(string ip, bool enabled)
+    {
+        if (_students.TryGetValue(ip, out var s)) s.IsAcademicWebFilterEnabled = enabled;
+    }
+
     public int BroadcastProgramLock(BlocklistUpdate _)
     {
         foreach (var s in _students.Values) s.IsProgramLocked = true;
@@ -393,6 +399,7 @@ public sealed class DemoTcpClientManager : IDisposable
         public bool IsBlankScreen { get; set; }
         public bool IsWebLocked { get; set; }
         public bool IsProgramLocked { get; set; }
+        public bool IsAcademicWebFilterEnabled { get; set; }
         public int FreezeSecondsRemaining { get; set; }
         public double CpuUsage { get; set; }
         public long RamUsedMb { get; set; }
