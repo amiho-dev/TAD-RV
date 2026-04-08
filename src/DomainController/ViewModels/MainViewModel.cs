@@ -24,6 +24,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NavigatePolicyCommand     = new RelayCommand(() => CurrentView = new PolicyViewModel());
         NavigateAlertsCommand     = new RelayCommand(() => CurrentView = new AlertsViewModel());
         NavigateRecordingsCommand = new RelayCommand(() => CurrentView = new RecordingsViewModel());
+        NavigateRoomDesignerCommand = new RelayCommand(() => CurrentView = new RoomDesignerViewModel());
     }
 
     public object CurrentView
@@ -37,6 +38,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand NavigatePolicyCommand     { get; }
     public ICommand NavigateAlertsCommand     { get; }
     public ICommand NavigateRecordingsCommand { get; }
+    public ICommand NavigateRoomDesignerCommand { get; }
 
     // ── INotifyPropertyChanged ──────────────────────────────────────
     public event PropertyChangedEventHandler? PropertyChanged;

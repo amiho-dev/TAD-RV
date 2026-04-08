@@ -28,6 +28,7 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using TADAdmin.Networking;
 using TADBridge.Shared;
+using TADBridge.Shared.Classrooms;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
@@ -64,6 +65,11 @@ public partial class MainWindow : Window
     // Room filter: tracks discovered room IDs → student IPs
     private readonly Dictionary<string, string> _ipToRoom = new();  // ip → roomId
     private string _selectedRoom = "";  // "" = all rooms
+
+    // Room layout sync (authored by Domain Controller, consumed by Admin)
+    private RoomLayout _roomLayout = new();
+    private FileSystemWatcher? _roomLayoutWatcher;
+    private DateTime _lastRoomLayoutReload = DateTime.MinValue;
 
     // JSON options for camelCase deserialization
     private static readonly JsonSerializerOptions s_jsonOptions = new()
@@ -117,6 +123,8 @@ public partial class MainWindow : Window
             _discoveryListener.Start();
             TADLogger.Info("TcpClientManager and DiscoveryListener started");
         }
+
+        InitializeRoomLayoutSync();
 
         // WebView2 requires the window's HWND to exist before EnsureCoreWebView2Async.
         // Calling it from the constructor crashes because the handle does not exist yet.
@@ -370,6 +378,92 @@ public partial class MainWindow : Window
             PostJsonMessage(new { type = "set_room", name = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom });
     }
 
+    private void InitializeRoomLayoutSync()
+    {
+        LoadAndPublishRoomLayout();
+        StartRoomLayoutWatcher();
+    }
+
+    private void StartRoomLayoutWatcher()
+    {
+        try
+        {
+            string syncPath = RoomLayoutSync.ResolveSyncPath();
+            string? syncDir = Path.GetDirectoryName(syncPath);
+            string syncFile = Path.GetFileName(syncPath);
+
+            if (string.IsNullOrWhiteSpace(syncDir) || string.IsNullOrWhiteSpace(syncFile))
+                return;
+
+            Directory.CreateDirectory(syncDir);
+
+            _roomLayoutWatcher = new FileSystemWatcher(syncDir, syncFile)
+            {
+                NotifyFilter = NotifyFilters.LastWrite |
+                               NotifyFilters.FileName |
+                               NotifyFilters.CreationTime |
+                               NotifyFilters.Size,
+                IncludeSubdirectories = false,
+                EnableRaisingEvents = true
+            };
+
+            _roomLayoutWatcher.Changed += OnRoomLayoutFileChanged;
+            _roomLayoutWatcher.Created += OnRoomLayoutFileChanged;
+            _roomLayoutWatcher.Renamed += OnRoomLayoutFileChanged;
+        }
+        catch (Exception ex)
+        {
+            TADLogger.Warn($"Room layout watcher init failed: {ex.Message}");
+        }
+    }
+
+    private void OnRoomLayoutFileChanged(object? sender, FileSystemEventArgs e)
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastRoomLayoutReload < TimeSpan.FromMilliseconds(300))
+            return;
+
+        _lastRoomLayoutReload = now;
+
+        Dispatcher.InvokeAsync(async () =>
+        {
+            await Task.Delay(150);
+            LoadAndPublishRoomLayout();
+        });
+    }
+
+    private void LoadAndPublishRoomLayout()
+    {
+        try
+        {
+            _roomLayout = RoomLayout.Load(RoomLayoutSync.ResolveSyncPath());
+            PublishRoomLayoutToWebView();
+        }
+        catch (Exception ex)
+        {
+            TADLogger.Warn($"Room layout load failed: {ex.Message}");
+        }
+    }
+
+    private void PublishRoomLayoutToWebView()
+    {
+        var seats = _roomLayout.Items
+            .Where(i => !string.IsNullOrWhiteSpace(i.Host))
+            .OrderBy(i => i.Row)
+            .ThenBy(i => i.Col)
+            .Select(i => new
+            {
+                host = i.Host,
+                row = i.Row,
+                col = i.Col,
+                label = i.Label,
+                kind = i.Kind == RoomItemKind.Table ? "table" : "seat"
+            })
+            .ToArray();
+
+        PostJsonMessage(new { type = "room_layout", name = _roomLayout.Name, seats });
+    }
+
     // ─── WebView2 Initialization ──────────────────────────────────────
 
     private async void InitializeWebView()
@@ -400,12 +494,14 @@ public partial class MainWindow : Window
                 {
                     TADLogger.Info("Posting config (demo mode)");
                     PostJsonMessage(new { type = "config", demoMode = true, version = GetRunningVersion() });
+                    PublishRoomLayoutToWebView();
                 }
                 else if (_webViewReady)
                 {
                     TADLogger.Info("Posting config (production mode)");
                     PostJsonMessage(new { type = "config", demoMode = false, version = GetRunningVersion(),
                         room = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom });
+                    PublishRoomLayoutToWebView();
 
                     // Flush any students already discovered before the WebView was ready.
                     // Without this, students that connected before NavigationCompleted
@@ -955,12 +1051,6 @@ public partial class MainWindow : Window
         SetStatus("Refreshing...");
     }
 
-    private void BtnRoomDesigner_Click(object sender, RoutedEventArgs e)
-    {
-        var designer = new TADAdmin.ClassDesigner.ClassDesignerWindow { Owner = this };
-        designer.Show();
-    }
-
     // ── Manual endpoint add (workgroup / no-DC environments) ─────────
     private const string IpPlaceholder = "IP or hostname…";
 
@@ -1106,6 +1196,7 @@ public partial class MainWindow : Window
         _webViewReady = false;
         _statusTimer.Stop();
         _discoveryListener?.Dispose();
+        _roomLayoutWatcher?.Dispose();
         if (_isDemoMode) _demoManager?.Dispose();
         else _tcpManager?.Dispose();
 

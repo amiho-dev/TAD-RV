@@ -18,6 +18,7 @@
 // ── State ────────────────────────────────────────────────────────────
 
 const students = new Map();           // ip → { status, canvas, decoder, ... }
+const roomLayoutOrder = new Map();    // host key → seat order (1..N)
 let activeRvIp = null;                // Currently viewed remote view IP
 let rvDecoder = null;                 // WebCodecs VideoDecoder for fullscreen RV
 let rvMainDecoder = null;             // Main-stream decoder (30fps 720p)
@@ -80,6 +81,10 @@ window.chrome.webview.addEventListener('message', (event) => {
                 const rl = document.getElementById('roomLabel');
                 if (rl) rl.textContent = msg.name || 'All Rooms';
             }
+            break;
+
+        case 'room_layout':
+            applyRoomLayout(msg.seats || []);
             break;
 
         case 'status':
@@ -168,6 +173,7 @@ function handleStatusUpdate(ip, data) {
     if (data.IsProgramLocked) programBlocked.add(ip); else programBlocked.delete(ip);
 
     updateTileUI(student);
+    reorderTile(student);
     updateStats();
 
     // Auto-refresh device details panel if it's open for this student
@@ -267,7 +273,7 @@ function renderTile(student) {
         tile.querySelector('.tile-ctx-menu').style.display = 'none';
     });
 
-    grid.appendChild(tile);
+    insertTileByLayoutOrder(grid, tile, student);
     student.tileEl = tile;
     student.canvas = tile.querySelector('canvas');
     student.ctx = student.canvas.getContext('2d');
@@ -362,6 +368,114 @@ function removeStudentTile(ip) {
         students.delete(ip);
         updateStats();
     }
+}
+
+function applyRoomLayout(seats) {
+    roomLayoutOrder.clear();
+
+    let order = 0;
+    seats.forEach(seat => {
+        if (!seat || !seat.host) return;
+        order += 1;
+        addLayoutHostKey(seat.host, order);
+    });
+
+    reorderAllTiles();
+}
+
+function addLayoutHostKey(host, order) {
+    normalizeHostKeys(host).forEach(key => {
+        if (!roomLayoutOrder.has(key))
+            roomLayoutOrder.set(key, order);
+    });
+}
+
+function normalizeHostKeys(value) {
+    if (!value) return [];
+
+    const raw = String(value).trim().toLowerCase();
+    if (!raw) return [];
+
+    const keys = new Set();
+    const base = raw.includes(':') ? raw.split(':')[0] : raw;
+
+    keys.add(base);
+
+    const dotIdx = base.indexOf('.');
+    if (dotIdx > 0)
+        keys.add(base.substring(0, dotIdx));
+
+    return Array.from(keys);
+}
+
+function resolveLayoutOrder(student) {
+    const probes = [
+        student.ip,
+        student.status?.IpAddress,
+        student.status?.Hostname
+    ];
+
+    for (const probe of probes) {
+        for (const key of normalizeHostKeys(probe)) {
+            if (roomLayoutOrder.has(key))
+                return roomLayoutOrder.get(key);
+        }
+    }
+
+    return Number.MAX_SAFE_INTEGER;
+}
+
+function compareStudentsForLayout(a, b) {
+    const aOrder = resolveLayoutOrder(a);
+    const bOrder = resolveLayoutOrder(b);
+
+    if (aOrder !== bOrder)
+        return aOrder - bOrder;
+
+    const aName = (a.status?.Hostname || a.ip || '').toLowerCase();
+    const bName = (b.status?.Hostname || b.ip || '').toLowerCase();
+    const nameCmp = aName.localeCompare(bName);
+    if (nameCmp !== 0) return nameCmp;
+
+    return (a.ip || '').localeCompare(b.ip || '');
+}
+
+function insertTileByLayoutOrder(grid, tile, student) {
+    const siblings = Array.from(grid.children);
+
+    for (const sibling of siblings) {
+        if (sibling === tile) continue;
+
+        const other = students.get(sibling.dataset.ip);
+        if (!other) continue;
+
+        if (compareStudentsForLayout(student, other) < 0) {
+            grid.insertBefore(tile, sibling);
+            return;
+        }
+    }
+
+    grid.appendChild(tile);
+}
+
+function reorderTile(student) {
+    if (!student?.tileEl) return;
+
+    const grid = document.getElementById('studentGrid');
+    if (!grid) return;
+
+    insertTileByLayoutOrder(grid, student.tileEl, student);
+}
+
+function reorderAllTiles() {
+    const grid = document.getElementById('studentGrid');
+    if (!grid) return;
+
+    const sorted = Array.from(students.values()).sort(compareStudentsForLayout);
+    sorted.forEach(student => {
+        if (student.tileEl)
+            grid.appendChild(student.tileEl);
+    });
 }
 
 // ── Search / Filter ──────────────────────────────────────────────────

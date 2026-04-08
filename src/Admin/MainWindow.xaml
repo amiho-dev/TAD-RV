@@ -274,17 +274,6 @@
 
                     <Border Width="1" Background="#21262D" Margin="6,8" />
 
-                    <Button x:Name="BtnRoomDesigner" Click="BtnRoomDesigner_Click"
-                            Style="{StaticResource ToolBtn}" Tag="info" Margin="2,0,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE80F;" FontFamily="Segoe Fluent Icons,Segoe MDL2 Assets"
-                                       FontSize="14" VerticalAlignment="Center"/>
-                            <TextBlock Text="Room" Margin="6,0,0,0" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
-                    <Border Width="1" Background="#21262D" Margin="6,8" />
-
                     <!-- Room filter dropdown -->
                     <TextBlock Text="Room:" Foreground="#8B949E" FontSize="12"
                                VerticalAlignment="Center" Margin="4,0,4,0"/>

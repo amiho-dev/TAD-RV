@@ -34,6 +34,9 @@
         <DataTemplate DataType="{x:Type vm:RecordingsViewModel}">
             <v:RecordingsView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RoomDesignerViewModel}">
+            <v:RoomDesignerView />
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -103,6 +106,11 @@
                                  Content="Recordings"
                                  Tag="&#xE7C3;"
                                  Command="{Binding NavigateRecordingsCommand}" />
+
+                    <RadioButton Style="{StaticResource NavButton}"
+                                 Content="Room Designer"
+                                 Tag="&#xE8A5;"
+                                 Command="{Binding NavigateRoomDesignerCommand}" />
                 </StackPanel>
 
                 <!-- Footer -->
