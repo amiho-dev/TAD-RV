@@ -126,7 +126,11 @@ public sealed class TadTcpListener : BackgroundService
         {
             try
             {
-                var client = await _listener.AcceptTcpClientAsync(ct);
+                var listener = _listener;
+                if (listener == null)
+                    throw new InvalidOperationException("TCP listener is not initialized.");
+
+                var client = await listener.AcceptTcpClientAsync(ct);
                 client.NoDelay = true;
                 client.ReceiveBufferSize = 256 * 1024;
 
@@ -681,6 +685,7 @@ public sealed class TadTcpListener : BackgroundService
     {
         if (_isLocked) return;
         _isLocked = true;
+        _isFrozen = true;
 
         // 1. Tell the kernel driver to disable keyboard/mouse (if loaded)
         try
@@ -721,6 +726,7 @@ public sealed class TadTcpListener : BackgroundService
     {
         if (!_isLocked) return;
         _isLocked = false;
+        _isFrozen = false;
 
         // 1. Release kernel hard-lock
         try
@@ -1144,7 +1150,7 @@ public sealed class TadTcpListener : BackgroundService
         try {
             using var searcher = new System.Management.ManagementObjectSearcher("select Name from Win32_Processor");
             foreach (var item in searcher.Get()) {
-                if (item["Name"] != null) return item["Name"].ToString();
+                if (item["Name"] != null) return item["Name"]?.ToString() ?? "Unknown CPU";
             }
             return "Unknown CPU";
         } catch { return "Unknown CPU"; }
