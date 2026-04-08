@@ -114,7 +114,11 @@ public sealed class TadTcpListener : BackgroundService
         {
             try
             {
-                var client = await _listener.AcceptTcpClientAsync(ct);
+                var listener = _listener;
+                if (listener == null)
+                    throw new InvalidOperationException("TCP listener is not initialized.");
+
+                var client = await listener.AcceptTcpClientAsync(ct);
                 client.NoDelay = true;
                 client.ReceiveBufferSize = 256 * 1024;
 
@@ -382,15 +386,45 @@ public sealed class TadTcpListener : BackgroundService
     {
         try
         {
-            _log.LogInformation("Executing Launch App: {Cmd}", cmdOrPath);
-            string safe = (cmdOrPath ?? string.Empty).Replace("\"", "");
+            string raw = (cmdOrPath ?? string.Empty).Replace("\0", string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                _log.LogWarning("LaunchApp rejected: empty payload");
+                return;
+            }
+
+            if (!TrySplitLaunchCommand(raw, out string fileName, out string arguments))
+            {
+                _log.LogWarning("LaunchApp rejected: invalid command format");
+                return;
+            }
+
+            string bareName = Path.GetFileName(fileName);
+            if (bareName.Equals("cmd.exe", StringComparison.OrdinalIgnoreCase)
+                || bareName.Equals("powershell.exe", StringComparison.OrdinalIgnoreCase)
+                || bareName.Equals("pwsh.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                _log.LogWarning("LaunchApp rejected: command interpreters are not allowed ({App})", bareName);
+                return;
+            }
+
+            if (Uri.TryCreate(fileName, UriKind.Absolute, out var asUri)
+                && (asUri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                    || asUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                ExecuteLaunchUrl(asUri.ToString());
+                return;
+            }
+
+            _log.LogInformation("Executing Launch App: {File}", fileName);
+
             var psi = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c start \"\" \"{safe}\"",
-                CreateNoWindow = true,
-                UseShellExecute = false
+                FileName = fileName,
+                Arguments = arguments,
+                UseShellExecute = true
             };
+
             Process.Start(psi);
         }
         catch (Exception ex)
@@ -403,21 +437,73 @@ public sealed class TadTcpListener : BackgroundService
     {
         try
         {
-            _log.LogInformation("Executing Launch URL: {Url}", url);
-            string safe = (url ?? string.Empty).Replace("\"", "");
+            string candidate = (url ?? string.Empty).Replace("\0", string.Empty).Trim();
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
+                || !(uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                     || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                _log.LogWarning("LaunchUrl rejected: unsupported or invalid URL ({Url})", candidate);
+                return;
+            }
+
+            _log.LogInformation("Executing Launch URL: {Url}", uri);
+
             var psi = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c start \"\" \"{safe}\"",
-                CreateNoWindow = true,
-                UseShellExecute = false
+                FileName = uri.ToString(),
+                UseShellExecute = true
             };
+
             Process.Start(psi);
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "Failed to launch URL");
         }
+    }
+
+    private static bool TrySplitLaunchCommand(string raw, out string fileName, out string arguments)
+    {
+        fileName = string.Empty;
+        arguments = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        string text = raw.Trim();
+
+        if (text[0] == '"')
+        {
+            int endQuote = text.IndexOf('"', 1);
+            if (endQuote <= 1)
+                return false;
+
+            fileName = text[1..endQuote].Trim();
+            arguments = endQuote + 1 < text.Length
+                ? text[(endQuote + 1)..].Trim()
+                : string.Empty;
+        }
+        else
+        {
+            int firstSpace = text.IndexOf(' ');
+            if (firstSpace < 0)
+            {
+                fileName = text;
+            }
+            else
+            {
+                fileName = text[..firstSpace].Trim();
+                arguments = text[(firstSpace + 1)..].Trim();
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        if (fileName.IndexOfAny(['\r', '\n', '"']) >= 0)
+            return false;
+
+        return true;
     }
 
     private void ExecuteBlankScreen()
@@ -640,6 +726,7 @@ public sealed class TadTcpListener : BackgroundService
     {
         if (_isLocked) return;
         _isLocked = true;
+        _isFrozen = true;
 
         // 1. Tell the kernel driver to disable keyboard/mouse (if loaded)
         try
@@ -677,6 +764,7 @@ public sealed class TadTcpListener : BackgroundService
     {
         if (!_isLocked) return;
         _isLocked = false;
+        _isFrozen = false;
 
         // 1. Release kernel hard-lock
         try
@@ -1054,7 +1142,7 @@ public sealed class TadTcpListener : BackgroundService
         try {
             using var searcher = new System.Management.ManagementObjectSearcher("select Name from Win32_Processor");
             foreach (var item in searcher.Get()) {
-                if (item["Name"] != null) return item["Name"].ToString();
+                if (item["Name"] != null) return item["Name"]?.ToString() ?? "Unknown CPU";
             }
             return "Unknown CPU";
         } catch { return "Unknown CPU"; }

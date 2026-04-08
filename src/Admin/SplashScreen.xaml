@@ -6,90 +6,176 @@
         AllowsTransparency="True"
         Background="Transparent"
         ResizeMode="NoResize"
+        ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen"
-        Width="480" Height="340"
-        Topmost="True">
+        Width="620" Height="380"
+        Topmost="True"
+        FontFamily="Bahnschrift">
 
     <Window.Resources>
-        <!-- Animated dot pulse -->
-        <Storyboard x:Key="PulseAnim" RepeatBehavior="Forever">
-            <DoubleAnimation Storyboard.TargetName="Dot1" Storyboard.TargetProperty="Opacity"
-                             From="0.3" To="1" Duration="0:0:0.4" BeginTime="0:0:0" AutoReverse="True" />
-            <DoubleAnimation Storyboard.TargetName="Dot2" Storyboard.TargetProperty="Opacity"
-                             From="0.3" To="1" Duration="0:0:0.4" BeginTime="0:0:0.15" AutoReverse="True" />
-            <DoubleAnimation Storyboard.TargetName="Dot3" Storyboard.TargetProperty="Opacity"
-                             From="0.3" To="1" Duration="0:0:0.4" BeginTime="0:0:0.3" AutoReverse="True" />
+        <Storyboard x:Key="AmbientMotion" RepeatBehavior="Forever" AutoReverse="True">
+            <DoubleAnimation Storyboard.TargetName="GlowOrbLeftShift"
+                             Storyboard.TargetProperty="X"
+                             From="-16" To="20" Duration="0:0:6" />
+            <DoubleAnimation Storyboard.TargetName="GlowOrbRightShift"
+                             Storyboard.TargetProperty="X"
+                             From="22" To="-12" Duration="0:0:7" />
+        </Storyboard>
+
+        <Storyboard x:Key="ShimmerSweep" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="ShimmerShift"
+                             Storyboard.TargetProperty="X"
+                             From="-640" To="640" Duration="0:0:2.6" BeginTime="0:0:0.3" />
         </Storyboard>
     </Window.Resources>
 
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard Storyboard="{StaticResource PulseAnim}" />
+            <BeginStoryboard Storyboard="{StaticResource AmbientMotion}" />
+            <BeginStoryboard Storyboard="{StaticResource ShimmerSweep}" />
         </EventTrigger>
     </Window.Triggers>
 
-    <Border CornerRadius="12" BorderThickness="1">
+    <Border CornerRadius="20" BorderThickness="1.2" SnapsToDevicePixels="True">
         <Border.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#0D1117" Offset="0" />
-                <GradientStop Color="#161B22" Offset="1" />
+                <GradientStop Color="#0A0F19" Offset="0" />
+                <GradientStop Color="#111B2D" Offset="0.45" />
+                <GradientStop Color="#171E30" Offset="1" />
             </LinearGradientBrush>
         </Border.Background>
         <Border.BorderBrush>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#30363D" Offset="0" />
-                <GradientStop Color="#1A1F27" Offset="1" />
+                <GradientStop Color="#2A3A54" Offset="0" />
+                <GradientStop Color="#3F577A" Offset="0.5" />
+                <GradientStop Color="#1D2D45" Offset="1" />
             </LinearGradientBrush>
         </Border.BorderBrush>
         <Border.Effect>
-            <DropShadowEffect BlurRadius="40" ShadowDepth="0" Color="#000000" Opacity="0.5" />
+            <DropShadowEffect BlurRadius="54" ShadowDepth="0" Color="#000000" Opacity="0.56" />
         </Border.Effect>
 
-        <Grid Margin="48,40">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />  <!-- Logo + name -->
-                <RowDefinition Height="Auto" />  <!-- Subtitle -->
-                <RowDefinition Height="*" />      <!-- Center spacer -->
-                <RowDefinition Height="Auto" />  <!-- Loading dots + status -->
-                <RowDefinition Height="24" />     <!-- Spacer -->
-                <RowDefinition Height="Auto" />  <!-- Version -->
-                <RowDefinition Height="Auto" />  <!-- Copyright -->
-            </Grid.RowDefinitions>
+        <Grid ClipToBounds="True">
+            <Ellipse Width="300" Height="300" Opacity="0.19" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-85,-70,0,0">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="#4FA2FF" Offset="0" />
+                        <GradientStop Color="#004FA2FF" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.RenderTransform>
+                    <TranslateTransform x:Name="GlowOrbLeftShift" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
 
-            <!-- Logo + Product Name -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
-                <Image x:Name="LogoImage" Width="36" Height="36" Margin="0,0,10,0"
-                       RenderOptions.BitmapScalingMode="HighQuality" />
-                <TextBlock FontSize="32" FontWeight="Bold" VerticalAlignment="Center">
-                    <Run Text="TAD" Foreground="#E6EDF3" /><Run Text="." Foreground="#58A6FF" /><Run Text="RV" Foreground="#E6EDF3" />
-                </TextBlock>
-            </StackPanel>
+            <Ellipse Width="250" Height="250" Opacity="0.16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-70,-90">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="#49E3C8" Offset="0" />
+                        <GradientStop Color="#0049E3C8" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+                <Ellipse.RenderTransform>
+                    <TranslateTransform x:Name="GlowOrbRightShift" />
+                </Ellipse.RenderTransform>
+            </Ellipse>
 
-            <!-- Subtitle -->
-            <TextBlock Grid.Row="1" Text="Admin Controller"
-                       FontSize="13" Foreground="#8B949E" FontWeight="Normal"
-                       HorizontalAlignment="Center" Margin="0,6,0,0" />
+            <Rectangle Width="220" Height="520" Opacity="0.16" HorizontalAlignment="Center" VerticalAlignment="Center" RadiusX="90" RadiusY="90">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#00FFFFFF" Offset="0" />
+                        <GradientStop Color="#30FFFFFF" Offset="0.55" />
+                        <GradientStop Color="#00FFFFFF" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+                <Rectangle.RenderTransform>
+                    <TranslateTransform x:Name="ShimmerShift" />
+                </Rectangle.RenderTransform>
+            </Rectangle>
 
-            <!-- Loading dots + Status -->
-            <StackPanel Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
-                    <Ellipse x:Name="Dot1" Width="6" Height="6" Fill="#58A6FF" Opacity="0.3" Margin="3,0" />
-                    <Ellipse x:Name="Dot2" Width="6" Height="6" Fill="#58A6FF" Opacity="0.3" Margin="3,0" />
-                    <Ellipse x:Name="Dot3" Width="6" Height="6" Fill="#58A6FF" Opacity="0.3" Margin="3,0" />
+            <Grid Margin="38,32,38,28">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="58" Height="58" CornerRadius="14" BorderBrush="#2F3E59" BorderThickness="1" Background="#132238" Padding="10">
+                        <Image x:Name="LogoImage" RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock FontSize="27" FontWeight="SemiBold">
+                            <Run Text="TAD" Foreground="#E8F0FD" />
+                            <Run Text="." Foreground="#61AEFF" />
+                            <Run Text="RV" Foreground="#E8F0FD" />
+                        </TextBlock>
+                        <TextBlock Text="Admin Command Console"
+                                   FontSize="13"
+                                   Foreground="#97A8C2"
+                                   Margin="0,-2,0,0" />
+                    </StackPanel>
                 </StackPanel>
-                <TextBlock x:Name="TxtLoadingStatus" Text="Initializing..."
-                           FontSize="11" Foreground="#6E7681" HorizontalAlignment="Center" />
-            </StackPanel>
 
-            <!-- Version -->
-            <TextBlock Grid.Row="5" x:Name="TxtVersion"
-                       FontSize="11" Foreground="#484F58"
-                       HorizontalAlignment="Center" Margin="0,0,0,6" />
+                <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                    <TextBlock Text="Classroom orchestration is booting up"
+                               FontSize="19"
+                               FontWeight="SemiBold"
+                               Foreground="#DCE7F7" />
+                    <TextBlock Text="Secure channels, endpoint telemetry, and live controls are being prepared."
+                               FontSize="12.5"
+                               Foreground="#8CA0BC"
+                               Margin="0,6,0,0" />
+                </StackPanel>
 
-            <!-- Copyright -->
-            <TextBlock Grid.Row="6" Text="© 2026 TAD Europe"
-                       FontSize="10" Foreground="#30363D"
-                       HorizontalAlignment="Center" />
+                <Border Grid.Row="3" CornerRadius="11" BorderBrush="#2A3C58" BorderThickness="1" Padding="14,12" Background="#111D30">
+                    <StackPanel>
+                        <TextBlock x:Name="TxtLoadingStatus"
+                                   Text="Initializing..."
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="#D9E7FA" />
+                        <TextBlock x:Name="TxtLoadingDetail"
+                                   Text=""
+                                   FontSize="11"
+                                   Foreground="#8DA3C0"
+                                   Margin="0,3,0,0"
+                                   Visibility="Collapsed" />
+
+                        <Border x:Name="ProgressTrack"
+                                Margin="0,12,0,0"
+                                Height="8"
+                                CornerRadius="4"
+                                Background="#1D2B43"
+                                BorderBrush="#2F4262"
+                                BorderThickness="1"
+                                SnapsToDevicePixels="True">
+                            <Border x:Name="ProgressFill"
+                                    HorizontalAlignment="Left"
+                                    Height="6"
+                                    Width="0"
+                                    CornerRadius="3"
+                                    Margin="1"
+                                    Background="#66B6FF" />
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <DockPanel Grid.Row="4" Margin="0,14,0,0">
+                    <TextBlock x:Name="TxtVersion"
+                               DockPanel.Dock="Left"
+                               FontSize="10.5"
+                               Foreground="#8397B0" />
+                    <TextBlock Text="TAD Europe © 2026"
+                               DockPanel.Dock="Right"
+                               FontSize="10.5"
+                               Foreground="#7489A3"
+                               HorizontalAlignment="Right" />
+                </DockPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>

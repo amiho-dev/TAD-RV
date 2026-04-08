@@ -36,6 +36,12 @@ namespace TADAdmin;
 
 public partial class MainWindow : Window
 {
+    private enum TeacherCaptureMode
+    {
+        LiveStream,
+        SnapshotOnly
+    }
+
     // Shared interface: both managers expose the same events & methods
     private readonly TcpClientManager? _tcpManager;
     private readonly DemoTcpClientManager? _demoManager;
@@ -52,6 +58,9 @@ public partial class MainWindow : Window
 
     // Periodic thumbnail snapshot counter (every 5th status tick = 15s)
     private int _snapshotTickCounter;
+    private TeacherCaptureMode _captureMode = TeacherCaptureMode.LiveStream;
+    private int _snapshotIntervalSeconds = 15;
+    private DateTime _lastSnapshotBroadcastUtc = DateTime.MinValue;
 
     // Auto sub-stream: track which students already have a sub-stream running
     private readonly HashSet<string> _autoStreamStarted = new();
@@ -154,11 +163,22 @@ public partial class MainWindow : Window
             // Primary thumbnails come from the auto sub-stream (1fps H.264).
             if (!_isDemoMode && _tcpManager != null)
             {
-                _snapshotTickCounter++;
-                if (_snapshotTickCounter >= 10)
+                if (_captureMode == TeacherCaptureMode.SnapshotOnly)
                 {
-                    _snapshotTickCounter = 0;
-                    _tcpManager.BroadcastRequestSnapshot();
+                    if (DateTime.UtcNow - _lastSnapshotBroadcastUtc >= TimeSpan.FromSeconds(_snapshotIntervalSeconds))
+                    {
+                        _lastSnapshotBroadcastUtc = DateTime.UtcNow;
+                        _tcpManager.BroadcastRequestSnapshot();
+                    }
+                }
+                else
+                {
+                    _snapshotTickCounter++;
+                    if (_snapshotTickCounter >= 10)
+                    {
+                        _snapshotTickCounter = 0;
+                        _tcpManager.BroadcastRequestSnapshot();
+                    }
                 }
             }
         };
@@ -464,6 +484,63 @@ public partial class MainWindow : Window
         PostJsonMessage(new { type = "room_layout", name = _roomLayout.Name, seats });
     }
 
+    private void PublishCaptureModeToWebView()
+    {
+        PostJsonMessage(new
+        {
+            type = "capture_mode",
+            mode = _captureMode == TeacherCaptureMode.LiveStream ? "live" : "snapshot",
+            snapshotIntervalSec = _snapshotIntervalSeconds
+        });
+    }
+
+    private void ApplyCaptureMode(TeacherCaptureMode mode, int? snapshotIntervalSeconds = null)
+    {
+        if (snapshotIntervalSeconds.HasValue)
+            _snapshotIntervalSeconds = Math.Clamp(snapshotIntervalSeconds.Value, 5, 120);
+
+        bool modeChanged = _captureMode != mode;
+        _captureMode = mode;
+
+        if (_isDemoMode || _tcpManager == null)
+        {
+            PublishCaptureModeToWebView();
+            return;
+        }
+
+        var ips = _tcpManager.GetAllEndpointIps();
+
+        if (modeChanged && mode == TeacherCaptureMode.SnapshotOnly)
+        {
+            foreach (var ip in ips)
+            {
+                _tcpManager.StopFocusStream(ip);
+                _tcpManager.StopRemoteView(ip);
+            }
+
+            _autoStreamStarted.Clear();
+            _lastSnapshotBroadcastUtc = DateTime.MinValue;
+            _tcpManager.BroadcastRequestSnapshot();
+            SetStatus($"Capture mode: snapshots every {_snapshotIntervalSeconds}s", 6);
+        }
+        else if (modeChanged && mode == TeacherCaptureMode.LiveStream)
+        {
+            foreach (var ip in ips)
+            {
+                _tcpManager.StartRemoteView(ip);
+                _autoStreamStarted.Add(ip);
+            }
+
+            SetStatus("Capture mode: live stream (focus supports 720p@30fps)", 6);
+        }
+        else if (mode == TeacherCaptureMode.SnapshotOnly)
+        {
+            _lastSnapshotBroadcastUtc = DateTime.MinValue;
+        }
+
+        PublishCaptureModeToWebView();
+    }
+
     // ─── WebView2 Initialization ──────────────────────────────────────
 
     private async void InitializeWebView()
@@ -493,15 +570,31 @@ public partial class MainWindow : Window
                 if (_webViewReady && _isDemoMode)
                 {
                     TADLogger.Info("Posting config (demo mode)");
-                    PostJsonMessage(new { type = "config", demoMode = true, version = GetRunningVersion() });
+                    PostJsonMessage(new
+                    {
+                        type = "config",
+                        demoMode = true,
+                        version = GetRunningVersion(),
+                        captureMode = _captureMode == TeacherCaptureMode.LiveStream ? "live" : "snapshot",
+                        snapshotIntervalSec = _snapshotIntervalSeconds
+                    });
                     PublishRoomLayoutToWebView();
+                    PublishCaptureModeToWebView();
                 }
                 else if (_webViewReady)
                 {
                     TADLogger.Info("Posting config (production mode)");
-                    PostJsonMessage(new { type = "config", demoMode = false, version = GetRunningVersion(),
-                        room = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom });
+                    PostJsonMessage(new
+                    {
+                        type = "config",
+                        demoMode = false,
+                        version = GetRunningVersion(),
+                        room = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom,
+                        captureMode = _captureMode == TeacherCaptureMode.LiveStream ? "live" : "snapshot",
+                        snapshotIntervalSec = _snapshotIntervalSeconds
+                    });
                     PublishRoomLayoutToWebView();
+                    PublishCaptureModeToWebView();
 
                     // Flush any students already discovered before the WebView was ready.
                     // Without this, students that connected before NavigationCompleted
@@ -680,6 +773,36 @@ public partial class MainWindow : Window
                 case "focus_stop":
                     if (_isDemoMode) _demoManager!.StopFocusStream(msg.Target);
                     else _tcpManager!.StopFocusStream(msg.Target);
+                    break;
+                case "snapshot_now":
+                    if (_isDemoMode)
+                        break;
+
+                    if (!string.IsNullOrWhiteSpace(msg.Target))
+                        _tcpManager!.RequestSnapshot(msg.Target);
+                    else
+                        _tcpManager!.BroadcastRequestSnapshot();
+                    break;
+                case "set_capture_mode":
+                    if (string.IsNullOrWhiteSpace(msg.Payload))
+                        break;
+
+                    try
+                    {
+                        var req = JsonSerializer.Deserialize<CaptureModeRequest>(msg.Payload, s_jsonOptions);
+                        if (req == null)
+                            break;
+
+                        var mode = string.Equals(req.Mode, "snapshot", StringComparison.OrdinalIgnoreCase)
+                            ? TeacherCaptureMode.SnapshotOnly
+                            : TeacherCaptureMode.LiveStream;
+
+                        ApplyCaptureMode(mode, req.SnapshotIntervalSec);
+                    }
+                    catch
+                    {
+                        // Ignore malformed payloads from web UI.
+                    }
                     break;
                 case "lock":
                     if (_isDemoMode) _demoManager!.LockStudent(msg.Target);
@@ -963,10 +1086,13 @@ public partial class MainWindow : Window
     {
         if (!_webViewReady) return;
 
-        // Auto-start sub-stream on first valid status beacon (live thumbnails)
+        // Auto-start sub-stream on first valid status beacon only in live mode.
         if (!_isDemoMode && _tcpManager != null && _autoStreamStarted.Add(ip))
         {
-            _tcpManager.StartRemoteView(ip);
+            if (_captureMode == TeacherCaptureMode.LiveStream)
+                _tcpManager.StartRemoteView(ip);
+            else
+                _tcpManager.RequestSnapshot(ip);
         }
 
         Dispatcher.InvokeAsync(() =>
@@ -1304,4 +1430,13 @@ file sealed class WebMessage
 
     [JsonPropertyName("payload")]
     public string Payload { get; set; } = "";
+}
+
+file sealed class CaptureModeRequest
+{
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = "live";
+
+    [JsonPropertyName("snapshotIntervalSec")]
+    public int SnapshotIntervalSec { get; set; } = 15;
 }

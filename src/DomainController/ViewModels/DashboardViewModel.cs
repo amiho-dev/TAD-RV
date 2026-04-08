@@ -4,7 +4,11 @@
 
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using TADBridge.Shared;
+using TADBridge.Shared.Classrooms;
+using TADDomainController.Helpers;
+using TADDomainController.Services;
 
 namespace TADDomainController.ViewModels;
 
@@ -17,11 +21,17 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private string _updateStatus  = "";
     private bool   _updateAvailable;
     private string _releaseNotes  = "";
+    private string _lastRefreshed = "Never";
 
     private readonly UpdateManager _updater = new("dc");
+    private readonly TADServiceController _serviceController = new();
+    private readonly EventLogService _eventLogService = new();
 
     public DashboardViewModel()
     {
+        RefreshRuntimeCommand = new AsyncRelayCommand(RefreshRuntimeStatusAsync);
+
+        _ = RefreshRuntimeStatusAsync();
         _ = CheckForUpdatesAsync();
     }
 
@@ -65,6 +75,72 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     {
         get => _releaseNotes;
         set { _releaseNotes = value; OnPropertyChanged(); }
+    }
+
+    public string LastRefreshed
+    {
+        get => _lastRefreshed;
+        set { _lastRefreshed = value; OnPropertyChanged(); }
+    }
+
+    public ICommand RefreshRuntimeCommand { get; }
+
+    private async Task RefreshRuntimeStatusAsync()
+    {
+        try
+        {
+            var (driver, bridge) = await _serviceController.QueryAllAsync();
+
+            ServiceStatus = FormatServiceStatus(bridge);
+            DriverStatus = FormatServiceStatus(driver);
+
+            var events = _eventLogService.ReadRecentEvents(300);
+            AlertCount = events.Count(e =>
+                string.Equals(e.Level, "Error", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(e.Level, "Warning", StringComparison.OrdinalIgnoreCase)
+                || e.Message.Contains("[TAD.RV ALERT]", StringComparison.OrdinalIgnoreCase));
+
+            ActiveClients = ReadAssignedClientCount();
+            LastRefreshed = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        catch
+        {
+            ServiceStatus = "Unknown";
+            DriverStatus = "Unknown";
+            LastRefreshed = "Refresh failed";
+        }
+    }
+
+    private static string FormatServiceStatus(ServiceStatusInfo info)
+    {
+        if (!info.Exists)
+            return "Not Installed";
+
+        return info.Status.ToUpperInvariant() switch
+        {
+            "RUNNING" => "Running",
+            "STOPPED" => "Stopped",
+            "START_PENDING" => "Starting",
+            "STOP_PENDING" => "Stopping",
+            _ => info.Status
+        };
+    }
+
+    private static int ReadAssignedClientCount()
+    {
+        try
+        {
+            var layout = RoomLayout.Load();
+            return layout.AssignedItems
+                .Select(i => i.Host?.Trim())
+                .Where(host => !string.IsNullOrWhiteSpace(host))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     private async Task CheckForUpdatesAsync()

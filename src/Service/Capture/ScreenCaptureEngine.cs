@@ -236,6 +236,10 @@ public sealed class QuickSyncEncoder : IDisposable
             NativeMft.CoCreateMftEncoder(preferHardware: false, out _mft);
         }
 
+        if (_mft == IntPtr.Zero)
+            throw new InvalidOperationException(
+                $"[{_profile.Name}] H.264 encoder is unavailable on this host.");
+
         // Configure: resolution, bitrate, GOP, profile
         NativeMft.ConfigureEncoder(
             _mft,

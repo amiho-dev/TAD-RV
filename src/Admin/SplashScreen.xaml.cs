@@ -14,16 +14,43 @@ namespace TADAdmin;
 
 public partial class SplashScreen : Window
 {
+    private double _progressValue;
+
     public SplashScreen()
     {
         InitializeComponent();
         LoadLogo();
         LoadVersionInfo();
+
+        Loaded += (_, _) => UpdateProgressVisual();
+        ProgressTrack.SizeChanged += (_, _) => UpdateProgressVisual();
     }
 
     public void SetStatus(string text)
     {
         TxtLoadingStatus.Text = text;
+    }
+
+    public void SetStatus(string text, string? detail)
+    {
+        TxtLoadingStatus.Text = text;
+
+        if (string.IsNullOrWhiteSpace(detail))
+        {
+            TxtLoadingDetail.Text = string.Empty;
+            TxtLoadingDetail.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            TxtLoadingDetail.Text = detail;
+            TxtLoadingDetail.Visibility = Visibility.Visible;
+        }
+    }
+
+    public void SetProgress(double percentage)
+    {
+        _progressValue = Math.Clamp(percentage, 0, 100);
+        UpdateProgressVisual();
     }
 
     private void LoadLogo()
@@ -75,6 +102,15 @@ public partial class SplashScreen : Window
             version = asm.GetName().Version?.ToString() ?? "1.0.0.0";
         }
 
-        TxtVersion.Text = version;
+        TxtVersion.Text = $"Version {version}";
+    }
+
+    private void UpdateProgressVisual()
+    {
+        if (ProgressTrack == null || ProgressFill == null)
+            return;
+
+        double usableWidth = Math.Max(0, ProgressTrack.ActualWidth - 2);
+        ProgressFill.Width = usableWidth * (_progressValue / 100.0);
     }
 }

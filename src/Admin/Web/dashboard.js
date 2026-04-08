@@ -26,9 +26,11 @@ let isDemoMode = false;               // Set by config message from C#
 let currentFilter = '';               // Search filter string
 let appVersion = '26700.192';         // Updated by config message
 let showOffline = true;               // Show offline/connecting tiles by default
-let hideIfAllOffline = false;         // Toggle: show nothing if every PC is offline
+let hideEmptyHint = false;            // Toggle: hide helper text in empty state only
 let thumbMode = true;                 // Start in thumbnail view (live previews)
 let compactToolbar = false;
+let captureMode = 'live';             // 'live' or 'snapshot'
+let snapshotIntervalSec = 15;         // Snapshot cadence in seconds when snapshot mode is active
 
 // Per-student block state (tracked teacher-side)
 const internetBlocked = new Set();    // IPs with Web-Lock active
@@ -74,6 +76,13 @@ window.chrome.webview.addEventListener('message', (event) => {
                 const hint = document.getElementById('emptyHint');
                 if (hint) hint.textContent = 'Demo mode — synthetic students will appear shortly.';
             }
+            if (msg.captureMode || msg.snapshotIntervalSec) {
+                applyCaptureModeFromHost(msg.captureMode, msg.snapshotIntervalSec);
+            }
+            break;
+
+        case 'capture_mode':
+            applyCaptureModeFromHost(msg.mode, msg.snapshotIntervalSec);
             break;
 
         case 'set_room':
@@ -495,8 +504,9 @@ function toggleOfflineVisibility() {
 }
 
 function toggleHideIfAllOffline(checked) {
-    hideIfAllOffline = checked;
-    updateStats();
+    hideEmptyHint = checked;
+    const emptyHint = document.getElementById('emptyHint');
+    if (emptyHint) emptyHint.style.display = hideEmptyHint ? 'none' : '';
 }
 
 function applyFilter(student) {
@@ -561,6 +571,60 @@ function handleMainFrame(ip, base64Data, isKeyFrame) {
     }
 
     decodeFrame(rvMainDecoder, data, isKeyFrame);
+}
+
+function applyCaptureModeFromHost(mode, intervalSec) {
+    const prevMode = captureMode;
+    const nextMode = (String(mode || '').toLowerCase() === 'snapshot') ? 'snapshot' : 'live';
+    captureMode = nextMode;
+
+    const parsed = Number(intervalSec);
+    if (Number.isFinite(parsed)) {
+        snapshotIntervalSec = Math.max(5, Math.min(120, Math.floor(parsed)));
+    }
+
+    if (isDemoMode || !activeRvIp) return;
+
+    const streamInfo = document.getElementById('rvStreamInfo');
+
+    if (captureMode === 'snapshot') {
+        if (rvDecoder && rvDecoder.state !== 'closed') rvDecoder.close();
+        if (rvMainDecoder && rvMainDecoder.state !== 'closed') rvMainDecoder.close();
+        rvDecoder = null;
+        rvMainDecoder = null;
+
+        if (streamInfo)
+            streamInfo.textContent = `Snapshot mode (${snapshotIntervalSec}s interval)`;
+
+        sendToHost({ action: 'snapshot_now', target: activeRvIp });
+        return;
+    }
+
+    // Mode switched from snapshot -> live while RV is open: restart live streams.
+    if (prevMode === 'snapshot') {
+        const canvas = document.getElementById('rvCanvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            rvDecoder = createVideoDecoder(canvas, ctx, 1920, 1080);
+            rvMainDecoder = null;
+        }
+
+        if (streamInfo)
+            streamInfo.textContent = t('rv.subStream');
+
+        sendToHost({ action: 'rv_start', target: activeRvIp });
+        sendToHost({ action: 'focus_start', target: activeRvIp });
+    }
+}
+
+function pushCaptureModeToHost() {
+    sendToHost({
+        action: 'set_capture_mode',
+        payload: JSON.stringify({
+            mode: captureMode,
+            snapshotIntervalSec: snapshotIntervalSec
+        })
+    });
 }
 
 // ── JPEG Thumbnail Rendering (snapshot-based tile previews) ──────────
@@ -1111,8 +1175,24 @@ function startRv(ip) {
     streamInfo.textContent = isDemoMode ? t('rv.demoStream') : t('rv.subStream');
     modal.style.display = 'flex';
 
+    // Keep RV record button state in sync regardless of capture mode.
+    const rvRecBtn = document.getElementById('rvRecordBtn');
+    if (rvRecBtn) {
+        const isRec = activeRecordings.has(ip);
+        rvRecBtn.classList.toggle('recording', isRec);
+        rvRecBtn.title = isRec ? t('ctx.stopRecord') : t('ctx.record');
+    }
+
     // In demo mode, the demo_frame handler will paint the RV canvas directly
     if (!isDemoMode) {
+        if (captureMode === 'snapshot') {
+            rvDecoder = null;
+            rvMainDecoder = null;
+            streamInfo.textContent = `Snapshot mode (${snapshotIntervalSec}s interval)`;
+            sendToHost({ action: 'snapshot_now', target: ip });
+            return;
+        }
+
         // Create sub-stream fallback decoder for real mode
         const ctx = canvas.getContext('2d');
         rvDecoder = createVideoDecoder(canvas, ctx, 1920, 1080);
@@ -1123,14 +1203,6 @@ function startRv(ip) {
     // rv_start must arrive before focus_start so _isStreaming is set
     sendToHost({ action: 'rv_start', target: ip });
     sendToHost({ action: 'focus_start', target: ip });
-
-    // Update record button state if already recording
-    const rvRecBtn = document.getElementById('rvRecordBtn');
-    if (rvRecBtn) {
-        const isRec = activeRecordings.has(ip);
-        rvRecBtn.classList.toggle('recording', isRec);
-        rvRecBtn.title = isRec ? t('ctx.stopRecord') : t('ctx.record');
-    }
 }
 
 function closeRv() {
@@ -1144,7 +1216,9 @@ function closeRv() {
         }
         // Only stop the focus (main-stream 30fps). Keep sub-stream alive
         // for live grid thumbnails (auto sub-stream).
-        sendToHost({ action: 'focus_stop', target: activeRvIp });
+        if (captureMode === 'live') {
+            sendToHost({ action: 'focus_stop', target: activeRvIp });
+        }
     }
     document.getElementById('rvModal').style.display = 'none';
 
@@ -1695,12 +1769,18 @@ function openSettingsModal() {
         : 'en';
 
     const langSel = document.getElementById('settingsLanguage');
+    const capMode = document.getElementById('settingsCaptureMode');
+    const snapSec = document.getElementById('settingsSnapshotInterval');
     const compact = document.getElementById('settingsCompactToolbar');
     const hideHint = document.getElementById('settingsHideEmptyHint');
 
     if (langSel) langSel.value = lang;
+    if (capMode) capMode.value = captureMode;
+    if (snapSec) snapSec.value = String(snapshotIntervalSec);
     if (compact) compact.checked = compactToolbar;
-    if (hideHint) hideHint.checked = hideIfAllOffline;
+    if (hideHint) hideHint.checked = hideEmptyHint;
+
+    onCaptureModeChanged();
 
     if (modal) modal.style.display = 'flex';
 }
@@ -1712,6 +1792,8 @@ function closeSettingsModal() {
 
 function applyDashboardSettings() {
     const langSel = document.getElementById('settingsLanguage');
+    const capMode = document.getElementById('settingsCaptureMode');
+    const snapSec = document.getElementById('settingsSnapshotInterval');
     const compact = document.getElementById('settingsCompactToolbar');
     const hideHint = document.getElementById('settingsHideEmptyHint');
 
@@ -1722,26 +1804,55 @@ function applyDashboardSettings() {
     }
 
     compactToolbar = !!(compact && compact.checked);
-    hideIfAllOffline = !!(hideHint && hideHint.checked);
+    hideEmptyHint = !!(hideHint && hideHint.checked);
+
+    captureMode = (capMode && capMode.value === 'snapshot') ? 'snapshot' : 'live';
+
+    const parsedInterval = Number(snapSec ? snapSec.value : snapshotIntervalSec);
+    if (Number.isFinite(parsedInterval)) {
+        snapshotIntervalSec = Math.max(5, Math.min(120, Math.floor(parsedInterval)));
+    }
 
     document.body.classList.toggle('compact-toolbar', compactToolbar);
     const emptyHint = document.getElementById('emptyHint');
-    if (emptyHint) emptyHint.style.display = hideIfAllOffline ? 'none' : '';
+    if (emptyHint) emptyHint.style.display = hideEmptyHint ? 'none' : '';
 
     localStorage.setItem('tad.dashboard.compactToolbar', compactToolbar ? '1' : '0');
-    localStorage.setItem('tad.dashboard.hideEmptyHint', hideIfAllOffline ? '1' : '0');
+    localStorage.setItem('tad.dashboard.hideEmptyHint', hideEmptyHint ? '1' : '0');
+    localStorage.setItem('tad.capture.mode', captureMode);
+    localStorage.setItem('tad.capture.snapshotIntervalSec', String(snapshotIntervalSec));
+
+    pushCaptureModeToHost();
 
     closeSettingsModal();
     showToast('Settings updated', 'success');
 }
 
+function onCaptureModeChanged() {
+    const capMode = document.getElementById('settingsCaptureMode');
+    const row = document.getElementById('settingsSnapshotIntervalRow');
+    if (!capMode || !row) return;
+    row.style.display = capMode.value === 'snapshot' ? '' : 'none';
+}
+
 (function initDashboardSettings() {
     compactToolbar = localStorage.getItem('tad.dashboard.compactToolbar') === '1';
-    hideIfAllOffline = localStorage.getItem('tad.dashboard.hideEmptyHint') === '1';
+    hideEmptyHint = localStorage.getItem('tad.dashboard.hideEmptyHint') === '1';
+
+    const savedMode = localStorage.getItem('tad.capture.mode');
+    captureMode = (savedMode === 'snapshot') ? 'snapshot' : 'live';
+
+    const savedSec = Number(localStorage.getItem('tad.capture.snapshotIntervalSec'));
+    if (Number.isFinite(savedSec) && savedSec > 0) {
+        snapshotIntervalSec = Math.max(5, Math.min(120, Math.floor(savedSec)));
+    }
 
     document.body.classList.toggle('compact-toolbar', compactToolbar);
     const emptyHint = document.getElementById('emptyHint');
-    if (emptyHint && hideIfAllOffline) emptyHint.style.display = 'none';
+    if (emptyHint && hideEmptyHint) emptyHint.style.display = 'none';
+
+    // Persisted UI preference should be pushed to host on startup.
+    pushCaptureModeToHost();
 })();
 
 function clearBlocklist() {
@@ -1838,16 +1949,24 @@ function updateStats() {
     // Re-apply filter so newly-offline tiles get hidden/shown
     students.forEach(s => applyFilter(s));
 
-    // "Hide if all offline" toggle
+    // Show an explicit offline empty state when every discovered student is offline.
     const emptyEl = document.getElementById('emptyState');
-    if (hideIfAllOffline && students.size > 0 && online === 0 && connecting === 0) {
+    if (students.size > 0 && online === 0 && connecting === 0) {
         if (emptyEl) {
             emptyEl.style.display = '';
             emptyEl.querySelector('h2').textContent = 'All Students Offline';
             emptyEl.querySelector('p').textContent = 'Every connected PC is currently offline.';
+            const hint = document.getElementById('emptyHint');
+            if (hint) hint.style.display = hideEmptyHint ? 'none' : '';
         }
     } else if (students.size > 0 && emptyEl) {
         emptyEl.style.display = 'none';
+    } else if (students.size === 0 && emptyEl) {
+        emptyEl.style.display = '';
+        emptyEl.querySelector('h2').textContent = 'No Students Connected';
+        emptyEl.querySelector('p').textContent = 'Waiting for student endpoints to come online...';
+        const hint = document.getElementById('emptyHint');
+        if (hint) hint.style.display = hideEmptyHint ? 'none' : '';
     }
 }
 
@@ -2108,6 +2227,7 @@ setInterval(updateConnectionBadge, 2000);
 
 function toggleLangDropdown() {
     const dd = document.getElementById('langDropdown');
+    if (!dd) return;
     dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
 
@@ -2122,6 +2242,7 @@ function updateLanguageIndicator(lang) {
 // Initialize language selector
 (function initLangSelector() {
     if (typeof TAD_I18N === 'undefined') return;
+    if (!document.getElementById('langSelector')) return;
     const currentLang = TAD_I18N.getLanguage();
     updateLanguageIndicator(currentLang);
 

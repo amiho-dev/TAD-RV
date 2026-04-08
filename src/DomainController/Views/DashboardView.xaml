@@ -6,7 +6,13 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,28">
         <StackPanel MaxWidth="900">
 
-            <TextBlock Text="Dashboard" Style="{StaticResource SectionHeader}" />
+            <DockPanel LastChildFill="False" Margin="0,0,0,14">
+                <TextBlock Text="Dashboard" Style="{StaticResource SectionHeader}" />
+                <Button Content="Refresh Runtime"
+                        DockPanel.Dock="Right"
+                        Command="{Binding RefreshRuntimeCommand}"
+                        Style="{StaticResource AccentButton}" />
+            </DockPanel>
 
             <!-- Status Cards Row -->
             <UniformGrid Columns="3" Margin="0,0,0,24">
@@ -79,6 +85,8 @@
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8" />
                     <TextBlock Text="{Binding AlertCount, StringFormat='There are {0} pending alert(s).'}"
                                FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding LastRefreshed, StringFormat='Last refresh: {0}'}"
+                               FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>
 
