@@ -56,7 +56,7 @@ const TAD_LANG_FR = {
     'deploy.driverBinary': 'Binaire du pilote (TAD.RV.sys)',
     'deploy.driverPlaceholder': 'Chemin vers TAD.RV.sys',
     'deploy.serviceFolder': 'Dossier de publication du service',
-    'deploy.servicePlaceholder': 'Chemin vers la publication TadBridgeService',
+    'deploy.servicePlaceholder': 'Chemin vers la publication TADBridgeService',
     'deploy.targetDir': 'Répertoire d\'installation cible',
     'deploy.domainController': 'Contrôleur de domaine',
     'deploy.installDriver': 'Installer le pilote noyau',

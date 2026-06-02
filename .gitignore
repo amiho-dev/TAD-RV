@@ -4,13 +4,9 @@
 [Dd]ebug/
 [Rr]elease/
 
-# Publish / Results / Demo compiled
+# Publish / Results
 publish/
 results/
-release-client/
-release-teacher/
-release-addc/
-demo_compiled/
 
 # NuGet
 *.nupkg
@@ -45,8 +41,5 @@ _ReSharper*/
 *.cache
 *.log
 
-# Release ZIP artifacts (uploaded to GitHub Releases, not stored in repo)
-*.zip
-
-# Local-only tools (never commit)
-.local-tools/
+# Local web output
+html/

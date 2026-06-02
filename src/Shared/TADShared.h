@@ -90,19 +90,19 @@ Environment:
  * ═══════════════════════════════════════════════════════════════════════ */
 
 typedef enum _TAD_USER_ROLE {
-    TadRoleStudent  = 0,
-    TadRoleTeacher  = 1,
-    TadRoleAdmin    = 2,
-    TadRoleUnknown  = 0xFF
+    TADRoleStudent  = 0,
+    TADRoleTeacher  = 1,
+    TADRoleAdmin    = 2,
+    TADRoleUnknown  = 0xFF
 } TAD_USER_ROLE;
 
 typedef enum _TAD_ALERT_TYPE {
-    TadAlertNone              = 0,
-    TadAlertServiceTamper     = 1,   /* ObCallback detected stop attempt       */
-    TadAlertHeartbeatLost     = 2,   /* Heartbeat timeout — network kill       */
-    TadAlertUnlockBruteForce  = 3,   /* Unlock lockout triggered               */
-    TadAlertFileTamper        = 4,   /* Minifilter blocked deletion/rename     */
-    TadAlertProcessBlocked    = 5,   /* PsNotify blocked a banned application  */
+    TADAlertNone              = 0,
+    TADAlertServiceTamper     = 1,   /* ObCallback detected stop attempt       */
+    TADAlertHeartbeatLost     = 2,   /* Heartbeat timeout — network kill       */
+    TADAlertUnlockBruteForce  = 3,   /* Unlock lockout triggered               */
+    TADAlertFileTamper        = 4,   /* Minifilter blocked deletion/rename     */
+    TADAlertProcessBlocked    = 5,   /* PsNotify blocked a banned application  */
 } TAD_ALERT_TYPE;
 
 /* ═══════════════════════════════════════════════════════════════════════

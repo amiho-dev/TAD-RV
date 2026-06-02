@@ -49,8 +49,8 @@ Environment:
  * Driver Identity & Build Configuration
  * ═══════════════════════════════════════════════════════════════════════ */
 
-#define TAD_DEVICE_NAME         L"\\Device\\TadRvDevice"
-#define TAD_SYMBOLIC_LINK       L"\\DosDevices\\TadRvLink"
+#define TAD_DEVICE_NAME         L"\\Device\\TADRvDevice"
+#define TAD_SYMBOLIC_LINK       L"\\DosDevices\\TADRvLink"
 #define TAD_DRIVER_ALTITUDE     L"328471"
 #define TAD_POOL_TAG            'RVAT'
 
@@ -65,7 +65,7 @@ Environment:
 #define TAD_AUTH_KEY_SIZE       32
 #define TAD_KEY_XOR_MASK        ((UCHAR)0xA7)
 
-static const UCHAR TadObfuscatedKey[TAD_AUTH_KEY_SIZE] = {
+static const UCHAR TADObfuscatedKey[TAD_AUTH_KEY_SIZE] = {
     0xF3, 0xE6, 0xE3, 0x8A, 0xF5, 0xF1, 0x89, 0xF4,
     0xE2, 0xE4, 0xF2, 0xF5, 0xEE, 0xF3, 0xF2, 0xEC,
     0xE2, 0xFE, 0x97, 0x96, 0x95, 0x94, 0x93, 0x92,
@@ -168,7 +168,7 @@ typedef struct _TAD_DRIVER_GLOBALS {
 
 } TAD_DRIVER_GLOBALS, *PTAD_DRIVER_GLOBALS;
 
-extern TAD_DRIVER_GLOBALS g_Tad;
+extern TAD_DRIVER_GLOBALS g_TAD;
 
 /* ── Driver Entry / Unload ───────────────────────────────────────────── */
 
@@ -179,85 +179,85 @@ DRIVER_UNLOAD       TADDriverUnload;
 
 _Dispatch_type_(IRP_MJ_CREATE)
 _Dispatch_type_(IRP_MJ_CLOSE)
-DRIVER_DISPATCH     TadDispatchCreateClose;
+DRIVER_DISPATCH     TADDispatchCreateClose;
 
 _Dispatch_type_(IRP_MJ_DEVICE_CONTROL)
-DRIVER_DISPATCH     TadDispatchDeviceControl;
+DRIVER_DISPATCH     TADDispatchDeviceControl;
 
 /* ── ObRegisterCallbacks ─────────────────────────────────────────────── */
 
 OB_PREOP_CALLBACK_STATUS
-TadObProcessPreCallback(
+TADObProcessPreCallback(
     _In_    PVOID                           RegistrationContext,
     _Inout_ POB_PRE_OPERATION_INFORMATION   OperationInformation
     );
 
 OB_PREOP_CALLBACK_STATUS
-TadObThreadPreCallback(
+TADObThreadPreCallback(
     _In_    PVOID                           RegistrationContext,
     _Inout_ POB_PRE_OPERATION_INFORMATION   OperationInformation
     );
 
-NTSTATUS TadRegisterProcessProtection(VOID);
-VOID     TadUnregisterProcessProtection(VOID);
+NTSTATUS TADRegisterProcessProtection(VOID);
+VOID     TADUnregisterProcessProtection(VOID);
 
 /* ── PsSetCreateProcessNotifyRoutineEx ───────────────────────────── */
 
 /*
  * Callback registered with PsSetCreateProcessNotifyRoutineEx.
- * Checks CreateInfo->ImageFileName against g_Tad.BannedApps[] and
+ * Checks CreateInfo->ImageFileName against g_TAD.BannedApps[] and
  * sets CreateInfo->CreationStatus = STATUS_ACCESS_DENIED on a match.
  * On termination (CreateInfo == NULL) the callback does nothing.
  */
 VOID
-TadProcessNotifyCallback(
+TADProcessNotifyCallback(
     _Inout_  PEPROCESS               Process,
     _In_     HANDLE                   ProcessId,
     _In_opt_ PPS_CREATE_NOTIFY_INFO   CreateInfo
     );
 
-NTSTATUS TadRegisterProcessNotify(VOID);
-VOID     TadUnregisterProcessNotify(VOID);
+NTSTATUS TADRegisterProcessNotify(VOID);
+VOID     TADUnregisterProcessNotify(VOID);
 
 /* ── Minifilter ──────────────────────────────────────────────────────── */
 
 FLT_PREOP_CALLBACK_STATUS
-TadPreSetInformationCallback(
+TADPreSetInformationCallback(
     _Inout_ PFLT_CALLBACK_DATA              Data,
     _In_    PCFLT_RELATED_OBJECTS           FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID    *CompletionContext
     );
 
 NTSTATUS FLTAPI
-TadFilterUnloadCallback(
+TADFilterUnloadCallback(
     _In_ FLT_FILTER_UNLOAD_FLAGS Flags
     );
 
 /* ── Heartbeat Watchdog ──────────────────────────────────────────────── */
 
-VOID TadInitHeartbeatWatchdog(VOID);
-VOID TadStopHeartbeatWatchdog(VOID);
+VOID TADInitHeartbeatWatchdog(VOID);
+VOID TADStopHeartbeatWatchdog(VOID);
 
-KDEFERRED_ROUTINE TadHeartbeatDpcRoutine;
+KDEFERRED_ROUTINE TADHeartbeatDpcRoutine;
 
 /* ── Utilities ───────────────────────────────────────────────────────── */
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
-NTSTATUS TadCreateDeviceAndSymlink(_In_ PDRIVER_OBJECT DriverObject);
+NTSTATUS TADCreateDeviceAndSymlink(_In_ PDRIVER_OBJECT DriverObject);
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
-VOID TadCleanupDeviceAndSymlink(VOID);
+VOID TADCleanupDeviceAndSymlink(VOID);
 
 _IRQL_requires_max_(APC_LEVEL)
-BOOLEAN TadVerifyAuthKey(_In_reads_bytes_(TAD_AUTH_KEY_SIZE) const UCHAR *ProvidedKey);
+BOOLEAN TADVerifyAuthKey(_In_reads_bytes_(TAD_AUTH_KEY_SIZE) const UCHAR *ProvidedKey);
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
-NTSTATUS TadSetDeviceDacl(_In_ PDEVICE_OBJECT DeviceObject);
+NTSTATUS TADSetDeviceDacl(_In_ PDEVICE_OBJECT DeviceObject);
 
 _IRQL_requires_max_(APC_LEVEL)
-BOOLEAN TadIsCallerProtectedAgent(VOID);
+BOOLEAN TADIsCallerProtectedAgent(VOID);
 
-BOOLEAN TadIsProtectedFilename(_In_ PCUNICODE_STRING FileName);
+BOOLEAN TADIsProtectedFilename(_In_ PCUNICODE_STRING FileName);
 
 #endif /* _KERNEL_MODE */
 

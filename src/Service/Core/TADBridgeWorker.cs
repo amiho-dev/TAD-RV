@@ -26,7 +26,7 @@ public sealed class TADBridgeWorker : BackgroundService
     private readonly ProvisioningManager      _provisioning;
     private readonly AdGroupWatcher           _adWatcher;
 
-    private TadUserRole _lastPushedRole = TadUserRole.Unknown;
+    private TADUserRole _lastPushedRole = TADUserRole.Unknown;
     private string      _lastPushedSid  = string.Empty;
 
     public TADBridgeWorker(
@@ -90,7 +90,7 @@ public sealed class TADBridgeWorker : BackgroundService
             {
                 var (role, sessionId, sid) = _adWatcher.ResolveCurrentUser();
 
-                if (role != TadUserRole.Unknown && (role != _lastPushedRole || sid != _lastPushedSid))
+                if (role != TADUserRole.Unknown && (role != _lastPushedRole || sid != _lastPushedSid))
                 {
                     _driver.SetUserRole(role, sessionId, sid);
                     _lastPushedRole = role;

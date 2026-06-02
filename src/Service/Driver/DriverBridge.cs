@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────────
-// DriverBridge.cs — P/Invoke bridge to \\.\TadRvLink
+// DriverBridge.cs — P/Invoke bridge to \\.\TADRvLink
 //
 // Provides typed wrappers around DeviceIoControl for every IOCTL defined
 // in TADShared.h.  Handles safe handle management, buffer marshalling,
@@ -39,7 +39,7 @@ public class DriverBridge : IDisposable
             if (IsConnected) return;
 
             _deviceHandle = NativeMethods.CreateFile(
-                TadIoctl.DevicePath,
+                TADIoctl.DevicePath,
                 NativeMethods.GENERIC_READ | NativeMethods.GENERIC_WRITE,
                 0,                  // No sharing
                 IntPtr.Zero,
@@ -53,10 +53,10 @@ public class DriverBridge : IDisposable
                 int err = Marshal.GetLastWin32Error();
                 _log.LogError("Failed to connect to driver device. Win32 error {Error}", err);
                 throw new InvalidOperationException(
-                    $"Cannot open {TadIoctl.DevicePath} — Win32 error {err}");
+                    $"Cannot open {TADIoctl.DevicePath} — Win32 error {err}");
             }
 
-            _log.LogInformation("Connected to TAD.RV driver @ {Path}", TadIoctl.DevicePath);
+            _log.LogInformation("Connected to TAD.RV driver @ {Path}", TADIoctl.DevicePath);
         }
     }
 
@@ -76,8 +76,8 @@ public class DriverBridge : IDisposable
     /// </summary>
     public virtual void ProtectPid(uint pid)
     {
-        var input = new TadProtectPidInput { TargetPid = pid, Flags = 0 };
-        SendIoctl(TadIoctl.IOCTL_TAD_PROTECT_PID, input);
+        var input = new TADProtectPidInput { TargetPid = pid, Flags = 0 };
+        SendIoctl(TADIoctl.IOCTL_TAD_PROTECT_PID, input);
         _log.LogInformation("Registered PID {Pid} for protection", pid);
     }
 
@@ -87,8 +87,8 @@ public class DriverBridge : IDisposable
     /// </summary>
     public virtual void UnprotectPid(uint pid)
     {
-        var input = new TadProtectPidInput { TargetPid = pid, Flags = 1 }; // Flags=1 → remove
-        TrySendIoctl(TadIoctl.IOCTL_TAD_PROTECT_PID, input);
+        var input = new TADProtectPidInput { TargetPid = pid, Flags = 1 }; // Flags=1 → remove
+        TrySendIoctl(TADIoctl.IOCTL_TAD_PROTECT_PID, input);
         _log.LogDebug("Unprotected PID {Pid}", pid);
     }
 
@@ -97,48 +97,48 @@ public class DriverBridge : IDisposable
     /// </summary>
     public virtual bool Unlock()
     {
-        var input = new TadUnlockInput { AuthKey = TadIoctl.AuthKey };
-        return TrySendIoctl(TadIoctl.IOCTL_TAD_UNLOCK, input);
+        var input = new TADUnlockInput { AuthKey = TADIoctl.AuthKey };
+        return TrySendIoctl(TADIoctl.IOCTL_TAD_UNLOCK, input);
     }
 
     /// <summary>
     /// Send a heartbeat and retrieve driver status.
     /// </summary>
-    public virtual TadHeartbeatOutput? Heartbeat()
+    public virtual TADHeartbeatOutput? Heartbeat()
     {
-        return ReadIoctl<TadHeartbeatOutput>(TadIoctl.IOCTL_TAD_HEARTBEAT);
+        return ReadIoctl<TADHeartbeatOutput>(TADIoctl.IOCTL_TAD_HEARTBEAT);
     }
 
     /// <summary>
     /// Push the resolved AD user role to the kernel driver.
     /// </summary>
-    public virtual void SetUserRole(TadUserRole role, uint sessionId, string userSid)
+    public virtual void SetUserRole(TADUserRole role, uint sessionId, string userSid)
     {
-        var input = new TadSetUserRoleInput
+        var input = new TADSetUserRoleInput
         {
             Role      = (uint)role,
             SessionId = sessionId,
             UserSid   = userSid
         };
-        SendIoctl(TadIoctl.IOCTL_TAD_SET_USER_ROLE, input);
+        SendIoctl(TADIoctl.IOCTL_TAD_SET_USER_ROLE, input);
         _log.LogInformation("Pushed role {Role} for session {Session}", role, sessionId);
     }
 
     /// <summary>
     /// Push the resolved policy to the driver.
     /// </summary>
-    public virtual void SetPolicy(TadPolicyBuffer policy)
+    public virtual void SetPolicy(TADPolicyBuffer policy)
     {
-        SendIoctl(TadIoctl.IOCTL_TAD_SET_POLICY, policy);
+        SendIoctl(TADIoctl.IOCTL_TAD_SET_POLICY, policy);
         _log.LogInformation("Pushed policy (flags=0x{Flags:X}) to driver", policy.Flags);
     }
 
     /// <summary>
     /// Long-poll for a driver alert (blocks until the driver completes the IRP).
     /// </summary>
-    public virtual TadAlertOutput? ReadAlert()
+    public virtual TADAlertOutput? ReadAlert()
     {
-        return ReadIoctl<TadAlertOutput>(TadIoctl.IOCTL_TAD_READ_ALERT);
+        return ReadIoctl<TADAlertOutput>(TADIoctl.IOCTL_TAD_READ_ALERT);
     }
 
     /// <summary>
@@ -147,8 +147,8 @@ public class DriverBridge : IDisposable
     /// </summary>
     public virtual void SendHardLock(bool enable)
     {
-        var input = new TadHardLockInput { Enable = enable ? 1u : 0u, Flags = 0 };
-        SendIoctl(TadIoctl.IOCTL_TAD_HARD_LOCK, input);
+        var input = new TADHardLockInput { Enable = enable ? 1u : 0u, Flags = 0 };
+        SendIoctl(TADIoctl.IOCTL_TAD_HARD_LOCK, input);
         _log.LogInformation("Hard-lock {State}", enable ? "ENGAGED" : "RELEASED");
     }
 
@@ -159,8 +159,8 @@ public class DriverBridge : IDisposable
     /// </summary>
     public virtual void ProtectUiProcess(uint pid, bool protect = true)
     {
-        var input = new TadProtectUiInput { TargetPid = pid, Protect = protect ? 1u : 0u };
-        SendIoctl(TadIoctl.IOCTL_TAD_PROTECT_UI, input);
+        var input = new TADProtectUiInput { TargetPid = pid, Protect = protect ? 1u : 0u };
+        SendIoctl(TADIoctl.IOCTL_TAD_PROTECT_UI, input);
         _log.LogInformation("UI process {Pid} protection {State}", pid, protect ? "ON" : "OFF");
     }
 
@@ -169,14 +169,14 @@ public class DriverBridge : IDisposable
     /// "Screen Recording" border and hide DXGI duplication from DWM queries.
     /// Should be called when the capture engine starts.
     /// </summary>
-    public virtual void SetStealth(bool enable, TadStealthFlags flags = TadStealthFlags.All)
+    public virtual void SetStealth(bool enable, TADStealthFlags flags = TADStealthFlags.All)
     {
-        var input = new TadStealthInput
+        var input = new TADStealthInput
         {
             Enable = enable ? 1u : 0u,
             Flags = (uint)flags
         };
-        SendIoctl(TadIoctl.IOCTL_TAD_STEALTH, input);
+        SendIoctl(TADIoctl.IOCTL_TAD_STEALTH, input);
         _log.LogInformation("Stealth mode {State} (flags=0x{Flags:X})",
             enable ? "ACTIVE" : "DISABLED", (uint)flags);
     }
@@ -187,7 +187,7 @@ public class DriverBridge : IDisposable
     /// matches an entry in <paramref name="imageNames"/> will be denied at
     /// creation time via <c>PsSetCreateProcessNotifyRoutineEx</c>.<br/>
     /// The driver enforces the list only when the current policy has
-    /// <see cref="TadPolicyFlags.BlockApps"/> set.<br/>
+    /// <see cref="TADPolicyFlags.BlockApps"/> set.<br/>
     /// Pass an empty or null collection to clear all blocked applications.
     /// </summary>
     /// <param name="imageNames">
@@ -197,8 +197,8 @@ public class DriverBridge : IDisposable
     public virtual void SetBannedApps(IEnumerable<string>? imageNames)
     {
         var list  = imageNames?.ToList() ?? [];
-        var input = TadBannedAppsInput.Encode(list);
-        SendIoctl(TadIoctl.IOCTL_TAD_SET_BANNED_APPS, input);
+        var input = TADBannedAppsInput.Encode(list);
+        SendIoctl(TADIoctl.IOCTL_TAD_SET_BANNED_APPS, input);
 
         if (list.Count == 0)
             _log.LogInformation("Cleared banned-app list in driver");

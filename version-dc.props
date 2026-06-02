@@ -6,9 +6,9 @@
     InformationalVersion uses release channel naming.
   -->
   <PropertyGroup>
-    <Version>26.4.8</Version>
-    <FileVersion>26.4.8.500</FileVersion>
-    <InformationalVersion>v26.04.08.500-dc</InformationalVersion>
+    <Version>26.62.0</Version>
+    <FileVersion>26.62.0</FileVersion>
+    <InformationalVersion>v26.62.BF-dc</InformationalVersion>
   </PropertyGroup>
 
 </Project>

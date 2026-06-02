@@ -4,7 +4,7 @@
 // Long-polls the driver via IOCTL_TAD_READ_ALERT.  When the driver detects
 // an unauthorised attempt to stop the service (ObCallback / HandleStrip),
 // a forced unlock, or a file tamper, it completes the pending IRP with
-// a TadAlertOutput, which this worker then logs and forwards to the
+// a TADAlertOutput, which this worker then logs and forwards to the
 // school's admin alert infrastructure.
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -52,11 +52,11 @@ public sealed class AlertReaderWorker : BackgroundService
             {
                 // This blocks until the driver has an alert to report.
                 // In production, use overlapped I/O with a cancellation.
-                TadAlertOutput? alert = await Task.Run(
+                TADAlertOutput? alert = await Task.Run(
                     () => _driver.ReadAlert(),
                     stoppingToken);
 
-                if (alert.HasValue && alert.Value.AlertType != (uint)TadAlertType.None)
+                if (alert.HasValue && alert.Value.AlertType != (uint)TADAlertType.None)
                 {
                     HandleAlert(alert.Value);
                 }
@@ -76,34 +76,34 @@ public sealed class AlertReaderWorker : BackgroundService
         _log.LogInformation("AlertReaderWorker stopped");
     }
 
-    private void HandleAlert(TadAlertOutput alert)
+    private void HandleAlert(TADAlertOutput alert)
     {
-        var type = (TadAlertType)alert.AlertType;
+        var type = (TADAlertType)alert.AlertType;
 
         switch (type)
         {
-            case TadAlertType.ServiceTamper:
+            case TADAlertType.ServiceTamper:
                 _log.LogCritical(
                     "SECURITY: Process PID {Pid} attempted to kill TADBridgeService! Detail: {Detail}",
                     alert.SourcePid, alert.Detail);
                 WriteAdminAlertToEventLog(alert);
                 break;
 
-            case TadAlertType.HeartbeatLost:
+            case TADAlertType.HeartbeatLost:
                 _log.LogCritical(
                     "SECURITY: Driver lost heartbeat — network killswitch engaged. Detail: {Detail}",
                     alert.Detail);
                 WriteAdminAlertToEventLog(alert);
                 break;
 
-            case TadAlertType.UnlockBruteForce:
+            case TADAlertType.UnlockBruteForce:
                 _log.LogWarning(
                     "SECURITY: Unlock brute-force lockout triggered by PID {Pid}. Detail: {Detail}",
                     alert.SourcePid, alert.Detail);
                 WriteAdminAlertToEventLog(alert);
                 break;
 
-            case TadAlertType.FileTamper:
+            case TADAlertType.FileTamper:
                 _log.LogWarning(
                     "SECURITY: File tamper blocked for PID {Pid}. Detail: {Detail}",
                     alert.SourcePid, alert.Detail);
@@ -115,7 +115,7 @@ public sealed class AlertReaderWorker : BackgroundService
         }
     }
 
-    private void WriteAdminAlertToEventLog(TadAlertOutput alert)
+    private void WriteAdminAlertToEventLog(TADAlertOutput alert)
     {
         // In production, this would also:
         //   - Send an email / Teams webhook to the school IT admin

@@ -24,24 +24,24 @@ PnpLockdown = 1
 
 [DestinationDirs]
 DefaultDestDir     = 12
-TadRv.DriverFiles  = 12
+TADRv.DriverFiles  = 12
 
 [Manufacturer]
-%ManufacturerName% = TadRvModels,NTamd64
+%ManufacturerName% = TADRvModels,NTamd64
 
-[TadRvModels.NTamd64]
-%TadRvDesc% = TadRv.Install, Root\TadRvDevice
+[TADRvModels.NTamd64]
+%TADRvDesc% = TADRv.Install, Root\TADRvDevice
 
-[TadRv.Install]
-CopyFiles = TadRv.DriverFiles
+[TADRv.Install]
+CopyFiles = TADRv.DriverFiles
 
-[TadRv.DriverFiles]
+[TADRv.DriverFiles]
 TAD.RV.sys
 
-[TadRv.Install.Services]
-AddService = TadRv,,TadRv.Service
+[TADRv.Install.Services]
+AddService = TADRv,,TADRv.Service
 
-[TadRv.Service]
+[TADRv.Service]
 DisplayName    = %ServiceName%
 Description    = %ServiceDesc%
 ServiceBinary  = %12%\TAD.RV.sys
@@ -49,17 +49,17 @@ ServiceType    = 2
 StartType      = 0
 ErrorControl   = 1
 LoadOrderGroup = "FSFilter Activity Monitor"
-AddReg         = TadRv.ServiceReg
+AddReg         = TADRv.ServiceReg
 
-[TadRv.ServiceReg]
+[TADRv.ServiceReg]
 HKR,"Instances","DefaultInstance",0,%DefaultInstance%
 HKR,"Instances\"%DefaultInstance%,"Altitude",0,%Altitude%
 HKR,"Instances\"%DefaultInstance%,"Flags",0x00010001,0
 
-[TadRv.Install.HW]
-AddReg = TadRv.HW.Reg
+[TADRv.Install.HW]
+AddReg = TADRv.HW.Reg
 
-[TadRv.HW.Reg]
+[TADRv.HW.Reg]
 HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GA;;;BA)"
 
 [SourceDisksNames]
@@ -70,9 +70,9 @@ TAD.RV.sys = 1,,
 
 [Strings]
 ManufacturerName = "TAD Europe (https://tad-it.eu)"
-TadRvDesc        = "TAD.RV Endpoint Monitoring Driver"
+TADRvDesc        = "TAD.RV Endpoint Monitoring Driver"
 ServiceName      = "TAD.RV"
 ServiceDesc      = "TAD.RV school endpoint monitoring and process protection driver. (C) 2026 TAD Europe."
 DiskName         = "TAD.RV Installation Disk"
-DefaultInstance  = "TadRv Default Instance"
+DefaultInstance  = "TADRv Default Instance"
 Altitude         = "328471"

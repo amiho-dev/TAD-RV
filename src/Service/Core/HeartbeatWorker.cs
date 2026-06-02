@@ -5,7 +5,7 @@
 // receiving heartbeats (because this service was killed), the driver's
 // built-in DPC timer fires and triggers the WFP network killswitch.
 //
-// The returned TadHeartbeatOutput is logged and can be used to detect
+// The returned TADHeartbeatOutput is logged and can be used to detect
 // driver-side anomalies.
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ public sealed class HeartbeatWorker : BackgroundService
         {
             try
             {
-                TadHeartbeatOutput? hb = _driver.Heartbeat();
+                TADHeartbeatOutput? hb = _driver.Heartbeat();
 
                 if (hb.HasValue)
                 {
@@ -71,7 +71,7 @@ public sealed class HeartbeatWorker : BackgroundService
                         hb.Value.ProtectedPid,
                         hb.Value.ProcessProtectionActive != 0,
                         hb.Value.FileProtectionActive != 0,
-                        (TadUserRole)hb.Value.CurrentUserRole);
+                        (TADUserRole)hb.Value.CurrentUserRole);
                 }
                 else
                 {

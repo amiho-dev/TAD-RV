@@ -28,6 +28,7 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using TADAdmin.Networking;
 using TADBridge.Shared;
+using TADBridge.Shared.Classrooms;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
@@ -35,6 +36,12 @@ namespace TADAdmin;
 
 public partial class MainWindow : Window
 {
+    private enum TeacherCaptureMode
+    {
+        LiveStream,
+        SnapshotOnly
+    }
+
     // Shared interface: both managers expose the same events & methods
     private readonly TcpClientManager? _tcpManager;
     private readonly DemoTcpClientManager? _demoManager;
@@ -51,6 +58,9 @@ public partial class MainWindow : Window
 
     // Periodic thumbnail snapshot counter (every 5th status tick = 15s)
     private int _snapshotTickCounter;
+    private TeacherCaptureMode _captureMode = TeacherCaptureMode.LiveStream;
+    private int _snapshotIntervalSeconds = 15;
+    private DateTime _lastSnapshotBroadcastUtc = DateTime.MinValue;
 
     // Auto sub-stream: track which students already have a sub-stream running
     private readonly HashSet<string> _autoStreamStarted = new();
@@ -64,6 +74,11 @@ public partial class MainWindow : Window
     // Room filter: tracks discovered room IDs → student IPs
     private readonly Dictionary<string, string> _ipToRoom = new();  // ip → roomId
     private string _selectedRoom = "";  // "" = all rooms
+
+    // Room layout sync (authored by Domain Controller, consumed by Admin)
+    private RoomLayout _roomLayout = new();
+    private FileSystemWatcher? _roomLayoutWatcher;
+    private DateTime _lastRoomLayoutReload = DateTime.MinValue;
 
     // JSON options for camelCase deserialization
     private static readonly JsonSerializerOptions s_jsonOptions = new()
@@ -118,6 +133,8 @@ public partial class MainWindow : Window
             TADLogger.Info("TcpClientManager and DiscoveryListener started");
         }
 
+        InitializeRoomLayoutSync();
+
         // WebView2 requires the window's HWND to exist before EnsureCoreWebView2Async.
         // Calling it from the constructor crashes because the handle does not exist yet.
         // Defer to the Loaded event, which fires after the window is fully rendered.
@@ -146,11 +163,22 @@ public partial class MainWindow : Window
             // Primary thumbnails come from the auto sub-stream (1fps H.264).
             if (!_isDemoMode && _tcpManager != null)
             {
-                _snapshotTickCounter++;
-                if (_snapshotTickCounter >= 10)
+                if (_captureMode == TeacherCaptureMode.SnapshotOnly)
                 {
-                    _snapshotTickCounter = 0;
-                    _tcpManager.BroadcastRequestSnapshot();
+                    if (DateTime.UtcNow - _lastSnapshotBroadcastUtc >= TimeSpan.FromSeconds(_snapshotIntervalSeconds))
+                    {
+                        _lastSnapshotBroadcastUtc = DateTime.UtcNow;
+                        _tcpManager.BroadcastRequestSnapshot();
+                    }
+                }
+                else
+                {
+                    _snapshotTickCounter++;
+                    if (_snapshotTickCounter >= 10)
+                    {
+                        _snapshotTickCounter = 0;
+                        _tcpManager.BroadcastRequestSnapshot();
+                    }
                 }
             }
         };
@@ -209,7 +237,7 @@ public partial class MainWindow : Window
             if (_isDemoMode) _demoManager!.BroadcastUnlock();
             else
             {
-                int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
+                int n = _tcpManager!.BroadcastCommandCounted(TADCommand.Unlock);
                 ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
             }
             PostJsonMessage(new { type = "freeze_all", frozen = false });
@@ -370,6 +398,149 @@ public partial class MainWindow : Window
             PostJsonMessage(new { type = "set_room", name = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom });
     }
 
+    private void InitializeRoomLayoutSync()
+    {
+        LoadAndPublishRoomLayout();
+        StartRoomLayoutWatcher();
+    }
+
+    private void StartRoomLayoutWatcher()
+    {
+        try
+        {
+            string syncPath = RoomLayoutSync.ResolveSyncPath();
+            string? syncDir = Path.GetDirectoryName(syncPath);
+            string syncFile = Path.GetFileName(syncPath);
+
+            if (string.IsNullOrWhiteSpace(syncDir) || string.IsNullOrWhiteSpace(syncFile))
+                return;
+
+            Directory.CreateDirectory(syncDir);
+
+            _roomLayoutWatcher = new FileSystemWatcher(syncDir, syncFile)
+            {
+                NotifyFilter = NotifyFilters.LastWrite |
+                               NotifyFilters.FileName |
+                               NotifyFilters.CreationTime |
+                               NotifyFilters.Size,
+                IncludeSubdirectories = false,
+                EnableRaisingEvents = true
+            };
+
+            _roomLayoutWatcher.Changed += OnRoomLayoutFileChanged;
+            _roomLayoutWatcher.Created += OnRoomLayoutFileChanged;
+            _roomLayoutWatcher.Renamed += OnRoomLayoutFileChanged;
+        }
+        catch (Exception ex)
+        {
+            TADLogger.Warn($"Room layout watcher init failed: {ex.Message}");
+        }
+    }
+
+    private void OnRoomLayoutFileChanged(object? sender, FileSystemEventArgs e)
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastRoomLayoutReload < TimeSpan.FromMilliseconds(300))
+            return;
+
+        _lastRoomLayoutReload = now;
+
+        Dispatcher.InvokeAsync(async () =>
+        {
+            await Task.Delay(150);
+            LoadAndPublishRoomLayout();
+        });
+    }
+
+    private void LoadAndPublishRoomLayout()
+    {
+        try
+        {
+            _roomLayout = RoomLayout.Load(RoomLayoutSync.ResolveSyncPath());
+            PublishRoomLayoutToWebView();
+        }
+        catch (Exception ex)
+        {
+            TADLogger.Warn($"Room layout load failed: {ex.Message}");
+        }
+    }
+
+    private void PublishRoomLayoutToWebView()
+    {
+        var seats = _roomLayout.Items
+            .Where(i => !string.IsNullOrWhiteSpace(i.Host))
+            .OrderBy(i => i.Row)
+            .ThenBy(i => i.Col)
+            .Select(i => new
+            {
+                host = i.Host,
+                row = i.Row,
+                col = i.Col,
+                label = i.Label,
+                kind = i.Kind == RoomItemKind.Table ? "table" : "seat"
+            })
+            .ToArray();
+
+        PostJsonMessage(new { type = "room_layout", name = _roomLayout.Name, seats });
+    }
+
+    private void PublishCaptureModeToWebView()
+    {
+        PostJsonMessage(new
+        {
+            type = "capture_mode",
+            mode = _captureMode == TeacherCaptureMode.LiveStream ? "live" : "snapshot",
+            snapshotIntervalSec = _snapshotIntervalSeconds
+        });
+    }
+
+    private void ApplyCaptureMode(TeacherCaptureMode mode, int? snapshotIntervalSeconds = null)
+    {
+        if (snapshotIntervalSeconds.HasValue)
+            _snapshotIntervalSeconds = Math.Clamp(snapshotIntervalSeconds.Value, 5, 120);
+
+        bool modeChanged = _captureMode != mode;
+        _captureMode = mode;
+
+        if (_isDemoMode || _tcpManager == null)
+        {
+            PublishCaptureModeToWebView();
+            return;
+        }
+
+        var ips = _tcpManager.GetAllEndpointIps();
+
+        if (modeChanged && mode == TeacherCaptureMode.SnapshotOnly)
+        {
+            foreach (var ip in ips)
+            {
+                _tcpManager.StopFocusStream(ip);
+                _tcpManager.StopRemoteView(ip);
+            }
+
+            _autoStreamStarted.Clear();
+            _lastSnapshotBroadcastUtc = DateTime.MinValue;
+            _tcpManager.BroadcastRequestSnapshot();
+            SetStatus($"Capture mode: snapshots every {_snapshotIntervalSeconds}s", 6);
+        }
+        else if (modeChanged && mode == TeacherCaptureMode.LiveStream)
+        {
+            foreach (var ip in ips)
+            {
+                _tcpManager.StartRemoteView(ip);
+                _autoStreamStarted.Add(ip);
+            }
+
+            SetStatus("Capture mode: live stream (focus supports 720p@30fps)", 6);
+        }
+        else if (mode == TeacherCaptureMode.SnapshotOnly)
+        {
+            _lastSnapshotBroadcastUtc = DateTime.MinValue;
+        }
+
+        PublishCaptureModeToWebView();
+    }
+
     // ─── WebView2 Initialization ──────────────────────────────────────
 
     private async void InitializeWebView()
@@ -399,13 +570,31 @@ public partial class MainWindow : Window
                 if (_webViewReady && _isDemoMode)
                 {
                     TADLogger.Info("Posting config (demo mode)");
-                    PostJsonMessage(new { type = "config", demoMode = true, version = GetRunningVersion() });
+                    PostJsonMessage(new
+                    {
+                        type = "config",
+                        demoMode = true,
+                        version = GetRunningVersion(),
+                        captureMode = _captureMode == TeacherCaptureMode.LiveStream ? "live" : "snapshot",
+                        snapshotIntervalSec = _snapshotIntervalSeconds
+                    });
+                    PublishRoomLayoutToWebView();
+                    PublishCaptureModeToWebView();
                 }
                 else if (_webViewReady)
                 {
                     TADLogger.Info("Posting config (production mode)");
-                    PostJsonMessage(new { type = "config", demoMode = false, version = GetRunningVersion(),
-                        room = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom });
+                    PostJsonMessage(new
+                    {
+                        type = "config",
+                        demoMode = false,
+                        version = GetRunningVersion(),
+                        room = string.IsNullOrEmpty(_selectedRoom) ? "All Rooms" : _selectedRoom,
+                        captureMode = _captureMode == TeacherCaptureMode.LiveStream ? "live" : "snapshot",
+                        snapshotIntervalSec = _snapshotIntervalSeconds
+                    });
+                    PublishRoomLayoutToWebView();
+                    PublishCaptureModeToWebView();
 
                     // Flush any students already discovered before the WebView was ready.
                     // Without this, students that connected before NavigationCompleted
@@ -577,10 +766,6 @@ public partial class MainWindow : Window
                     if (_isDemoMode) _demoManager!.StopRemoteView(msg.Target);
                     else _tcpManager!.StopRemoteView(msg.Target);
                     break;
-                case "snapshot_request":
-                    if (!_isDemoMode && !string.IsNullOrWhiteSpace(msg.Target))
-                        _tcpManager!.RequestSnapshot(msg.Target);
-                    break;
                 case "focus_start":
                     if (_isDemoMode) _demoManager!.StartFocusStream(msg.Target);
                     else _tcpManager!.StartFocusStream(msg.Target);
@@ -588,6 +773,36 @@ public partial class MainWindow : Window
                 case "focus_stop":
                     if (_isDemoMode) _demoManager!.StopFocusStream(msg.Target);
                     else _tcpManager!.StopFocusStream(msg.Target);
+                    break;
+                case "snapshot_now":
+                    if (_isDemoMode)
+                        break;
+
+                    if (!string.IsNullOrWhiteSpace(msg.Target))
+                        _tcpManager!.RequestSnapshot(msg.Target);
+                    else
+                        _tcpManager!.BroadcastRequestSnapshot();
+                    break;
+                case "set_capture_mode":
+                    if (string.IsNullOrWhiteSpace(msg.Payload))
+                        break;
+
+                    try
+                    {
+                        var req = JsonSerializer.Deserialize<CaptureModeRequest>(msg.Payload, s_jsonOptions);
+                        if (req == null)
+                            break;
+
+                        var mode = string.Equals(req.Mode, "snapshot", StringComparison.OrdinalIgnoreCase)
+                            ? TeacherCaptureMode.SnapshotOnly
+                            : TeacherCaptureMode.LiveStream;
+
+                        ApplyCaptureMode(mode, req.SnapshotIntervalSec);
+                    }
+                    catch
+                    {
+                        // Ignore malformed payloads from web UI.
+                    }
                     break;
                 case "lock":
                     if (_isDemoMode) _demoManager!.LockStudent(msg.Target);
@@ -638,7 +853,7 @@ public partial class MainWindow : Window
                         }
                         else
                         {
-                            var pmFrame = TadFrameCodec.EncodeJson(TadCommand.PushMessage,
+                            var pmFrame = TADFrameCodec.EncodeJson(TADCommand.PushMessage,
                                 new PushMessageRequest { Message = msg.Payload });
                             bool pmSent = _tcpManager!.SendCommandToStudent(msg.Target, pmFrame);
                             if (!pmSent) ShowToast($"Failed: {msg.Target} not reachable", "error");
@@ -677,7 +892,7 @@ public partial class MainWindow : Window
                         }
                         else
                         {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Lock);
+                            int n = _tcpManager!.BroadcastCommandCounted(TADCommand.Lock);
                             ShowToast(n > 0 ? $"Lock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
                         }
                         SetStatus("Locked all screens");
@@ -692,7 +907,7 @@ public partial class MainWindow : Window
                         }
                         else
                         {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
+                            int n = _tcpManager!.BroadcastCommandCounted(TADCommand.Unlock);
                             ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
                         }
                         PostJsonMessage(new { type = "freeze_all", frozen = false });
@@ -710,7 +925,7 @@ public partial class MainWindow : Window
                         }
                         else
                         {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Lock);
+                            int n = _tcpManager!.BroadcastCommandCounted(TADCommand.Lock);
                             ShowToast(n > 0 ? $"Lock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
                         }
                         SetStatus("Locked all screens");
@@ -726,7 +941,7 @@ public partial class MainWindow : Window
                         }
                         else
                         {
-                            int n = _tcpManager!.BroadcastCommandCounted(TadCommand.Unlock);
+                            int n = _tcpManager!.BroadcastCommandCounted(TADCommand.Unlock);
                             ShowToast(n > 0 ? $"Unlock sent to {n} student(s)" : "No students connected", n > 0 ? "success" : "warning");
                         }
                         SetStatus("Unlocked all screens");
@@ -745,7 +960,7 @@ public partial class MainWindow : Window
                         _demoManager!.WebLockStudent(msg.Target);
                     else
                     {
-                        var wlFrame = TadFrameCodec.Encode(TadCommand.WebLock);
+                        var wlFrame = TADFrameCodec.Encode(TADCommand.WebLock);
                         _tcpManager!.SendCommandToStudent(msg.Target, wlFrame);
                     }
                     SetStatus($"Web-Lock enabled for {msg.Target}");
@@ -755,34 +970,10 @@ public partial class MainWindow : Window
                         _demoManager!.WebUnlockStudent(msg.Target);
                     else
                     {
-                        var wuFrame = TadFrameCodec.Encode(TadCommand.WebUnlock);
+                        var wuFrame = TADFrameCodec.Encode(TADCommand.WebUnlock);
                         _tcpManager!.SendCommandToStudent(msg.Target, wuFrame);
                     }
                     SetStatus($"Web-Lock disabled for {msg.Target}");
-                    break;
-                case "academic_block":
-                    if (_isDemoMode)
-                        _demoManager!.AcademicFilterStudent(msg.Target, true);
-                    else
-                    {
-                        var payload = msg.Payload ?? "{}";
-                        BlocklistUpdate awBl;
-                        try { awBl = JsonSerializer.Deserialize<BlocklistUpdate>(payload, s_jsonOptions) ?? new(); }
-                        catch { awBl = new BlocklistUpdate(); }
-                        var awFrame = TadFrameCodec.EncodeJson(TadCommand.AcademicWebLock, awBl);
-                        _tcpManager!.SendCommandToStudent(msg.Target, awFrame);
-                    }
-                    SetStatus($"Academic Web Filter enabled for {msg.Target}");
-                    break;
-                case "academic_unblock":
-                    if (_isDemoMode)
-                        _demoManager!.AcademicFilterStudent(msg.Target, false);
-                    else
-                    {
-                        var auFrame = TadFrameCodec.Encode(TadCommand.AcademicWebUnlock);
-                        _tcpManager!.SendCommandToStudent(msg.Target, auFrame);
-                    }
-                    SetStatus($"Academic Web Filter disabled for {msg.Target}");
                     break;
                 case "program_block":
                     if (_isDemoMode)
@@ -794,7 +985,7 @@ public partial class MainWindow : Window
                         BlocklistUpdate plBl;
                         try { plBl = JsonSerializer.Deserialize<BlocklistUpdate>(plPayload, s_jsonOptions) ?? new(); }
                         catch { plBl = new BlocklistUpdate(); }
-                        var plFrame = TadFrameCodec.EncodeJson(TadCommand.ProgramLock, plBl);
+                        var plFrame = TADFrameCodec.EncodeJson(TADCommand.ProgramLock, plBl);
                         _tcpManager!.SendCommandToStudent(msg.Target, plFrame);
                     }
                     SetStatus($"Program-Lock enabled for {msg.Target}");
@@ -804,7 +995,7 @@ public partial class MainWindow : Window
                         _demoManager!.ProgramUnlockStudent(msg.Target);
                     else
                     {
-                        var puFrame = TadFrameCodec.Encode(TadCommand.ProgramUnlock);
+                        var puFrame = TADFrameCodec.Encode(TADCommand.ProgramUnlock);
                         _tcpManager!.SendCommandToStudent(msg.Target, puFrame);
                     }
                     SetStatus($"Program-Lock disabled for {msg.Target}");
@@ -841,7 +1032,7 @@ public partial class MainWindow : Window
                         _demoManager!.LogoffStudent(msg.Target);
                     else
                     {
-                        var loFrame = TadFrameCodec.Encode(TadCommand.Logoff);
+                        var loFrame = TADFrameCodec.Encode(TADCommand.Logoff);
                         _tcpManager!.SendCommandToStudent(msg.Target, loFrame);
                     }
                     SetStatus($"Logoff sent to {msg.Target}");
@@ -851,7 +1042,7 @@ public partial class MainWindow : Window
                         _demoManager!.RebootStudent(msg.Target);
                     else
                     {
-                        var rbFrame = TadFrameCodec.Encode(TadCommand.Reboot);
+                        var rbFrame = TADFrameCodec.Encode(TADCommand.Reboot);
                         _tcpManager!.SendCommandToStudent(msg.Target, rbFrame);
                     }
                     SetStatus($"Reboot sent to {msg.Target}");
@@ -859,7 +1050,7 @@ public partial class MainWindow : Window
                 case "launch_app":
                     if (!_isDemoMode && !string.IsNullOrWhiteSpace(msg.Payload))
                     {
-                        var laFrame = TadFrameCodec.Encode(TadCommand.LaunchApp, System.Text.Encoding.UTF8.GetBytes(msg.Payload));
+                        var laFrame = TADFrameCodec.Encode(TADCommand.LaunchApp, System.Text.Encoding.UTF8.GetBytes(msg.Payload));
                         _tcpManager!.SendCommandToStudent(msg.Target, laFrame);
                         SetStatus($"Launched App on {msg.Target}");
                     }
@@ -867,7 +1058,7 @@ public partial class MainWindow : Window
                 case "launch_url":
                     if (!_isDemoMode && !string.IsNullOrWhiteSpace(msg.Payload))
                     {
-                        var luFrame = TadFrameCodec.Encode(TadCommand.LaunchUrl, System.Text.Encoding.UTF8.GetBytes(msg.Payload));
+                        var luFrame = TADFrameCodec.Encode(TADCommand.LaunchUrl, System.Text.Encoding.UTF8.GetBytes(msg.Payload));
                         _tcpManager!.SendCommandToStudent(msg.Target, luFrame);
                         SetStatus($"Launched URL on {msg.Target}");
                     }
@@ -877,7 +1068,7 @@ public partial class MainWindow : Window
                         _demoManager!.ShutdownStudent(msg.Target);
                     else
                     {
-                        var sdFrame = TadFrameCodec.Encode(TadCommand.Shutdown);
+                        var sdFrame = TADFrameCodec.Encode(TADCommand.Shutdown);
                         _tcpManager!.SendCommandToStudent(msg.Target, sdFrame);
                     }
                     SetStatus($"Shutdown sent to {msg.Target}");
@@ -895,10 +1086,13 @@ public partial class MainWindow : Window
     {
         if (!_webViewReady) return;
 
-        // Auto-start sub-stream on first valid status beacon (live thumbnails)
+        // Auto-start sub-stream on first valid status beacon only in live mode.
         if (!_isDemoMode && _tcpManager != null && _autoStreamStarted.Add(ip))
         {
-            _tcpManager.StartRemoteView(ip);
+            if (_captureMode == TeacherCaptureMode.LiveStream)
+                _tcpManager.StartRemoteView(ip);
+            else
+                _tcpManager.RequestSnapshot(ip);
         }
 
         Dispatcher.InvokeAsync(() =>
@@ -981,15 +1175,6 @@ public partial class MainWindow : Window
         if (_isDemoMode) _demoManager!.PingAll();
         else _tcpManager!.PingAll();
         SetStatus("Refreshing...");
-    }
-
-    private void BtnRoomDesigner_Click(object sender, RoutedEventArgs e)
-    {
-        MessageBox.Show(
-            "Room Designer is not included in this build.",
-            "TAD.RV",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
     }
 
     // ── Manual endpoint add (workgroup / no-DC environments) ─────────
@@ -1137,6 +1322,7 @@ public partial class MainWindow : Window
         _webViewReady = false;
         _statusTimer.Stop();
         _discoveryListener?.Dispose();
+        _roomLayoutWatcher?.Dispose();
         if (_isDemoMode) _demoManager?.Dispose();
         else _tcpManager?.Dispose();
 
@@ -1244,4 +1430,13 @@ file sealed class WebMessage
 
     [JsonPropertyName("payload")]
     public string Payload { get; set; } = "";
+}
+
+file sealed class CaptureModeRequest
+{
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = "live";
+
+    [JsonPropertyName("snapshotIntervalSec")]
+    public int SnapshotIntervalSec { get; set; } = 15;
 }

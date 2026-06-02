@@ -45,7 +45,7 @@ public class ProvisioningManager
     /// <summary>
     /// Ensures the machine is provisioned.  Returns the active policy.
     /// </summary>
-    public virtual async Task<TadPolicyBuffer?> EnsureProvisionedAsync(CancellationToken ct)
+    public virtual async Task<TADPolicyBuffer?> EnsureProvisionedAsync(CancellationToken ct)
     {
         bool provisioned = IsProvisioned();
 
@@ -159,7 +159,7 @@ public class ProvisioningManager
 
         // ── Fetch Policy.json ────────────────────────────────────────
         string policyJson = string.Empty;
-        TadPolicyConfig? policyConfig = null;
+        TADPolicyConfig? policyConfig = null;
         string policyNetworkPath = ResolvePolicyNetworkPath();
 
         try
@@ -173,30 +173,30 @@ public class ProvisioningManager
             else
             {
                 _log.LogWarning("Policy.json not found at {Path} — using defaults", policyNetworkPath);
-                policyConfig = TadPolicyConfig.Default;
+                policyConfig = TADPolicyConfig.Default;
             }
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "Failed to read Policy.json — using defaults");
-            policyConfig = TadPolicyConfig.Default;
+            policyConfig = TADPolicyConfig.Default;
         }
 
         if (policyConfig == null && !string.IsNullOrEmpty(policyJson))
         {
             try
             {
-                policyConfig = JsonSerializer.Deserialize<TadPolicyConfig>(policyJson,
+                policyConfig = JsonSerializer.Deserialize<TADPolicyConfig>(policyJson,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
             catch (JsonException ex)
             {
                 _log.LogError(ex, "Invalid Policy.json — using defaults");
-                policyConfig = TadPolicyConfig.Default;
+                policyConfig = TADPolicyConfig.Default;
             }
         }
 
-        policyConfig ??= TadPolicyConfig.Default;
+        policyConfig ??= TADPolicyConfig.Default;
 
         // ── Store in registry ────────────────────────────────────────
         using (var key = Registry.LocalMachine.CreateSubKey(RegistryKeyPath, writable: true))
@@ -214,7 +214,7 @@ public class ProvisioningManager
 
     // ─── Load Cached Policy ──────────────────────────────────────────
 
-    private TadPolicyBuffer? LoadPolicyFromRegistry()
+    private TADPolicyBuffer? LoadPolicyFromRegistry()
     {
         try
         {
@@ -223,12 +223,12 @@ public class ProvisioningManager
             string? json = key?.GetValue(PolicyJsonValue) as string;
             string? ou   = key?.GetValue(OuValue) as string;
 
-            TadPolicyConfig? config = null;
+            TADPolicyConfig? config = null;
             if (!string.IsNullOrEmpty(json))
             {
                 try
                 {
-                    config = JsonSerializer.Deserialize<TadPolicyConfig>(json,
+                    config = JsonSerializer.Deserialize<TADPolicyConfig>(json,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 }
                 catch (JsonException ex)
@@ -237,9 +237,9 @@ public class ProvisioningManager
                 }
             }
 
-            config ??= TadPolicyConfig.Default;
+            config ??= TADPolicyConfig.Default;
 
-            return new TadPolicyBuffer
+            return new TADPolicyBuffer
             {
                 Version              = (uint)config.Version,
                 Flags                = (uint)config.Flags,
@@ -265,7 +265,7 @@ public class ProvisioningManager
 /// <summary>
 /// Maps to the Policy.json file on the NETLOGON share.
 /// </summary>
-public sealed class TadPolicyConfig
+public sealed class TADPolicyConfig
 {
     public int    Version             { get; set; } = 1;
     public int    Flags               { get; set; } = 0;
@@ -276,9 +276,9 @@ public sealed class TadPolicyConfig
     /// <summary>AD group → role mapping. Customise per deployment.</summary>
     public Dictionary<string, int> GroupRoleMappings { get; set; } = new()
     {
-        ["Domain Users"]         = 0,   // TadRoleEndpoint (default)
-        ["TAD-Controllers"]      = 1,   // TadRoleController (teacher / presenter)
-        ["Domain Admins"]        = 2,   // TadRoleAdmin
+        ["Domain Users"]         = 0,   // TADRoleEndpoint (default)
+        ["TAD-Controllers"]      = 1,   // TADRoleController (teacher / presenter)
+        ["Domain Admins"]        = 2,   // TADRoleAdmin
         ["TAD-Administrators"]   = 2,
     };
 
@@ -292,5 +292,5 @@ public sealed class TadPolicyConfig
         "regedit.exe",
     };
 
-    public static TadPolicyConfig Default => new();
+    public static TADPolicyConfig Default => new();
 }

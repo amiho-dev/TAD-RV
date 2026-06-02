@@ -56,7 +56,7 @@ const TAD_LANG_IT = {
     'deploy.driverBinary': 'Binario driver (TAD.RV.sys)',
     'deploy.driverPlaceholder': 'Percorso di TAD.RV.sys',
     'deploy.serviceFolder': 'Cartella pubblicazione servizio',
-    'deploy.servicePlaceholder': 'Percorso pubblicazione TadBridgeService',
+    'deploy.servicePlaceholder': 'Percorso pubblicazione TADBridgeService',
     'deploy.targetDir': 'Directory di installazione di destinazione',
     'deploy.domainController': 'Controller di dominio',
     'deploy.installDriver': 'Installa driver del kernel',

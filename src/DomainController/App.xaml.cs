@@ -18,19 +18,19 @@ public partial class App : Application
 
         while (true)
         {
-            var license = TadLicenseManager.EnsureLicense("dc");
+            var license = TADLicenseManager.EnsureLicense("dc");
             if (license.IsLicensed)
             {
                 if (license.IsTrial)
                 {
-                    TadLicenseDialogs.ShowInfo(
+                    TADLicenseDialogs.ShowInfo(
                         $"Free trial active. {license.TrialDaysRemaining} day(s) remaining.\n\nDevice serial:\n{license.DeviceSerial}",
                         "TAD.RV Management Console - Trial");
                 }
                 break;
             }
 
-            string? key = TadLicenseDialogs.PromptForActivationKey(
+            string? key = TADLicenseDialogs.PromptForActivationKey(
                 license.DeviceSerial,
                 "TAD.RV Management Console - Activation Required");
 
@@ -40,13 +40,13 @@ public partial class App : Application
                 return;
             }
 
-            if (TadLicenseManager.TryActivate(key, "dc", out string activationError))
+            if (TADLicenseManager.TryActivate(key, "dc", out string activationError))
             {
-                TadLicenseDialogs.ShowInfo("Activation successful.", "TAD.RV Management Console");
+                TADLicenseDialogs.ShowInfo("Activation successful.", "TAD.RV Management Console");
                 continue;
             }
 
-            TadLicenseDialogs.ShowError("Activation failed: " + activationError, "TAD.RV Management Console");
+            TADLicenseDialogs.ShowError("Activation failed: " + activationError, "TAD.RV Management Console");
         }
 
         // Check if running with administrator privileges

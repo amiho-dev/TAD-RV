@@ -20,9 +20,9 @@ namespace TADBridge.Shared;
 // Constants
 // ═══════════════════════════════════════════════════════════════════════════
 
-public static class TadIoctl
+public static class TADIoctl
 {
-    public const string DevicePath = @"\\.\TadRvLink";
+    public const string DevicePath = @"\\.\TADRvLink";
 
     public const uint DeviceType = 0x8A00;
     public const int  AuthKeySize = 32;
@@ -60,7 +60,7 @@ public static class TadIoctl
 // Enumerations
 // ═══════════════════════════════════════════════════════════════════════════
 
-public enum TadUserRole : uint
+public enum TADUserRole : uint
 {
     Student = 0,
     Teacher = 1,
@@ -68,7 +68,7 @@ public enum TadUserRole : uint
     Unknown = 0xFF
 }
 
-public enum TadAlertType : uint
+public enum TADAlertType : uint
 {
     None             = 0,
     ServiceTamper    = 1,
@@ -83,7 +83,7 @@ public enum TadAlertType : uint
 // ═══════════════════════════════════════════════════════════════════════════
 
 [Flags]
-public enum TadPolicyFlags : uint
+public enum TADPolicyFlags : uint
 {
     None             = 0,
     BlockUsb         = 0x00000001,
@@ -99,21 +99,21 @@ public enum TadPolicyFlags : uint
 // ═══════════════════════════════════════════════════════════════════════════
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public struct TadProtectPidInput
+public struct TADProtectPidInput
 {
     public uint TargetPid;
     public uint Flags;          // Reserved — must be 0
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public struct TadHardLockInput
+public struct TADHardLockInput
 {
     public uint Enable;         // 1 = lock keyboard+mouse, 0 = unlock
     public uint Flags;          // Reserved — must be 0
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public struct TadProtectUiInput
+public struct TADProtectUiInput
 {
     public uint TargetPid;      // PID of the overlay process to protect
     public uint Protect;        // 1 = enable, 0 = remove
@@ -123,7 +123,7 @@ public struct TadProtectUiInput
 /// Stealth mode flags. Bitfield controlling which stealth features are active.
 /// </summary>
 [Flags]
-public enum TadStealthFlags : uint
+public enum TADStealthFlags : uint
 {
     None                   = 0,
     SuppressYellowBorder   = 0x01,  // Suppress Windows 11 yellow "Screen Recording" border
@@ -133,21 +133,21 @@ public enum TadStealthFlags : uint
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public struct TadStealthInput
+public struct TADStealthInput
 {
     public uint Enable;         // 1 = stealth ON, 0 = stealth OFF
-    public uint Flags;          // TadStealthFlags bitmask
+    public uint Flags;          // TADStealthFlags bitmask
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public struct TadUnlockInput
+public struct TADUnlockInput
 {
-    [MarshalAs(UnmanagedType.ByValArray, SizeConst = TadIoctl.AuthKeySize)]
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = TADIoctl.AuthKeySize)]
     public byte[] AuthKey;
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]
-public struct TadHeartbeatOutput
+public struct TADHeartbeatOutput
 {
     public uint DriverVersionMajor;
     public uint DriverVersionMinor;
@@ -162,7 +162,7 @@ public struct TadHeartbeatOutput
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Unicode)]
-public struct TadSetUserRoleInput
+public struct TADSetUserRoleInput
 {
     public uint Role;
     public uint SessionId;
@@ -172,7 +172,7 @@ public struct TadSetUserRoleInput
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Unicode)]
-public struct TadPolicyBuffer
+public struct TADPolicyBuffer
 {
     public uint Version;
     public uint Flags;
@@ -189,7 +189,7 @@ public struct TadPolicyBuffer
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Unicode)]
-public struct TadAlertOutput
+public struct TADAlertOutput
 {
     public uint  AlertType;
     public long  Timestamp;
@@ -212,7 +212,7 @@ public struct TadAlertOutput
 /// not full paths.  Matching in the callback is case-insensitive.
 /// </summary>
 [StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Unicode)]
-public struct TadBannedAppsInput
+public struct TADBannedAppsInput
 {
     public const int MaxEntries       = 32;
     public const int MaxImageNameLen  = 64;   // WCHARs including NUL
@@ -221,15 +221,15 @@ public struct TadBannedAppsInput
 
     // Fixed-size 2D array: 32 entries × 64 WCHARs = 4096 WCHARs = 8192 bytes.
     // Declared as a flat byte array so Marshal can handle it; callers use
-    // TadBannedAppsInput.Encode() to fill it.
+    // TADBannedAppsInput.Encode() to fill it.
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = MaxEntries * MaxImageNameLen)]
     public char[] RawNames;  // layout: Names[i] starts at [i * MaxImageNameLen]
 
     /// <summary>
-    /// Build a <see cref="TadBannedAppsInput"/> from a list of bare image names.
+    /// Build a <see cref="TADBannedAppsInput"/> from a list of bare image names.
     /// Names are silently truncated to <see cref="MaxImageNameLen"/>-1 characters.
     /// </summary>
-    public static TadBannedAppsInput Encode(IEnumerable<string> imageNames)
+    public static TADBannedAppsInput Encode(IEnumerable<string> imageNames)
     {
         var names = imageNames.Take(MaxEntries).ToArray();
         var raw   = new char[MaxEntries * MaxImageNameLen];
@@ -241,7 +241,7 @@ public struct TadBannedAppsInput
             // Remaining chars are already \0 (array default)
         }
 
-        return new TadBannedAppsInput
+        return new TADBannedAppsInput
         {
             Count    = (uint)names.Length,
             RawNames = raw

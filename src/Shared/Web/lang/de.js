@@ -60,7 +60,7 @@ const TAD_LANG_DE = {
     'deploy.driverBinary': 'Treiber-Binärdatei (TAD.RV.sys)',
     'deploy.driverPlaceholder': 'Pfad zu TAD.RV.sys',
     'deploy.serviceFolder': 'Dienst-Veröffentlichungsordner',
-    'deploy.servicePlaceholder': 'Pfad zur TadBridgeService-Veröffentlichung',
+    'deploy.servicePlaceholder': 'Pfad zur TADBridgeService-Veröffentlichung',
     'deploy.targetDir': 'Zielinstallationsverzeichnis',
     'deploy.domainController': 'Domänencontroller',
     'deploy.installDriver': 'Kernel-Treiber installieren',

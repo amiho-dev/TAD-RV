@@ -10,7 +10,7 @@ namespace TADDomainController.Services;
 /// <summary>
 /// Single event log entry for display in the UI.
 /// </summary>
-public sealed class TadEventEntry
+public sealed class TADEventEntry
 {
     public DateTime   TimeStamp   { get; init; }
     public string     Level       { get; init; } = "";
@@ -24,9 +24,9 @@ public sealed class EventLogService
     /// <summary>
     /// Reads the most recent TAD-related events from the Application event log.
     /// </summary>
-    public ObservableCollection<TadEventEntry> ReadRecentEvents(int maxCount = 200)
+    public ObservableCollection<TADEventEntry> ReadRecentEvents(int maxCount = 200)
     {
-        var entries = new ObservableCollection<TadEventEntry>();
+        var entries = new ObservableCollection<TADEventEntry>();
 
         try
         {
@@ -41,7 +41,7 @@ public sealed class EventLogService
 
             foreach (var entry in tadEntries)
             {
-                entries.Add(new TadEventEntry
+                entries.Add(new TADEventEntry
                 {
                     TimeStamp = entry.TimeGenerated,
                     Level     = entry.EntryType.ToString(),

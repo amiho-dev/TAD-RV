@@ -53,9 +53,9 @@
       LogicalName="bundled_service"
       Condition="Exists('Resources\TADBridgeService.exe') And '$(SetupTarget)'=='Client'" />
     <EmbeddedResource
-      Include="Resources\TadOverlay.exe"
+      Include="Resources\TADOverlay.exe"
       LogicalName="bundled_overlay"
-      Condition="Exists('Resources\TadOverlay.exe') And '$(SetupTarget)'=='Client'" />
+      Condition="Exists('Resources\TADOverlay.exe') And '$(SetupTarget)'=='Client'" />
     <EmbeddedResource
       Include="Resources\TADAdmin.exe"
       LogicalName="bundled_admin"

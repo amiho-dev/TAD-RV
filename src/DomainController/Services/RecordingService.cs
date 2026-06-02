@@ -5,7 +5,7 @@
 //
 // Discovers endpoints via the same UDP multicast as TADAdmin, opens a
 // dedicated TCP connection to each, and periodically requests JPEG
-// screenshots (TadCommand.Snapshot).  Optionally activates the sub-stream
+// screenshots (TADCommand.Snapshot).  Optionally activates the sub-stream
 // (RvStart) and saves the raw H.264 frames to per-session .h264 files.
 //
 // Output layout:
@@ -295,7 +295,7 @@ internal sealed class EndpointAgent : IDisposable
         {
             if (DateTime.UtcNow >= _nextSnapshot)
             {
-                SendCommand(TadCommand.Snapshot);
+                SendCommand(TADCommand.Snapshot);
                 _nextSnapshot = DateTime.UtcNow.AddSeconds(_svc.SnapshotIntervalSeconds);
             }
 
@@ -333,7 +333,7 @@ internal sealed class EndpointAgent : IDisposable
 
         while (offset < len)
         {
-            if (!TadFrameCodec.TryDecode(data.AsSpan(offset, len - offset),
+            if (!TADFrameCodec.TryDecode(data.AsSpan(offset, len - offset),
                 out var cmd, out var payload, out int consumed))
                 break;
 
@@ -349,11 +349,11 @@ internal sealed class EndpointAgent : IDisposable
         }
     }
 
-    private void HandleFrame(TadCommand cmd, ReadOnlyMemory<byte> payload)
+    private void HandleFrame(TADCommand cmd, ReadOnlyMemory<byte> payload)
     {
         switch (cmd)
         {
-            case TadCommand.Status:
+            case TADCommand.Status:
                 try
                 {
                     var s = JsonSerializer.Deserialize<StudentStatus>(payload.Span);
@@ -363,12 +363,12 @@ internal sealed class EndpointAgent : IDisposable
                 catch { /* malformed */ }
                 break;
 
-            case TadCommand.SnapshotData:
+            case TADCommand.SnapshotData:
                 SaveSnapshot(payload.ToArray());
                 break;
 
-            case TadCommand.VideoFrame:
-            case TadCommand.VideoKeyFrame:
+            case TADCommand.VideoFrame:
+            case TADCommand.VideoKeyFrame:
                 if (_svc.VideoRecordingEnabled && _videoFile != null)
                     AppendVideoFrame(payload.ToArray());
                 break;
@@ -407,7 +407,7 @@ internal sealed class EndpointAgent : IDisposable
             _videoFile = new FileStream(_videoPath, FileMode.Create, FileAccess.Write, FileShare.Read);
 
             // Enable RvStart to get H.264 frames
-            SendCommand(TadCommand.RvStart);
+            SendCommand(TADCommand.RvStart);
         }
         catch { _videoFile = null; }
     }
@@ -448,12 +448,12 @@ internal sealed class EndpointAgent : IDisposable
 
     // ─── Send helpers ─────────────────────────────────────────────────
 
-    private void SendCommand(TadCommand cmd)
+    private void SendCommand(TADCommand cmd)
     {
         lock (_writeLock)
         {
             if (_stream == null) return;
-            try { _stream.Write(TadFrameCodec.Encode(cmd)); }
+            try { _stream.Write(TADFrameCodec.Encode(cmd)); }
             catch { }
         }
     }

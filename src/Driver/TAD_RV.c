@@ -20,7 +20,7 @@ Abstract:
       8.  Spectre V1 mitigations on all IOCTL paths
       9.  All allocations tagged with 'RVAT', IRQL verified per routine
       10. Heartbeat watchdog DPC timer
-      11. User role + policy IOCTLs from TadBridgeService
+      11. User role + policy IOCTLs from TADBridgeService
       12. Alert queue for driver → service notifications
 
 Copyright:
@@ -38,41 +38,41 @@ Environment:
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(INIT,  DriverEntry)
-#pragma alloc_text(PAGE,  TadDriverUnload)
-#pragma alloc_text(PAGE,  TadDispatchCreateClose)
-#pragma alloc_text(PAGE,  TadDispatchDeviceControl)
-#pragma alloc_text(PAGE,  TadCreateDeviceAndSymlink)
-#pragma alloc_text(PAGE,  TadCleanupDeviceAndSymlink)
-#pragma alloc_text(PAGE,  TadRegisterProcessProtection)
-#pragma alloc_text(PAGE,  TadUnregisterProcessProtection)
-#pragma alloc_text(PAGE,  TadSetDeviceDacl)
-#pragma alloc_text(PAGE,  TadVerifyAuthKey)
-#pragma alloc_text(PAGE,  TadProcessNotifyCallback)
-#pragma alloc_text(PAGE,  TadRegisterProcessNotify)
-#pragma alloc_text(PAGE,  TadUnregisterProcessNotify)
+#pragma alloc_text(PAGE,  TADDriverUnload)
+#pragma alloc_text(PAGE,  TADDispatchCreateClose)
+#pragma alloc_text(PAGE,  TADDispatchDeviceControl)
+#pragma alloc_text(PAGE,  TADCreateDeviceAndSymlink)
+#pragma alloc_text(PAGE,  TADCleanupDeviceAndSymlink)
+#pragma alloc_text(PAGE,  TADRegisterProcessProtection)
+#pragma alloc_text(PAGE,  TADUnregisterProcessProtection)
+#pragma alloc_text(PAGE,  TADSetDeviceDacl)
+#pragma alloc_text(PAGE,  TADVerifyAuthKey)
+#pragma alloc_text(PAGE,  TADProcessNotifyCallback)
+#pragma alloc_text(PAGE,  TADRegisterProcessNotify)
+#pragma alloc_text(PAGE,  TADUnregisterProcessNotify)
 #endif
 
 /* ═══════════════════════════════════════════════════════════════════════
  * Global Driver State
  * ═══════════════════════════════════════════════════════════════════════ */
 
-TAD_DRIVER_GLOBALS g_Tad = { 0 };
+TAD_DRIVER_GLOBALS g_TAD = { 0 };
 
 /* ═══════════════════════════════════════════════════════════════════════
  * Minifilter Registration Tables
  * ═══════════════════════════════════════════════════════════════════════ */
 
-static const FLT_OPERATION_REGISTRATION g_TadFilterCallbacks[] = {
-    { IRP_MJ_SET_INFORMATION, 0, TadPreSetInformationCallback, NULL },
+static const FLT_OPERATION_REGISTRATION g_TADFilterCallbacks[] = {
+    { IRP_MJ_SET_INFORMATION, 0, TADPreSetInformationCallback, NULL },
     { IRP_MJ_OPERATION_END }
 };
 
-static const FLT_REGISTRATION g_TadFilterRegistration = {
+static const FLT_REGISTRATION g_TADFilterRegistration = {
     sizeof(FLT_REGISTRATION),
     FLT_REGISTRATION_VERSION,
     0, NULL,
-    g_TadFilterCallbacks,
-    TadFilterUnloadCallback,
+    g_TADFilterCallbacks,
+    TADFilterUnloadCallback,
     NULL, NULL, NULL, NULL,
     NULL, NULL, NULL
 };
@@ -94,98 +94,98 @@ DriverEntry(
                "[TAD.RV] DriverEntry — v%d.%d.%d\n",
                TAD_VERSION_MAJOR, TAD_VERSION_MINOR, TAD_VERSION_BUILD));
 
-    RtlZeroMemory(&g_Tad, sizeof(g_Tad));
-    InterlockedExchange(&g_Tad.AllowUnload, 0);
-    InterlockedExchange(&g_Tad.FailedUnlockAttempts, 0);
-    InterlockedExchange(&g_Tad.HeartbeatAlive, 0);
-    InterlockedExchange(&g_Tad.PolicyValid, 0);
-    InterlockedExchange(&g_Tad.CurrentUserRole, (LONG)TadRoleUnknown);
-    ExInitializeFastMutex(&g_Tad.BannedAppsLock);
+    RtlZeroMemory(&g_TAD, sizeof(g_TAD));
+    InterlockedExchange(&g_TAD.AllowUnload, 0);
+    InterlockedExchange(&g_TAD.FailedUnlockAttempts, 0);
+    InterlockedExchange(&g_TAD.HeartbeatAlive, 0);
+    InterlockedExchange(&g_TAD.PolicyValid, 0);
+    InterlockedExchange(&g_TAD.CurrentUserRole, (LONG)TADRoleUnknown);
+    ExInitializeFastMutex(&g_TAD.BannedAppsLock);
 
-    DriverObject->MajorFunction[IRP_MJ_CREATE]         = TadDispatchCreateClose;
-    DriverObject->MajorFunction[IRP_MJ_CLOSE]          = TadDispatchCreateClose;
-    DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = TadDispatchDeviceControl;
-    DriverObject->DriverUnload                         = TadDriverUnload;
+    DriverObject->MajorFunction[IRP_MJ_CREATE]         = TADDispatchCreateClose;
+    DriverObject->MajorFunction[IRP_MJ_CLOSE]          = TADDispatchCreateClose;
+    DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = TADDispatchDeviceControl;
+    DriverObject->DriverUnload                         = TADDriverUnload;
 
-    status = TadCreateDeviceAndSymlink(DriverObject);
+    status = TADCreateDeviceAndSymlink(DriverObject);
     if (!NT_SUCCESS(status)) {
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,
                    "[TAD.RV] Device creation failed: 0x%08X\n", status));
         return status;
     }
 
-    status = TadSetDeviceDacl(g_Tad.DeviceObject);
+    status = TADSetDeviceDacl(g_TAD.DeviceObject);
     if (!NT_SUCCESS(status)) {
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_WARNING_LEVEL,
                    "[TAD.RV] DACL failed: 0x%08X (non-fatal)\n", status));
     }
 
-    status = TadRegisterProcessProtection();
+    status = TADRegisterProcessProtection();
     if (!NT_SUCCESS(status)) {
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_WARNING_LEVEL,
                    "[TAD.RV] ObCallbacks failed: 0x%08X\n", status));
     }
 
-    status = TadRegisterProcessNotify();
+    status = TADRegisterProcessNotify();
     if (!NT_SUCCESS(status)) {
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_WARNING_LEVEL,
                    "[TAD.RV] PsProcessNotify registration failed: 0x%08X\n", status));
     }
 
-    status = FltRegisterFilter(DriverObject, &g_TadFilterRegistration, &g_Tad.FilterHandle);
+    status = FltRegisterFilter(DriverObject, &g_TADFilterRegistration, &g_TAD.FilterHandle);
     if (NT_SUCCESS(status)) {
-        status = FltStartFiltering(g_Tad.FilterHandle);
+        status = FltStartFiltering(g_TAD.FilterHandle);
         if (!NT_SUCCESS(status)) {
-            FltUnregisterFilter(g_Tad.FilterHandle);
-            g_Tad.FilterHandle = NULL;
+            FltUnregisterFilter(g_TAD.FilterHandle);
+            g_TAD.FilterHandle = NULL;
         }
     } else {
-        g_Tad.FilterHandle = NULL;
+        g_TAD.FilterHandle = NULL;
     }
 
     /* Initialise the heartbeat watchdog DPC timer */
-    TadInitHeartbeatWatchdog();
+    TADInitHeartbeatWatchdog();
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
                "[TAD.RV] Loaded (ObCB=%s, PsNotify=%s, Flt=%s)\n",
-               g_Tad.ObCallbackHandle         ? "YES" : "NO",
-               g_Tad.ProcessNotifyRegistered  ? "YES" : "NO",
-               g_Tad.FilterHandle             ? "YES" : "NO"));
+               g_TAD.ObCallbackHandle         ? "YES" : "NO",
+               g_TAD.ProcessNotifyRegistered  ? "YES" : "NO",
+               g_TAD.FilterHandle             ? "YES" : "NO"));
 
     return STATUS_SUCCESS;
 }
 
 _Use_decl_annotations_
 VOID
-TadDriverUnload(
+TADDriverUnload(
     _In_ PDRIVER_OBJECT DriverObject
     )
 {
     PAGED_CODE();
     UNREFERENCED_PARAMETER(DriverObject);
 
-    if (InterlockedCompareExchange(&g_Tad.AllowUnload, 0, 0) == 0) {
+    if (InterlockedCompareExchange(&g_TAD.AllowUnload, 0, 0) == 0) {
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,
                    "[TAD.RV] Unload DENIED\n"));
         return;
     }
 
-    TadStopHeartbeatWatchdog();
+    TADStopHeartbeatWatchdog();
 
-    if (g_Tad.FilterHandle) {
-        FltUnregisterFilter(g_Tad.FilterHandle);
-        g_Tad.FilterHandle = NULL;
+    if (g_TAD.FilterHandle) {
+        FltUnregisterFilter(g_TAD.FilterHandle);
+        g_TAD.FilterHandle = NULL;
     }
 
-    TadUnregisterProcessNotify();
-    TadUnregisterProcessProtection();
+    TADUnregisterProcessNotify();
+    TADUnregisterProcessProtection();
 
-    if (g_Tad.AgentProcess) {
-        ObDereferenceObject(g_Tad.AgentProcess);
-        g_Tad.AgentProcess = NULL;
+    if (g_TAD.AgentProcess) {
+        ObDereferenceObject(g_TAD.AgentProcess);
+        g_TAD.AgentProcess = NULL;
     }
 
-    TadCleanupDeviceAndSymlink();
+    TADCleanupDeviceAndSymlink();
 
     KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
                "[TAD.RV] Unloaded\n"));
@@ -197,7 +197,7 @@ TadDriverUnload(
 
 _Use_decl_annotations_
 NTSTATUS
-TadCreateDeviceAndSymlink(_In_ PDRIVER_OBJECT DriverObject)
+TADCreateDeviceAndSymlink(_In_ PDRIVER_OBJECT DriverObject)
 {
     NTSTATUS       status;
     UNICODE_STRING deviceName;
@@ -205,37 +205,37 @@ TadCreateDeviceAndSymlink(_In_ PDRIVER_OBJECT DriverObject)
     PAGED_CODE();
 
     RtlInitUnicodeString(&deviceName,          TAD_DEVICE_NAME);
-    RtlInitUnicodeString(&g_Tad.SymbolicLink,  TAD_SYMBOLIC_LINK);
+    RtlInitUnicodeString(&g_TAD.SymbolicLink,  TAD_SYMBOLIC_LINK);
 
     status = IoCreateDevice(DriverObject, 0, &deviceName, TAD_DEVICE_TYPE,
-                            FILE_DEVICE_SECURE_OPEN, FALSE, &g_Tad.DeviceObject);
+                            FILE_DEVICE_SECURE_OPEN, FALSE, &g_TAD.DeviceObject);
     if (!NT_SUCCESS(status)) return status;
 
-    g_Tad.DeviceObject->Flags |= DO_BUFFERED_IO;
-    g_Tad.DeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
+    g_TAD.DeviceObject->Flags |= DO_BUFFERED_IO;
+    g_TAD.DeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 
-    status = IoCreateSymbolicLink(&g_Tad.SymbolicLink, &deviceName);
+    status = IoCreateSymbolicLink(&g_TAD.SymbolicLink, &deviceName);
     if (!NT_SUCCESS(status)) {
-        IoDeleteDevice(g_Tad.DeviceObject);
-        g_Tad.DeviceObject = NULL;
+        IoDeleteDevice(g_TAD.DeviceObject);
+        g_TAD.DeviceObject = NULL;
         return status;
     }
 
-    g_Tad.SymbolicLinkCreated = TRUE;
+    g_TAD.SymbolicLinkCreated = TRUE;
     return STATUS_SUCCESS;
 }
 
 _Use_decl_annotations_
-VOID TadCleanupDeviceAndSymlink(VOID)
+VOID TADCleanupDeviceAndSymlink(VOID)
 {
     PAGED_CODE();
-    if (g_Tad.SymbolicLinkCreated) {
-        IoDeleteSymbolicLink(&g_Tad.SymbolicLink);
-        g_Tad.SymbolicLinkCreated = FALSE;
+    if (g_TAD.SymbolicLinkCreated) {
+        IoDeleteSymbolicLink(&g_TAD.SymbolicLink);
+        g_TAD.SymbolicLinkCreated = FALSE;
     }
-    if (g_Tad.DeviceObject) {
-        IoDeleteDevice(g_Tad.DeviceObject);
-        g_Tad.DeviceObject = NULL;
+    if (g_TAD.DeviceObject) {
+        IoDeleteDevice(g_TAD.DeviceObject);
+        g_TAD.DeviceObject = NULL;
     }
 }
 
@@ -244,7 +244,7 @@ VOID TadCleanupDeviceAndSymlink(VOID)
  * ═══════════════════════════════════════════════════════════════════════ */
 
 _Use_decl_annotations_
-NTSTATUS TadSetDeviceDacl(_In_ PDEVICE_OBJECT DeviceObject)
+NTSTATUS TADSetDeviceDacl(_In_ PDEVICE_OBJECT DeviceObject)
 {
     NTSTATUS status;
     SECURITY_DESCRIPTOR sd;
@@ -296,7 +296,7 @@ Cleanup:
  * ═══════════════════════════════════════════════════════════════════════ */
 
 _Use_decl_annotations_
-BOOLEAN TadVerifyAuthKey(_In_reads_bytes_(TAD_AUTH_KEY_SIZE) const UCHAR *ProvidedKey)
+BOOLEAN TADVerifyAuthKey(_In_reads_bytes_(TAD_AUTH_KEY_SIZE) const UCHAR *ProvidedKey)
 {
     UCHAR decoded[TAD_AUTH_KEY_SIZE];
     UCHAR diff = 0;
@@ -304,7 +304,7 @@ BOOLEAN TadVerifyAuthKey(_In_reads_bytes_(TAD_AUTH_KEY_SIZE) const UCHAR *Provid
     PAGED_CODE();
 
     for (i = 0; i < TAD_AUTH_KEY_SIZE; i++)
-        decoded[i] = TadObfuscatedKey[i] ^ TAD_KEY_XOR_MASK;
+        decoded[i] = TADObfuscatedKey[i] ^ TAD_KEY_XOR_MASK;
 
     for (i = 0; i < TAD_AUTH_KEY_SIZE; i++)
         diff |= (decoded[i] ^ ProvidedKey[i]);
@@ -314,12 +314,12 @@ BOOLEAN TadVerifyAuthKey(_In_reads_bytes_(TAD_AUTH_KEY_SIZE) const UCHAR *Provid
 }
 
 _Use_decl_annotations_
-BOOLEAN TadIsCallerProtectedAgent(VOID)
+BOOLEAN TADIsCallerProtectedAgent(VOID)
 {
-    return (g_Tad.AgentProcess && PsGetCurrentProcess() == g_Tad.AgentProcess);
+    return (g_TAD.AgentProcess && PsGetCurrentProcess() == g_TAD.AgentProcess);
 }
 
-BOOLEAN TadIsProtectedFilename(_In_ PCUNICODE_STRING FileName)
+BOOLEAN TADIsProtectedFilename(_In_ PCUNICODE_STRING FileName)
 {
     UNICODE_STRING driverName, uiName, svcName;
 
@@ -344,23 +344,23 @@ BOOLEAN TadIsProtectedFilename(_In_ PCUNICODE_STRING FileName)
  *   - Queue an alert for the next ReadAlert IRP
  * ═══════════════════════════════════════════════════════════════════════ */
 
-VOID TadInitHeartbeatWatchdog(VOID)
+VOID TADInitHeartbeatWatchdog(VOID)
 {
-    KeInitializeTimer(&g_Tad.HeartbeatTimer);
-    KeInitializeDpc(&g_Tad.HeartbeatDpc, TadHeartbeatDpcRoutine, NULL);
+    KeInitializeTimer(&g_TAD.HeartbeatTimer);
+    KeInitializeDpc(&g_TAD.HeartbeatDpc, TADHeartbeatDpcRoutine, NULL);
 
     /* Start the timer — fires every HeartbeatTimeout period */
     LARGE_INTEGER dueTime;
     dueTime.QuadPart = -((LONGLONG)TAD_HEARTBEAT_TIMEOUT_MS * 10 * 1000); /* relative, 100ns */
 
-    KeSetTimerEx(&g_Tad.HeartbeatTimer, dueTime,
+    KeSetTimerEx(&g_TAD.HeartbeatTimer, dueTime,
                  TAD_HEARTBEAT_TIMEOUT_MS, /* periodic interval in ms */
-                 &g_Tad.HeartbeatDpc);
+                 &g_TAD.HeartbeatDpc);
 }
 
-VOID TadStopHeartbeatWatchdog(VOID)
+VOID TADStopHeartbeatWatchdog(VOID)
 {
-    KeCancelTimer(&g_Tad.HeartbeatTimer);
+    KeCancelTimer(&g_TAD.HeartbeatTimer);
 }
 
 /*
@@ -369,7 +369,7 @@ VOID TadStopHeartbeatWatchdog(VOID)
  */
 _Use_decl_annotations_
 VOID
-TadHeartbeatDpcRoutine(
+TADHeartbeatDpcRoutine(
     _In_     PKDPC  Dpc,
     _In_opt_ PVOID  DeferredContext,
     _In_opt_ PVOID  SystemArgument1,
@@ -381,13 +381,13 @@ TadHeartbeatDpcRoutine(
     UNREFERENCED_PARAMETER(SystemArgument1);
     UNREFERENCED_PARAMETER(SystemArgument2);
 
-    if (InterlockedExchange(&g_Tad.HeartbeatAlive, 0) == 0) {
+    if (InterlockedExchange(&g_TAD.HeartbeatAlive, 0) == 0) {
         /*
          * Service has NOT sent a heartbeat since the last DPC tick.
          * Actions:
          *   1. Log the event
          *   2. Engage WFP network killswitch (future: inject WFP callout)
-         *   3. Queue a TadAlertHeartbeatLost for the next ReadAlert IRP
+         *   3. Queue a TADAlertHeartbeatLost for the next ReadAlert IRP
          */
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL,
                    "[TAD.RV] HEARTBEAT LOST — service is unresponsive!\n"));
@@ -410,7 +410,7 @@ TadHeartbeatDpcRoutine(
  * ═══════════════════════════════════════════════════════════════════════ */
 
 _Use_decl_annotations_
-NTSTATUS TadDispatchCreateClose(
+NTSTATUS TADDispatchCreateClose(
     _In_ PDEVICE_OBJECT DeviceObject, _Inout_ PIRP Irp)
 {
     PAGED_CODE();
@@ -424,13 +424,13 @@ NTSTATUS TadDispatchCreateClose(
 /* ═══════════════════════════════════════════════════════════════════════
  * 7.  DISPATCH — IRP_MJ_DEVICE_CONTROL
  *
- * Handles all IOCTLs defined in TadShared.h:
+ * Handles all IOCTLs defined in TADShared.h:
  *   0x800 PROTECT_PID      0x801 UNLOCK          0x802 HEARTBEAT
  *   0x803 SET_USER_ROLE    0x804 SET_POLICY       0x805 READ_ALERT
  * ═══════════════════════════════════════════════════════════════════════ */
 
 _Use_decl_annotations_
-NTSTATUS TadDispatchDeviceControl(
+NTSTATUS TADDispatchDeviceControl(
     _In_ PDEVICE_OBJECT DeviceObject, _Inout_ PIRP Irp)
 {
     NTSTATUS           status = STATUS_SUCCESS;
@@ -470,10 +470,10 @@ NTSTATUS TadDispatchDeviceControl(
         status = PsLookupProcessByProcessId(ULongToHandle(p->TargetPid), &proc);
         if (!NT_SUCCESS(status)) { status = STATUS_INVALID_PARAMETER; break; }
 
-        if (g_Tad.AgentProcess) ObDereferenceObject(g_Tad.AgentProcess);
-        g_Tad.AgentProcess = proc;
+        if (g_TAD.AgentProcess) ObDereferenceObject(g_TAD.AgentProcess);
+        g_TAD.AgentProcess = proc;
 
-        InterlockedExchangePointer((PVOID volatile *)&g_Tad.ProtectedPid,
+        InterlockedExchangePointer((PVOID volatile *)&g_TAD.ProtectedPid,
                                    ULongToHandle(p->TargetPid));
 
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
@@ -493,31 +493,31 @@ NTSTATUS TadDispatchDeviceControl(
 #endif
         if (!buf) { status = STATUS_INVALID_PARAMETER; break; }
 
-        if (g_Tad.AgentProcess && !TadIsCallerProtectedAgent()) {
+        if (g_TAD.AgentProcess && !TADIsCallerProtectedAgent()) {
             status = STATUS_ACCESS_DENIED; break;
         }
 
         KeQuerySystemTime(&now);
-        if (g_Tad.FailedUnlockAttempts >= TAD_MAX_UNLOCK_ATTEMPTS) {
-            if (now.QuadPart < g_Tad.LockoutUntil.QuadPart) {
+        if (g_TAD.FailedUnlockAttempts >= TAD_MAX_UNLOCK_ATTEMPTS) {
+            if (now.QuadPart < g_TAD.LockoutUntil.QuadPart) {
                 status = STATUS_ACCESS_DENIED; break;
             }
-            InterlockedExchange(&g_Tad.FailedUnlockAttempts, 0);
+            InterlockedExchange(&g_TAD.FailedUnlockAttempts, 0);
         }
 
         p = (PTAD_UNLOCK_INPUT)buf;
-        if (TadVerifyAuthKey(p->AuthKey)) {
-            InterlockedExchange(&g_Tad.AllowUnload, 1);
-            InterlockedExchange(&g_Tad.FailedUnlockAttempts, 0);
+        if (TADVerifyAuthKey(p->AuthKey)) {
+            InterlockedExchange(&g_TAD.AllowUnload, 1);
+            InterlockedExchange(&g_TAD.FailedUnlockAttempts, 0);
             KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
                        "[TAD.RV] Unlock ACCEPTED\n"));
         } else {
-            LONG a = InterlockedIncrement(&g_Tad.FailedUnlockAttempts);
+            LONG a = InterlockedIncrement(&g_TAD.FailedUnlockAttempts);
             if (a >= TAD_MAX_UNLOCK_ATTEMPTS) {
-                KeQuerySystemTime(&g_Tad.LockoutUntil);
+                KeQuerySystemTime(&g_TAD.LockoutUntil);
                 /* TAD_LOCKOUT_DURATION is negative (relative time), so add it
                  * to move LockoutUntil into the future. */
-                g_Tad.LockoutUntil.QuadPart += (-TAD_LOCKOUT_DURATION);
+                g_TAD.LockoutUntil.QuadPart += (-TAD_LOCKOUT_DURATION);
             }
             status = STATUS_ACCESS_DENIED;
         }
@@ -534,22 +534,22 @@ NTSTATUS TadDispatchDeviceControl(
 #endif
 
         /* Mark alive for the DPC watchdog */
-        InterlockedExchange(&g_Tad.HeartbeatAlive, 1);
-        KeQuerySystemTime(&g_Tad.LastHeartbeatTime);
+        InterlockedExchange(&g_TAD.HeartbeatAlive, 1);
+        KeQuerySystemTime(&g_TAD.LastHeartbeatTime);
 
         hb = (PTAD_HEARTBEAT_OUTPUT)buf;
         RtlZeroMemory(hb, sizeof(*hb));
 
         hb->DriverVersionMajor      = TAD_VERSION_MAJOR;
         hb->DriverVersionMinor      = TAD_VERSION_MINOR;
-        hb->ProtectedPid            = HandleToULong(g_Tad.ProtectedPid);
-        hb->ProcessProtectionActive = (g_Tad.ObCallbackHandle != NULL);
-        hb->FileProtectionActive    = (g_Tad.FilterHandle     != NULL);
-        hb->UnlockPermitted         = (InterlockedCompareExchange(&g_Tad.AllowUnload, 0, 0) != 0);
+        hb->ProtectedPid            = HandleToULong(g_TAD.ProtectedPid);
+        hb->ProcessProtectionActive = (g_TAD.ObCallbackHandle != NULL);
+        hb->FileProtectionActive    = (g_TAD.FilterHandle     != NULL);
+        hb->UnlockPermitted         = (InterlockedCompareExchange(&g_TAD.AllowUnload, 0, 0) != 0);
         hb->HeartbeatAlive          = 1;
-        hb->FailedUnlockAttempts    = (ULONG)g_Tad.FailedUnlockAttempts;
-        hb->CurrentUserRole         = (ULONG)g_Tad.CurrentUserRole;
-        hb->PolicyValid             = (ULONG)g_Tad.PolicyValid;
+        hb->FailedUnlockAttempts    = (ULONG)g_TAD.FailedUnlockAttempts;
+        hb->CurrentUserRole         = (ULONG)g_TAD.CurrentUserRole;
+        hb->PolicyValid             = (ULONG)g_TAD.PolicyValid;
 
         bytesWritten = sizeof(TAD_HEARTBEAT_OUTPUT);
         break;
@@ -565,12 +565,12 @@ NTSTATUS TadDispatchDeviceControl(
 #endif
         if (!buf) { status = STATUS_INVALID_PARAMETER; break; }
 
-        if (g_Tad.AgentProcess && !TadIsCallerProtectedAgent()) {
+        if (g_TAD.AgentProcess && !TADIsCallerProtectedAgent()) {
             status = STATUS_ACCESS_DENIED; break;
         }
 
         p = (PTAD_SET_USER_ROLE_INPUT)buf;
-        InterlockedExchange(&g_Tad.CurrentUserRole, (LONG)p->Role);
+        InterlockedExchange(&g_TAD.CurrentUserRole, (LONG)p->Role);
 
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
                    "[TAD.RV] User role set to %lu (session %lu)\n",
@@ -588,15 +588,15 @@ NTSTATUS TadDispatchDeviceControl(
 #endif
         if (!buf) { status = STATUS_INVALID_PARAMETER; break; }
 
-        if (g_Tad.AgentProcess && !TadIsCallerProtectedAgent()) {
+        if (g_TAD.AgentProcess && !TADIsCallerProtectedAgent()) {
             status = STATUS_ACCESS_DENIED; break;
         }
 
         p = (PTAD_POLICY_BUFFER)buf;
         if (p->Version != 1) { status = STATUS_INVALID_PARAMETER; break; }
 
-        RtlCopyMemory(&g_Tad.CurrentPolicy, p, sizeof(TAD_POLICY_BUFFER));
-        InterlockedExchange(&g_Tad.PolicyValid, 1);
+        RtlCopyMemory(&g_TAD.CurrentPolicy, p, sizeof(TAD_POLICY_BUFFER));
+        InterlockedExchange(&g_TAD.PolicyValid, 1);
 
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
                    "[TAD.RV] Policy loaded (flags=0x%08X)\n", p->Flags));
@@ -619,7 +619,7 @@ NTSTATUS TadDispatchDeviceControl(
          */
         a = (PTAD_ALERT_OUTPUT)buf;
         RtlZeroMemory(a, sizeof(*a));
-        a->AlertType = TadAlertNone;
+        a->AlertType = TADAlertNone;
         KeQuerySystemTime((PLARGE_INTEGER)&a->Timestamp);
 
         bytesWritten = sizeof(TAD_ALERT_OUTPUT);
@@ -631,7 +631,7 @@ NTSTATUS TadDispatchDeviceControl(
     {
         PTAD_HARD_LOCK_INPUT hl;
         if (inLen < sizeof(TAD_HARD_LOCK_INPUT)) { status = STATUS_BUFFER_TOO_SMALL; break; }
-        if (!TadIsCallerProtectedAgent()) { status = STATUS_ACCESS_DENIED; break; }
+        if (!TADIsCallerProtectedAgent()) { status = STATUS_ACCESS_DENIED; break; }
 
 #if defined(_AMD64_) || defined(_X86_)
         _mm_lfence();
@@ -647,9 +647,9 @@ NTSTATUS TadDispatchDeviceControl(
          *
          * Implementation note: The actual input filter is registered via
          * IoRegisterDeviceInterface callbacks. The global flag is checked
-         * by TadInputFilterDispatch() in the input filter subsystem.
+         * by TADInputFilterDispatch() in the input filter subsystem.
          */
-        InterlockedExchange(&g_Tad.InputLocked, hl->Enable ? 1 : 0);
+        InterlockedExchange(&g_TAD.InputLocked, hl->Enable ? 1 : 0);
 
         DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_INFO_LEVEL,
             "[TAD.RV] Hard-lock %s by PID %lu\n",
@@ -664,7 +664,7 @@ NTSTATUS TadDispatchDeviceControl(
     {
         PTAD_PROTECT_UI_INPUT ui;
         if (inLen < sizeof(TAD_PROTECT_UI_INPUT)) { status = STATUS_BUFFER_TOO_SMALL; break; }
-        if (!TadIsCallerProtectedAgent()) { status = STATUS_ACCESS_DENIED; break; }
+        if (!TADIsCallerProtectedAgent()) { status = STATUS_ACCESS_DENIED; break; }
 
 #if defined(_AMD64_) || defined(_X86_)
         _mm_lfence();
@@ -678,17 +678,17 @@ NTSTATUS TadDispatchDeviceControl(
          * This prevents students from using Task Manager, Alt+F4, or
          * TerminateProcess() to close the lock overlay.
          *
-         * We store the UI PID in g_Tad.ProtectedUiPid.  The existing
+         * We store the UI PID in g_TAD.ProtectedUiPid.  The existing
          * ObCallback checks BOTH ProtectedPid (service) and
          * ProtectedUiPid (lock overlay).
          */
         if (ui->Protect)
             InterlockedExchangePointer(
-                (PVOID volatile *)&g_Tad.ProtectedUiPid,
+                (PVOID volatile *)&g_TAD.ProtectedUiPid,
                 (PVOID)(ULONG_PTR)ui->TargetPid);
         else
             InterlockedExchangePointer(
-                (PVOID volatile *)&g_Tad.ProtectedUiPid, NULL);
+                (PVOID volatile *)&g_TAD.ProtectedUiPid, NULL);
 
         DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_INFO_LEVEL,
             "[TAD.RV] UI process %lu protection %s\n",
@@ -702,7 +702,7 @@ NTSTATUS TadDispatchDeviceControl(
     {
         PTAD_STEALTH_INPUT stl;
         if (inLen < sizeof(TAD_STEALTH_INPUT)) { status = STATUS_BUFFER_TOO_SMALL; break; }
-        if (!TadIsCallerProtectedAgent()) { status = STATUS_ACCESS_DENIED; break; }
+        if (!TADIsCallerProtectedAgent()) { status = STATUS_ACCESS_DENIED; break; }
 
 #if defined(_AMD64_) || defined(_X86_)
         _mm_lfence();
@@ -741,13 +741,13 @@ NTSTATUS TadDispatchDeviceControl(
          */
         if (stl->Enable)
         {
-            InterlockedExchange(&g_Tad.StealthActive, 1);
-            g_Tad.StealthFlags = stl->Flags;
+            InterlockedExchange(&g_TAD.StealthActive, 1);
+            g_TAD.StealthFlags = stl->Flags;
         }
         else
         {
-            InterlockedExchange(&g_Tad.StealthActive, 0);
-            g_Tad.StealthFlags = 0;
+            InterlockedExchange(&g_TAD.StealthActive, 0);
+            g_TAD.StealthFlags = 0;
         }
 
         DbgPrintEx(DPFLTR_DEFAULT_ID, DPFLTR_INFO_LEVEL,
@@ -764,7 +764,7 @@ NTSTATUS TadDispatchDeviceControl(
         ULONG i;
 
         if (inLen < sizeof(TAD_BANNED_APPS_INPUT)) { status = STATUS_BUFFER_TOO_SMALL; break; }
-        if (!TadIsCallerProtectedAgent())           { status = STATUS_ACCESS_DENIED;    break; }
+        if (!TADIsCallerProtectedAgent())           { status = STATUS_ACCESS_DENIED;    break; }
 
 #if defined(_AMD64_) || defined(_X86_)
         _mm_lfence();
@@ -773,12 +773,12 @@ NTSTATUS TadDispatchDeviceControl(
         p = (PTAD_BANNED_APPS_INPUT)buf;
         if (p->Count > TAD_MAX_BANNED_APPS) { status = STATUS_INVALID_PARAMETER; break; }
 
-        ExAcquireFastMutex(&g_Tad.BannedAppsLock);
+        ExAcquireFastMutex(&g_TAD.BannedAppsLock);
 
         /* Clear the previous list */
-        RtlZeroMemory(g_Tad.BannedAppStorage, sizeof(g_Tad.BannedAppStorage));
-        RtlZeroMemory(g_Tad.BannedApps,       sizeof(g_Tad.BannedApps));
-        g_Tad.BannedAppCount = 0;
+        RtlZeroMemory(g_TAD.BannedAppStorage, sizeof(g_TAD.BannedAppStorage));
+        RtlZeroMemory(g_TAD.BannedApps,       sizeof(g_TAD.BannedApps));
+        g_TAD.BannedAppCount = 0;
 
         for (i = 0; i < p->Count; i++)
         {
@@ -796,22 +796,22 @@ NTSTATUS TadDispatchDeviceControl(
 
             if (srcLen == 0 || srcLen >= TAD_MAX_IMAGE_NAME_LEN) continue;
 
-            RtlCopyMemory(g_Tad.BannedAppStorage[i],
+            RtlCopyMemory(g_TAD.BannedAppStorage[i],
                           p->ImageNames[i],
                           srcLen * sizeof(WCHAR));
 
-            g_Tad.BannedApps[i].Buffer        = g_Tad.BannedAppStorage[i];
-            g_Tad.BannedApps[i].Length        = (USHORT)(srcLen * sizeof(WCHAR));
-            g_Tad.BannedApps[i].MaximumLength = (USHORT)(TAD_MAX_IMAGE_NAME_LEN * sizeof(WCHAR));
-            g_Tad.BannedAppCount++;
+            g_TAD.BannedApps[i].Buffer        = g_TAD.BannedAppStorage[i];
+            g_TAD.BannedApps[i].Length        = (USHORT)(srcLen * sizeof(WCHAR));
+            g_TAD.BannedApps[i].MaximumLength = (USHORT)(TAD_MAX_IMAGE_NAME_LEN * sizeof(WCHAR));
+            g_TAD.BannedAppCount++;
         }
 
-        ExReleaseFastMutex(&g_Tad.BannedAppsLock);
+        ExReleaseFastMutex(&g_TAD.BannedAppsLock);
 
         KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_INFO_LEVEL,
                    "[TAD.RV] Banned-app list updated: %lu entr%s\n",
-                   g_Tad.BannedAppCount,
-                   g_Tad.BannedAppCount == 1 ? "y" : "ies"));
+                   g_TAD.BannedAppCount,
+                   g_TAD.BannedAppCount == 1 ? "y" : "ies"));
         break;
     }
 
@@ -832,7 +832,7 @@ NTSTATUS TadDispatchDeviceControl(
 
 _Use_decl_annotations_
 OB_PREOP_CALLBACK_STATUS
-TadObProcessPreCallback(
+TADObProcessPreCallback(
     _In_    PVOID                           RegistrationContext,
     _Inout_ POB_PRE_OPERATION_INFORMATION   OpInfo)
 {
@@ -840,11 +840,11 @@ TadObProcessPreCallback(
     UNREFERENCED_PARAMETER(RegistrationContext);
 
     pPid = (HANDLE)InterlockedCompareExchangePointer(
-        (PVOID volatile *)&g_Tad.ProtectedPid, NULL, NULL);
+        (PVOID volatile *)&g_TAD.ProtectedPid, NULL, NULL);
     if (!pPid) {
         /* Also check UI overlay PID */
         pPid = (HANDLE)InterlockedCompareExchangePointer(
-            (PVOID volatile *)&g_Tad.ProtectedUiPid, NULL, NULL);
+            (PVOID volatile *)&g_TAD.ProtectedUiPid, NULL, NULL);
         if (!pPid) return OB_PREOP_SUCCESS;
     }
     if (OpInfo->ObjectType != *PsProcessType) return OB_PREOP_SUCCESS;
@@ -855,9 +855,9 @@ TadObProcessPreCallback(
     /* Protect both the service PID and the UI overlay PID */
     {
         HANDLE svcPid = (HANDLE)InterlockedCompareExchangePointer(
-            (PVOID volatile *)&g_Tad.ProtectedPid, NULL, NULL);
+            (PVOID volatile *)&g_TAD.ProtectedPid, NULL, NULL);
         HANDLE uiPid  = (HANDLE)InterlockedCompareExchangePointer(
-            (PVOID volatile *)&g_Tad.ProtectedUiPid, NULL, NULL);
+            (PVOID volatile *)&g_TAD.ProtectedUiPid, NULL, NULL);
 
         if (tPid != svcPid && tPid != uiPid)
             return OB_PREOP_SUCCESS;
@@ -876,7 +876,7 @@ TadObProcessPreCallback(
 
 _Use_decl_annotations_
 OB_PREOP_CALLBACK_STATUS
-TadObThreadPreCallback(
+TADObThreadPreCallback(
     _In_    PVOID                           RegistrationContext,
     _Inout_ POB_PRE_OPERATION_INFORMATION   OpInfo)
 {
@@ -884,11 +884,11 @@ TadObThreadPreCallback(
     UNREFERENCED_PARAMETER(RegistrationContext);
 
     pPid = (HANDLE)InterlockedCompareExchangePointer(
-        (PVOID volatile *)&g_Tad.ProtectedPid, NULL, NULL);
+        (PVOID volatile *)&g_TAD.ProtectedPid, NULL, NULL);
     if (!pPid) {
         /* Also check UI overlay PID for thread protection */
         pPid = (HANDLE)InterlockedCompareExchangePointer(
-            (PVOID volatile *)&g_Tad.ProtectedUiPid, NULL, NULL);
+            (PVOID volatile *)&g_TAD.ProtectedUiPid, NULL, NULL);
         if (!pPid) return OB_PREOP_SUCCESS;
     }
     if (OpInfo->ObjectType != *PsThreadType) return OB_PREOP_SUCCESS;
@@ -899,9 +899,9 @@ TadObThreadPreCallback(
     /* Protect threads of both the service PID and UI overlay PID */
     {
         HANDLE svcPid = (HANDLE)InterlockedCompareExchangePointer(
-            (PVOID volatile *)&g_Tad.ProtectedPid, NULL, NULL);
+            (PVOID volatile *)&g_TAD.ProtectedPid, NULL, NULL);
         HANDLE uiPid  = (HANDLE)InterlockedCompareExchangePointer(
-            (PVOID volatile *)&g_Tad.ProtectedUiPid, NULL, NULL);
+            (PVOID volatile *)&g_TAD.ProtectedUiPid, NULL, NULL);
 
         if (oPid != svcPid && oPid != uiPid)
             return OB_PREOP_SUCCESS;
@@ -917,7 +917,7 @@ TadObThreadPreCallback(
     return OB_PREOP_SUCCESS;
 }
 
-NTSTATUS TadRegisterProcessProtection(VOID)
+NTSTATUS TADRegisterProcessProtection(VOID)
 {
     NTSTATUS                   status;
     OB_CALLBACK_REGISTRATION  cbReg;
@@ -925,18 +925,18 @@ NTSTATUS TadRegisterProcessProtection(VOID)
     UNICODE_STRING             altitude;
 
     PAGED_CODE();
-    if (g_Tad.ObCallbackHandle) return STATUS_ALREADY_REGISTERED;
+    if (g_TAD.ObCallbackHandle) return STATUS_ALREADY_REGISTERED;
 
     RtlInitUnicodeString(&altitude, TAD_DRIVER_ALTITUDE);
 
     RtlZeroMemory(opReg, sizeof(opReg));
     opReg[0].ObjectType   = PsProcessType;
     opReg[0].Operations   = OB_OPERATION_HANDLE_CREATE | OB_OPERATION_HANDLE_DUPLICATE;
-    opReg[0].PreOperation = TadObProcessPreCallback;
+    opReg[0].PreOperation = TADObProcessPreCallback;
 
     opReg[1].ObjectType   = PsThreadType;
     opReg[1].Operations   = OB_OPERATION_HANDLE_CREATE | OB_OPERATION_HANDLE_DUPLICATE;
-    opReg[1].PreOperation = TadObThreadPreCallback;
+    opReg[1].PreOperation = TADObThreadPreCallback;
 
     RtlZeroMemory(&cbReg, sizeof(cbReg));
     cbReg.Version                    = OB_FLT_REGISTRATION_VERSION;
@@ -944,19 +944,19 @@ NTSTATUS TadRegisterProcessProtection(VOID)
     cbReg.Altitude                   = altitude;
     cbReg.OperationRegistration      = opReg;
 
-    status = ObRegisterCallbacks(&cbReg, &g_Tad.ObCallbackHandle);
-    if (!NT_SUCCESS(status)) g_Tad.ObCallbackHandle = NULL;
+    status = ObRegisterCallbacks(&cbReg, &g_TAD.ObCallbackHandle);
+    if (!NT_SUCCESS(status)) g_TAD.ObCallbackHandle = NULL;
     return status;
 }
 
-VOID TadUnregisterProcessProtection(VOID)
+VOID TADUnregisterProcessProtection(VOID)
 {
     PAGED_CODE();
-    if (g_Tad.ObCallbackHandle) {
-        ObUnRegisterCallbacks(g_Tad.ObCallbackHandle);
-        g_Tad.ObCallbackHandle = NULL;
+    if (g_TAD.ObCallbackHandle) {
+        ObUnRegisterCallbacks(g_TAD.ObCallbackHandle);
+        g_TAD.ObCallbackHandle = NULL;
     }
-    g_Tad.ProtectedPid = NULL;
+    g_TAD.ProtectedPid = NULL;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -965,7 +965,7 @@ VOID TadUnregisterProcessProtection(VOID)
 
 _Use_decl_annotations_
 FLT_PREOP_CALLBACK_STATUS
-TadPreSetInformationCallback(
+TADPreSetInformationCallback(
     _Inout_ PFLT_CALLBACK_DATA          Data,
     _In_    PCFLT_RELATED_OBJECTS        FltObjects,
     _Flt_CompletionContext_Outptr_ PVOID *CompletionContext)
@@ -1007,7 +1007,7 @@ TadPreSetInformationCallback(
     status = FltParseFileNameInformation(nameInfo);
     if (!NT_SUCCESS(status)) { FltReleaseFileNameInformation(nameInfo); return FLT_PREOP_SUCCESS_NO_CALLBACK; }
 
-    if (TadIsProtectedFilename(&nameInfo->FinalComponent))
+    if (TADIsProtectedFilename(&nameInfo->FinalComponent))
         block = TRUE;
 
     FltReleaseFileNameInformation(nameInfo);
@@ -1025,10 +1025,10 @@ TadPreSetInformationCallback(
     return FLT_PREOP_SUCCESS_NO_CALLBACK;
 }
 
-NTSTATUS FLTAPI TadFilterUnloadCallback(_In_ FLT_FILTER_UNLOAD_FLAGS Flags)
+NTSTATUS FLTAPI TADFilterUnloadCallback(_In_ FLT_FILTER_UNLOAD_FLAGS Flags)
 {
     UNREFERENCED_PARAMETER(Flags);
-    return (InterlockedCompareExchange(&g_Tad.AllowUnload, 0, 0) == 0)
+    return (InterlockedCompareExchange(&g_TAD.AllowUnload, 0, 0) == 0)
         ? STATUS_FLT_DO_NOT_DETACH
         : STATUS_SUCCESS;
 }
@@ -1036,7 +1036,7 @@ NTSTATUS FLTAPI TadFilterUnloadCallback(_In_ FLT_FILTER_UNLOAD_FLAGS Flags)
 /* ═══════════════════════════════════════════════════════════════════════════
  * 10. PROCESS CREATION MONITOR — PsSetCreateProcessNotifyRoutineEx
  *
- * TadProcessNotifyCallback fires at PASSIVE_LEVEL for every process
+ * TADProcessNotifyCallback fires at PASSIVE_LEVEL for every process
  * creation and termination system-wide.
  *
  * On creation (CreateInfo != NULL):
@@ -1044,7 +1044,7 @@ NTSTATUS FLTAPI TadFilterUnloadCallback(_In_ FLT_FILTER_UNLOAD_FLAGS Flags)
  *   2. Acquire BannedAppsLock and compare against BannedApps[].
  *   3. If matched AND TAD_POLICY_FLAG_BLOCK_APPS is set in the current
  *      policy, set CreateInfo->CreationStatus = STATUS_ACCESS_DENIED.
- *   4. Queue a TadAlertProcessBlocked alert for the next ReadAlert IRP.
+ *   4. Queue a TADAlertProcessBlocked alert for the next ReadAlert IRP.
  *
  * On termination (CreateInfo == NULL):  no-op.
  *
@@ -1055,7 +1055,7 @@ NTSTATUS FLTAPI TadFilterUnloadCallback(_In_ FLT_FILTER_UNLOAD_FLAGS Flags)
 
 _Use_decl_annotations_
 VOID
-TadProcessNotifyCallback(
+TADProcessNotifyCallback(
     _Inout_  PEPROCESS               Process,
     _In_     HANDLE                   ProcessId,
     _In_opt_ PPS_CREATE_NOTIFY_INFO   CreateInfo
@@ -1080,7 +1080,7 @@ TadProcessNotifyCallback(
      * The driver accepts the list update regardless so that the list
      * is ready the moment the policy flag is toggled on.
      */
-    if (!(g_Tad.CurrentPolicy.Flags & TAD_POLICY_FLAG_BLOCK_APPS)) return;
+    if (!(g_TAD.CurrentPolicy.Flags & TAD_POLICY_FLAG_BLOCK_APPS)) return;
 
     /*
      * Find the last '\\' in the full NT image path
@@ -1101,11 +1101,11 @@ TadProcessNotifyCallback(
 
     if (component.Length == 0) return;
 
-    ExAcquireFastMutex(&g_Tad.BannedAppsLock);
+    ExAcquireFastMutex(&g_TAD.BannedAppsLock);
 
-    for (i = 0; i < g_Tad.BannedAppCount; i++)
+    for (i = 0; i < g_TAD.BannedAppCount; i++)
     {
-        if (RtlEqualUnicodeString(&component, &g_Tad.BannedApps[i], TRUE /*case-insensitive*/))
+        if (RtlEqualUnicodeString(&component, &g_TAD.BannedApps[i], TRUE /*case-insensitive*/))
         {
             KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_WARNING_LEVEL,
                        "[TAD.RV] BLOCKED process: %wZ (PID %lu)\n",
@@ -1116,45 +1116,45 @@ TadProcessNotifyCallback(
             /*
              * TODO: complete alert-queue integration.
              * When the pended-IRP alert queue is implemented, enqueue a
-             * TadAlertProcessBlocked event here so TadBridgeService can
+             * TADAlertProcessBlocked event here so TADBridgeService can
              * display a real-time notification in the Console dashboard.
              */
             break;
         }
     }
 
-    ExReleaseFastMutex(&g_Tad.BannedAppsLock);
+    ExReleaseFastMutex(&g_TAD.BannedAppsLock);
 }
 
-NTSTATUS TadRegisterProcessNotify(VOID)
+NTSTATUS TADRegisterProcessNotify(VOID)
 {
     NTSTATUS status;
     PAGED_CODE();
 
-    if (g_Tad.ProcessNotifyRegistered) return STATUS_ALREADY_REGISTERED;
+    if (g_TAD.ProcessNotifyRegistered) return STATUS_ALREADY_REGISTERED;
 
     /*
      * PsSetCreateProcessNotifyRoutineEx requires the driver image to have
      * IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY set (/INTEGRITYCHECK linker
      * flag).  Without it this call returns STATUS_ACCESS_DENIED.
      */
-    status = PsSetCreateProcessNotifyRoutineEx(TadProcessNotifyCallback, FALSE);
+    status = PsSetCreateProcessNotifyRoutineEx(TADProcessNotifyCallback, FALSE);
     if (NT_SUCCESS(status)) {
-        g_Tad.ProcessNotifyRegistered = TRUE;
+        g_TAD.ProcessNotifyRegistered = TRUE;
     }
     return status;
 }
 
-VOID TadUnregisterProcessNotify(VOID)
+VOID TADUnregisterProcessNotify(VOID)
 {
     PAGED_CODE();
-    if (!g_Tad.ProcessNotifyRegistered) return;
+    if (!g_TAD.ProcessNotifyRegistered) return;
 
     /*
      * Pass Remove=TRUE to deregister.  Must be called before DriverUnload
      * returns to prevent a bugcheck if the callback fires after the driver
      * image is unmapped.
      */
-    PsSetCreateProcessNotifyRoutineEx(TadProcessNotifyCallback, TRUE);
-    g_Tad.ProcessNotifyRegistered = FALSE;
+    PsSetCreateProcessNotifyRoutineEx(TADProcessNotifyCallback, TRUE);
+    g_TAD.ProcessNotifyRegistered = FALSE;
 }

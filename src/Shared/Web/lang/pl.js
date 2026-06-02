@@ -56,7 +56,7 @@ const TAD_LANG_PL = {
     'deploy.driverBinary': 'Plik sterownika (TAD.RV.sys)',
     'deploy.driverPlaceholder': 'Ścieżka do TAD.RV.sys',
     'deploy.serviceFolder': 'Folder publikacji usługi',
-    'deploy.servicePlaceholder': 'Ścieżka do publikacji TadBridgeService',
+    'deploy.servicePlaceholder': 'Ścieżka do publikacji TADBridgeService',
     'deploy.targetDir': 'Docelowy katalog instalacji',
     'deploy.domainController': 'Kontroler domeny',
     'deploy.installDriver': 'Zainstaluj sterownik jądra',

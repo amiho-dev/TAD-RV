@@ -29,13 +29,13 @@ public sealed class EmulatedProvisioningManager : ProvisioningManager
     /// <summary>
     /// Returns a default policy immediately — no AD, no LDAP, no registry.
     /// </summary>
-    public override Task<TadPolicyBuffer?> EnsureProvisionedAsync(CancellationToken ct)
+    public override Task<TADPolicyBuffer?> EnsureProvisionedAsync(CancellationToken ct)
     {
         _log.LogInformation("[EMULATED] Provisioning skipped — returning default policy");
 
-        var defaultConfig = TadPolicyConfig.Default;
+        var defaultConfig = TADPolicyConfig.Default;
 
-        var policy = new TadPolicyBuffer
+        var policy = new TADPolicyBuffer
         {
             Version             = (uint)defaultConfig.Version,
             Flags               = (uint)defaultConfig.Flags,
@@ -46,6 +46,6 @@ public sealed class EmulatedProvisioningManager : ProvisioningManager
             Reserved            = new uint[8]
         };
 
-        return Task.FromResult<TadPolicyBuffer?>(policy);
+        return Task.FromResult<TADPolicyBuffer?>(policy);
     }
 }

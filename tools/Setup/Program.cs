@@ -668,7 +668,7 @@ static void ExtractUpdater()
     catch (Exception ex) { Warn($"Could not extract updater: {ex.Message}"); }
 }
 
-/// <summary>Extract TadOverlay.exe from embedded resources into the install directory (Client only).</summary>
+/// <summary>Extract TADOverlay.exe from embedded resources into the install directory (Client only).</summary>
 static void ExtractOverlay()
 {
     try
@@ -676,13 +676,13 @@ static void ExtractOverlay()
         var asm = Assembly.GetExecutingAssembly();
         string? rname = asm.GetManifestResourceNames()
             .FirstOrDefault(n => n.Equals("bundled_overlay", StringComparison.OrdinalIgnoreCase));
-        if (rname is null) { Warn("TadOverlay.exe not embedded — skipping."); return; }
+        if (rname is null) { Warn("TADOverlay.exe not embedded — skipping."); return; }
 
-        string dest = InstallBin("TadOverlay.exe");
+        string dest = InstallBin("TADOverlay.exe");
         using var src = asm.GetManifestResourceStream(rname)!;
         using var dst = File.Create(dest);
         src.CopyTo(dst);
-        Ok($"TadOverlay.exe  →  {dest}");
+        Ok($"TADOverlay.exe  →  {dest}");
     }
     catch (Exception ex) { Warn($"Could not extract overlay: {ex.Message}"); }
 }

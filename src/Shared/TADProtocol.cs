@@ -17,7 +17,7 @@ namespace TADBridge.Shared;
 // Command Types
 // ═══════════════════════════════════════════════════════════════════════════
 
-public enum TadCommand : byte
+public enum TADCommand : byte
 {
     // Teacher → Student
     Ping            = 0x01,
@@ -151,12 +151,12 @@ public sealed class PushMessageRequest
 /// <summary>
 /// Wire format:
 ///   [4 bytes: big-endian payload length (cmd + data)]
-///   [1 byte:  TadCommand]
+///   [1 byte:  TADCommand]
 ///   [N bytes: payload data]
 ///
 /// Max frame size: 16 MB (sanity limit for video frames)
 /// </summary>
-public static class TadFrameCodec
+public static class TADFrameCodec
 {
     public const int HeaderSize = 5;     // 4 (length) + 1 (command)
     public const int MaxPayload = 16 * 1024 * 1024;
@@ -164,7 +164,7 @@ public static class TadFrameCodec
     /// <summary>
     /// Encode a command + payload into a wire frame.
     /// </summary>
-    public static byte[] Encode(TadCommand cmd, ReadOnlySpan<byte> payload = default)
+    public static byte[] Encode(TADCommand cmd, ReadOnlySpan<byte> payload = default)
     {
         int totalPayload = 1 + payload.Length; // cmd byte + data
         var frame = new byte[4 + totalPayload];
@@ -178,7 +178,7 @@ public static class TadFrameCodec
     /// <summary>
     /// Encode a command with a JSON-serialized object payload.
     /// </summary>
-    public static byte[] EncodeJson<T>(TadCommand cmd, T obj)
+    public static byte[] EncodeJson<T>(TADCommand cmd, T obj)
     {
         var json = JsonSerializer.SerializeToUtf8Bytes(obj);
         return Encode(cmd, json);
@@ -190,7 +190,7 @@ public static class TadFrameCodec
     /// </summary>
     public static bool TryDecode(
         ReadOnlySpan<byte> buffer,
-        out TadCommand command,
+        out TADCommand command,
         out ReadOnlyMemory<byte> payload,
         out int bytesConsumed)
     {
@@ -213,7 +213,7 @@ public static class TadFrameCodec
         if (buffer.Length < totalFrame)
             return false; // Need more data
 
-        command = (TadCommand)buffer[4];
+        command = (TADCommand)buffer[4];
         if (payloadLen > 1)
         {
             payload = buffer.Slice(5, payloadLen - 1).ToArray();

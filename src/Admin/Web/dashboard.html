@@ -41,27 +41,6 @@
                 <button class="stats-action-btn" onclick="openBlocklistModal()" title="Content filters &amp; blocklist">
                     <span class="sai">&#xE8D7;</span> <span data-i18n="toolbar.filters">Filters</span>
                 </button>
-                <button class="stats-action-btn" onclick="enableGameFilterAll()" title="Enable game filter for all students">
-                    <span class="sai">&#xE7FC;</span> <span>Game Filter On</span>
-                </button>
-                <button class="stats-action-btn" onclick="disableGameFilterAll()" title="Disable game filter for all students">
-                    <span class="sai">&#xE711;</span> <span>Game Filter Off</span>
-                </button>
-                <!-- Language Selector -->
-                <div class="lang-selector" id="langSelector">
-                    <button class="stats-action-btn lang-btn" onclick="toggleLangDropdown()" title="Language">
-                        <span class="sai">&#xE774;</span> <span id="langCode">EN</span>
-                    </button>
-                    <div class="lang-dropdown" id="langDropdown" style="display:none">
-                        <button class="lang-option" data-lang="en">English</button>
-                        <button class="lang-option" data-lang="de">Deutsch</button>
-                        <button class="lang-option" data-lang="fr">Francais</button>
-                        <button class="lang-option" data-lang="nl">Nederlands</button>
-                        <button class="lang-option" data-lang="es">Espanol</button>
-                        <button class="lang-option" data-lang="it">Italiano</button>
-                        <button class="lang-option" data-lang="pl">Polski</button>
-                    </div>
-                </div>
                 <button class="stats-action-btn" onclick="openSettingsModal()" title="Open dashboard settings">
                     <span class="sai">&#xE713;</span> <span>Settings</span>
                 </button>
@@ -97,6 +76,17 @@
                         <option value="pl">Polski</option>
                     </select>
                 </div>
+                <div class="settings-row">
+                    <label for="settingsCaptureMode">Screen Capture Mode</label>
+                    <select id="settingsCaptureMode" onchange="onCaptureModeChanged()">
+                        <option value="live">Live stream (focus supports 720p@30fps)</option>
+                        <option value="snapshot">Snapshots only (rate-limited)</option>
+                    </select>
+                </div>
+                <div class="settings-row" id="settingsSnapshotIntervalRow">
+                    <label for="settingsSnapshotInterval">Snapshot interval (seconds)</label>
+                    <input type="number" id="settingsSnapshotInterval" min="5" max="120" step="1" value="15" />
+                </div>
                 <div class="settings-row checkbox-row">
                     <input type="checkbox" id="settingsCompactToolbar" />
                     <label for="settingsCompactToolbar">Compact toolbar (save homepage space)</label>
@@ -104,6 +94,13 @@
                 <div class="settings-row checkbox-row">
                     <input type="checkbox" id="settingsHideEmptyHint" />
                     <label for="settingsHideEmptyHint">Hide empty-state helper text</label>
+                </div>
+                <div class="settings-row">
+                    <label>Class Controls</label>
+                    <div class="settings-inline-actions">
+                        <button class="btn btn-secondary" onclick="enableGameFilterAll()">Game Filter On</button>
+                        <button class="btn btn-secondary" onclick="disableGameFilterAll()">Game Filter Off</button>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button class="btn btn-primary" onclick="applyDashboardSettings()">Apply</button>
@@ -312,8 +309,8 @@
                     <h3 class="changelog-section-title fix">Bug Fixes</h3>
                     <ul class="changelog-list">
                         <li>Fixed double "vv" version prefix — version bar now correctly shows <code>v26.3.02.007</code> instead of <code>vv26.3.02.007</code></li>
-                        <li>Blank button now sends <code>TadCommand.BlankScreen</code> over TCP to all students (was previously only updating the local JS banner)</li>
-                        <li>Broadcast Message actually delivers the message to student endpoints via <code>TadCommand.PushMessage</code> + <code>msg.exe</code> (was silently dropped)</li>
+                        <li>Blank button now sends <code>TADCommand.BlankScreen</code> over TCP to all students (was previously only updating the local JS banner)</li>
+                        <li>Broadcast Message actually delivers the message to student endpoints via <code>TADCommand.PushMessage</code> + <code>msg.exe</code> (was silently dropped)</li>
                     </ul>
                 </div>
 
@@ -321,7 +318,7 @@
                     <h3 class="changelog-section-title feature">New Features</h3>
                     <ul class="changelog-list">
                         <li>Offline computer toggle — click the <strong>Offline</strong> counter in the stats bar to show or hide offline endpoints (hidden by default to avoid clutter)</li>
-                        <li>Service: <code>BlankScreen</code> command launches a fullscreen black overlay window (PowerShell fallback if no TadBlankOverlay.exe)</li>
+                        <li>Service: <code>BlankScreen</code> command launches a fullscreen black overlay window (PowerShell fallback if no TADBlankOverlay.exe)</li>
                         <li>Service: <code>PushMessage</code> command broadcasts text to all active Windows sessions via <code>msg.exe</code></li>
                     </ul>
                 </div>
@@ -429,7 +426,7 @@
                         <li>Separate client/teacher deployment folders for multi-machine demo</li>
                         <li>Linux cross-compilation support via EnableWindowsTargeting</li>
                         <li>Kernel driver: process protection, hard lock, UI protection, stealth mode IOCTLs</li>
-                        <li>Binary wire protocol with length-prefixed framing (TadFrameCodec)</li>
+                        <li>Binary wire protocol with length-prefixed framing (TADFrameCodec)</li>
                     </ul>
                 </div>
 

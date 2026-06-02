@@ -4,7 +4,7 @@
 // (C) 2026 TAD Europe — https://tad-it.eu
 //
 // Maintains persistent TCP connections to up to 50 student endpoints.
-// Each student runs a TadTcpListener on port 17420.
+// Each student runs a TADTcpListener on port 17420.
 //
 // Features:
 //   - Auto-reconnect with exponential backoff
@@ -87,61 +87,61 @@ public sealed class TcpClientManager : IDisposable
 
     // ─── Commands ─────────────────────────────────────────────────────
 
-    public void LockStudent(string ip) => SendCommand(ip, TadCommand.Lock);
-    public void UnlockStudent(string ip) => SendCommand(ip, TadCommand.Unlock);
+    public void LockStudent(string ip) => SendCommand(ip, TADCommand.Lock);
+    public void UnlockStudent(string ip) => SendCommand(ip, TADCommand.Unlock);
 
-    public void StartRemoteView(string ip) => SendCommand(ip, TadCommand.RvStart);
-    public void StopRemoteView(string ip) => SendCommand(ip, TadCommand.RvStop);
+    public void StartRemoteView(string ip) => SendCommand(ip, TADCommand.RvStart);
+    public void StopRemoteView(string ip) => SendCommand(ip, TADCommand.RvStop);
 
     /// <summary>Start focused 30fps 720p main-stream for one student.</summary>
-    public void StartFocusStream(string ip) => SendCommand(ip, TadCommand.RvFocusStart);
+    public void StartFocusStream(string ip) => SendCommand(ip, TADCommand.RvFocusStart);
     /// <summary>Stop focused main-stream (sub-stream keeps running).</summary>
-    public void StopFocusStream(string ip) => SendCommand(ip, TadCommand.RvFocusStop);
+    public void StopFocusStream(string ip) => SendCommand(ip, TADCommand.RvFocusStop);
 
-    public void BroadcastLock() => BroadcastCommand(TadCommand.Lock);
-    public void BroadcastUnlock() => BroadcastCommand(TadCommand.Unlock);
-    public void FreezeStudent(string ip) => SendCommand(ip, TadCommand.Freeze);
-    public void UnfreezeStudent(string ip) => SendCommand(ip, TadCommand.Unfreeze);
-    public void BroadcastFreeze() => BroadcastCommand(TadCommand.Freeze);
-    public void BroadcastUnfreeze() => BroadcastCommand(TadCommand.Unfreeze);
-    public void BroadcastBlankScreen() => BroadcastCommand(TadCommand.BlankScreen);
-    public void BroadcastUnblankScreen() => BroadcastCommand(TadCommand.UnblankScreen);
+    public void BroadcastLock() => BroadcastCommand(TADCommand.Lock);
+    public void BroadcastUnlock() => BroadcastCommand(TADCommand.Unlock);
+    public void FreezeStudent(string ip) => SendCommand(ip, TADCommand.Freeze);
+    public void UnfreezeStudent(string ip) => SendCommand(ip, TADCommand.Unfreeze);
+    public void BroadcastFreeze() => BroadcastCommand(TADCommand.Freeze);
+    public void BroadcastUnfreeze() => BroadcastCommand(TADCommand.Unfreeze);
+    public void BroadcastBlankScreen() => BroadcastCommand(TADCommand.BlankScreen);
+    public void BroadcastUnblankScreen() => BroadcastCommand(TADCommand.UnblankScreen);
     public void BroadcastPushMessage(string message)
     {
-        var frame = TadFrameCodec.EncodeJson(TadCommand.PushMessage, new PushMessageRequest { Message = message });
+        var frame = TADFrameCodec.EncodeJson(TADCommand.PushMessage, new PushMessageRequest { Message = message });
         BroadcastRaw(frame);
     }
     public void BroadcastCollectFiles()
     {
         var request = new CollectFilesRequest();
-        var frame = TadFrameCodec.EncodeJson(TadCommand.CollectFiles, request);
+        var frame = TADFrameCodec.EncodeJson(TADCommand.CollectFiles, request);
         BroadcastRaw(frame);
     }
-    public void PingAll() => BroadcastCommand(TadCommand.Ping);
-    public void RequestSnapshot(string ip) => SendCommand(ip, TadCommand.Snapshot);
-    public void BroadcastRequestSnapshot() => BroadcastCommand(TadCommand.Snapshot);
+    public void PingAll() => BroadcastCommand(TADCommand.Ping);
+    public void RequestSnapshot(string ip) => SendCommand(ip, TADCommand.Snapshot);
+    public void BroadcastRequestSnapshot() => BroadcastCommand(TADCommand.Snapshot);
 
     public void KillProcessOnStudent(string ip, int pid)
     {
-        var frame = TadFrameCodec.EncodeJson(TadCommand.KillProcess, new KillProcessRequest { ProcessId = pid });
+        var frame = TADFrameCodec.EncodeJson(TADCommand.KillProcess, new KillProcessRequest { ProcessId = pid });
         SendRaw(ip, frame);
     }
 
     public void BroadcastBlocklist(BlocklistUpdate blocklist)
     {
-        var frame = TadFrameCodec.EncodeJson(TadCommand.SetBlocklist, blocklist);
+        var frame = TADFrameCodec.EncodeJson(TADCommand.SetBlocklist, blocklist);
         BroadcastRaw(frame);
     }
 
     public int BroadcastProgramLock(BlocklistUpdate blocklist)
     {
-        var frame = TadFrameCodec.EncodeJson(TadCommand.ProgramLock, blocklist);
+        var frame = TADFrameCodec.EncodeJson(TADCommand.ProgramLock, blocklist);
         return BroadcastRawCounted(frame);
     }
 
     public int BroadcastProgramUnlock()
     {
-        return BroadcastCommandCounted(TadCommand.ProgramUnlock);
+        return BroadcastCommandCounted(TADCommand.ProgramUnlock);
     }
 
     // ─── Networking Core ──────────────────────────────────────────────
@@ -208,7 +208,7 @@ public sealed class TcpClientManager : IDisposable
         while (offset < data.Length)
         {
             var span = data.AsSpan(offset);
-            if (!TadFrameCodec.TryDecode(span, out var cmd, out var payload, out int consumed))
+            if (!TADFrameCodec.TryDecode(span, out var cmd, out var payload, out int consumed))
                 break;
 
             offset += consumed;
@@ -224,15 +224,15 @@ public sealed class TcpClientManager : IDisposable
         }
     }
 
-    private void HandleFrame(string ip, TadCommand cmd, ReadOnlyMemory<byte> payload)
+    private void HandleFrame(string ip, TADCommand cmd, ReadOnlyMemory<byte> payload)
     {
         switch (cmd)
         {
-            case TadCommand.Pong:
+            case TADCommand.Pong:
                 // Connection alive
                 break;
 
-            case TadCommand.Status:
+            case TADCommand.Status:
                 try
                 {
                     var status = JsonSerializer.Deserialize<StudentStatus>(payload.Span);
@@ -242,28 +242,28 @@ public sealed class TcpClientManager : IDisposable
                 catch { /* Ignore malformed JSON */ }
                 break;
 
-            case TadCommand.VideoFrame:
+            case TADCommand.VideoFrame:
                 VideoFrameReceived?.Invoke(ip, payload.ToArray(), false);
                 break;
 
-            case TadCommand.VideoKeyFrame:
+            case TADCommand.VideoKeyFrame:
                 VideoFrameReceived?.Invoke(ip, payload.ToArray(), true);
                 break;
 
-            case TadCommand.MainFrame:
+            case TADCommand.MainFrame:
                 MainFrameReceived?.Invoke(ip, payload.ToArray(), false);
                 break;
 
-            case TadCommand.MainKeyFrame:
+            case TADCommand.MainKeyFrame:
                 MainFrameReceived?.Invoke(ip, payload.ToArray(), true);
                 break;
 
-            case TadCommand.SnapshotData:
+            case TADCommand.SnapshotData:
                 SnapshotReceived?.Invoke(ip, payload.ToArray());
                 break;
 
-            case TadCommand.FileChunk:
-            case TadCommand.FileComplete:
+            case TADCommand.FileChunk:
+            case TADCommand.FileComplete:
                 // File transfer handling (future expansion)
                 break;
         }
@@ -271,12 +271,12 @@ public sealed class TcpClientManager : IDisposable
 
     // ─── Send Helpers ─────────────────────────────────────────────────
 
-    private void SendCommand(string ip, TadCommand cmd, ReadOnlySpan<byte> payload = default)
+    private void SendCommand(string ip, TADCommand cmd, ReadOnlySpan<byte> payload = default)
     {
         if (!_connections.TryGetValue(ip, out var conn) || !conn.IsConnected) return;
         try
         {
-            var frame = TadFrameCodec.Encode(cmd, payload);
+            var frame = TADFrameCodec.Encode(cmd, payload);
             conn.Client?.GetStream().Write(frame);
         }
         catch
@@ -285,16 +285,16 @@ public sealed class TcpClientManager : IDisposable
         }
     }
 
-    private void BroadcastCommand(TadCommand cmd)
+    private void BroadcastCommand(TADCommand cmd)
     {
-        var frame = TadFrameCodec.Encode(cmd);
+        var frame = TADFrameCodec.Encode(cmd);
         BroadcastRaw(frame);
     }
 
     /// <summary>Broadcast a command and return how many students received it.</summary>
-    public int BroadcastCommandCounted(TadCommand cmd)
+    public int BroadcastCommandCounted(TADCommand cmd)
     {
-        var frame = TadFrameCodec.Encode(cmd);
+        var frame = TADFrameCodec.Encode(cmd);
         return BroadcastRawCounted(frame);
     }
 

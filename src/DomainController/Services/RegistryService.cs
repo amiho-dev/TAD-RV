@@ -12,7 +12,7 @@ namespace TADDomainController.Services;
 /// <summary>
 /// Current TAD.RV registry configuration snapshot.
 /// </summary>
-public sealed class TadRegistryConfig
+public sealed class TADRegistryConfig
 {
     public string  InstallDir        { get; set; } = "";
     public string  DomainController  { get; set; } = "";
@@ -32,17 +32,17 @@ public sealed class RegistryService
     /// <summary>
     /// Reads the entire TAD.RV registry configuration.
     /// </summary>
-    public TadRegistryConfig ReadConfig()
+    public TADRegistryConfig ReadConfig()
     {
         try
         {
             using var key = Registry.LocalMachine.OpenSubKey(RegPath, writable: false);
             if (key == null)
             {
-                return new TadRegistryConfig { KeyExists = false };
+                return new TADRegistryConfig { KeyExists = false };
             }
 
-            return new TadRegistryConfig
+            return new TADRegistryConfig
             {
                 KeyExists           = true,
                 InstallDir          = key.GetValue("InstallDir")?.ToString()       ?? "",
@@ -57,7 +57,7 @@ public sealed class RegistryService
         }
         catch
         {
-            return new TadRegistryConfig { KeyExists = false };
+            return new TADRegistryConfig { KeyExists = false };
         }
     }
 

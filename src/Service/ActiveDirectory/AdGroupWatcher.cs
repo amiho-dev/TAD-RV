@@ -31,7 +31,7 @@ public class AdGroupWatcher
     private readonly OfflineCacheManager      _cache;
 
     private string? _lastResolvedSid;
-    private TadUserRole _lastRole = TadUserRole.Unknown;
+    private TADUserRole _lastRole = TADUserRole.Unknown;
     private Dictionary<string, int>? _groupMappings;
 
     public AdGroupWatcher(
@@ -47,13 +47,13 @@ public class AdGroupWatcher
     /// Resolves the current interactive user's role from AD groups.
     /// Returns (role, sessionId, userSid).
     /// </summary>
-    public virtual (TadUserRole Role, uint SessionId, string Sid) ResolveCurrentUser()
+    public virtual (TADUserRole Role, uint SessionId, string Sid) ResolveCurrentUser()
     {
         // Find the active console session
         uint sessionId = NativeSession.WTSGetActiveConsoleSessionId();
         if (sessionId == 0xFFFFFFFF)
         {
-            return (TadUserRole.Unknown, 0, string.Empty);
+            return (TADUserRole.Unknown, 0, string.Empty);
         }
 
         try
@@ -69,7 +69,7 @@ public class AdGroupWatcher
 
     // ─── AD Resolution ───────────────────────────────────────────────
 
-    private (TadUserRole, uint, string) ResolveFromAd(uint sessionId)
+    private (TADUserRole, uint, string) ResolveFromAd(uint sessionId)
     {
         using var context = new PrincipalContext(ContextType.Domain);
         using var user    = UserPrincipal.Current;
@@ -77,7 +77,7 @@ public class AdGroupWatcher
         if (user == null)
         {
             _log.LogDebug("No domain user found for session {Session}", sessionId);
-            return (TadUserRole.Unknown, sessionId, string.Empty);
+            return (TADUserRole.Unknown, sessionId, string.Empty);
         }
 
         string sid = user.Sid?.Value ?? string.Empty;
@@ -98,7 +98,7 @@ public class AdGroupWatcher
             sid, sessionId, string.Join(", ", groups));
 
         // Map to highest-privilege role
-        TadUserRole role = MapGroupsToRole(groups);
+        TADUserRole role = MapGroupsToRole(groups);
 
         // Cache the result for offline use
         _cache.CacheUserResolution(sid, role, groups);
@@ -111,7 +111,7 @@ public class AdGroupWatcher
 
     // ─── Offline Fallback ────────────────────────────────────────────
 
-    private (TadUserRole, uint, string) ResolveFromCache(uint sessionId)
+    private (TADUserRole, uint, string) ResolveFromCache(uint sessionId)
     {
         // If we had a previous resolution in this session, reuse it
         if (_lastResolvedSid != null)
@@ -130,12 +130,12 @@ public class AdGroupWatcher
             return (cached.Role, sessionId, cached.Sid);
         }
 
-        return (TadUserRole.Unknown, sessionId, string.Empty);
+        return (TADUserRole.Unknown, sessionId, string.Empty);
     }
 
     // ─── Group → Role Mapping ────────────────────────────────────────
 
-    private TadUserRole MapGroupsToRole(List<string> groups)
+    private TADUserRole MapGroupsToRole(List<string> groups)
     {
         if (_groupMappings == null || _groupMappings.Count == 0)
         {
@@ -143,20 +143,20 @@ public class AdGroupWatcher
             foreach (string g in groups)
             {
                 string lower = g.ToLowerInvariant();
-                if (lower.Contains("admin")) return TadUserRole.Admin;
+                if (lower.Contains("admin")) return TADUserRole.Admin;
                 if (lower.Contains("teacher") || lower.Contains("staff"))
-                    return TadUserRole.Teacher;
+                    return TADUserRole.Teacher;
             }
-            return TadUserRole.Student;
+            return TADUserRole.Student;
         }
 
-        TadUserRole highest = TadUserRole.Student;
+        TADUserRole highest = TADUserRole.Student;
 
         foreach (string group in groups)
         {
             if (_groupMappings.TryGetValue(group, out int roleInt))
             {
-                var role = (TadUserRole)roleInt;
+                var role = (TADUserRole)roleInt;
                 if (role > highest) highest = role;
             }
         }
@@ -172,7 +172,7 @@ public class AdGroupWatcher
             string? json = key?.GetValue("PolicyJson") as string;
             if (json == null) return;
 
-            var config = JsonSerializer.Deserialize<TadPolicyConfig>(json,
+            var config = JsonSerializer.Deserialize<TADPolicyConfig>(json,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             _groupMappings = config?.GroupRoleMappings;

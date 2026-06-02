@@ -56,7 +56,7 @@ const TAD_LANG_NL = {
     'deploy.driverBinary': 'Stuurprogramma-binary (TAD.RV.sys)',
     'deploy.driverPlaceholder': 'Pad naar TAD.RV.sys',
     'deploy.serviceFolder': 'Service-publicatiemap',
-    'deploy.servicePlaceholder': 'Pad naar TadBridgeService-publicatie',
+    'deploy.servicePlaceholder': 'Pad naar TADBridgeService-publicatie',
     'deploy.targetDir': 'Doelinstallatiemap',
     'deploy.domainController': 'Domeincontroller',
     'deploy.installDriver': 'Kernel-stuurprogramma installeren',

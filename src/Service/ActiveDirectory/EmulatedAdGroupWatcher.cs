@@ -24,11 +24,11 @@ public sealed class EmulatedAdGroupWatcher : AdGroupWatcher
     private int _callCount;
 
     // Demo users that rotate on each resolution cycle
-    private static readonly (string Sid, string Name, TadUserRole Role)[] DemoUsers =
+    private static readonly (string Sid, string Name, TADUserRole Role)[] DemoUsers =
     {
-        ("S-1-5-21-DEMO-1001", "demo.student",  TadUserRole.Student),
-        ("S-1-5-21-DEMO-1002", "demo.teacher",   TadUserRole.Teacher),
-        ("S-1-5-21-DEMO-1003", "demo.admin",     TadUserRole.Admin),
+        ("S-1-5-21-DEMO-1001", "demo.student",  TADUserRole.Student),
+        ("S-1-5-21-DEMO-1002", "demo.teacher",   TADUserRole.Teacher),
+        ("S-1-5-21-DEMO-1003", "demo.admin",     TADUserRole.Admin),
     };
 
     public EmulatedAdGroupWatcher(
@@ -43,7 +43,7 @@ public sealed class EmulatedAdGroupWatcher : AdGroupWatcher
     /// Returns a simulated user that cycles through roles.
     /// Session ID is always 1 (console session).
     /// </summary>
-    public override (TadUserRole Role, uint SessionId, string Sid) ResolveCurrentUser()
+    public override (TADUserRole Role, uint SessionId, string Sid) ResolveCurrentUser()
     {
         int idx = (_callCount / 6) % DemoUsers.Length;   // switch every ~60s at 10s poll
         _callCount++;

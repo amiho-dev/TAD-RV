@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────────
-// TadTcpListener.cs — Student-side TCP listener for teacher commands
+// TADTcpListener.cs — Student-side TCP listener for teacher commands
 //
 // (C) 2026 TAD Europe — https://tad-it.eu
 //
@@ -19,16 +19,15 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Win32;
 using TADBridge.Driver;
 using TADBridge.Shared;
 using TADBridge.Capture;
 
 namespace TADBridge.Networking;
 
-public sealed class TadTcpListener : BackgroundService
+public sealed class TADTcpListener : BackgroundService
 {
-    private readonly ILogger<TadTcpListener> _log;
+    private readonly ILogger<TADTcpListener> _log;
     private readonly DriverBridge _driver;
     private readonly ScreenCaptureEngine _capture;
     private readonly PrivacyRedactor _redactor;
@@ -43,39 +42,29 @@ public sealed class TadTcpListener : BackgroundService
     // Status state
     private volatile bool _isLocked;
     private volatile bool _isStreaming;
-    private volatile bool _isSnapshotFallbackActive;
     private volatile bool _isBlanked;
     private volatile bool _isFrozen;
     private Process? _lockOverlayProcess;
     private Process? _blankOverlayProcess;
-    private CancellationTokenSource? _snapshotFallbackCts;
 
     // Blocklist enforcement
     private BlocklistUpdate _blocklist = new();
     private readonly object _blocklistLock = new();
     private volatile bool _isWebLocked;
     private volatile bool _isProgramLocked;
-    private volatile bool _isAcademicWebFilterEnabled;
-    private readonly List<string> _academicBlockedSites = new();
-    private readonly object _academicLock = new();
 
-    // Connectivity security countdown (LAN/Teacher/DC reachability)
+    // Network disconnect auto-lock
     private volatile bool _networkDisconnected;
-    private volatile bool _securityCountdownActive;
-    private DateTime _securityCountdownStartedAt = DateTime.MaxValue;
-    private string _securityCountdownReason = string.Empty;
-    private readonly string _domainControllerHost;
-    private DateTime _lastDcProbeAt = DateTime.MinValue;
-    private bool _lastDcProbeReachable = true;
-    private const int SecurityEnforcementGraceSeconds = 300; // 5 minutes
+    private DateTime _networkLostAt = DateTime.MaxValue;
+    private const int NetworkLockGraceSeconds = 30;
 
     // CPU usage tracking via PerformanceCounter-free approach
     private TimeSpan _prevCpuTotal;
     private DateTime _prevCpuTime = DateTime.UtcNow;
     private double _lastCpuUsage;
 
-    public TadTcpListener(
-        ILogger<TadTcpListener> log,
+    public TADTcpListener(
+        ILogger<TADTcpListener> log,
         DriverBridge driver,
         ScreenCaptureEngine capture,
         PrivacyRedactor redactor,
@@ -86,7 +75,6 @@ public sealed class TadTcpListener : BackgroundService
         _capture = capture;
         _redactor = redactor;
         _lifetime = lifetime;
-        _domainControllerHost = LoadDomainControllerHost();
     }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -119,7 +107,7 @@ public sealed class TadTcpListener : BackgroundService
         // Periodic status beacon
         _ = StatusBeaconAsync(ct);
 
-        // Connectivity monitor — 5-minute security lock on LAN/DC/teacher reachability loss
+        // Network connectivity monitor — auto-lock on LAN disconnect
         _ = NetworkMonitorAsync(ct);
 
         while (!ct.IsCancellationRequested)
@@ -200,7 +188,7 @@ public sealed class TadTcpListener : BackgroundService
 
         while (offset < length)
         {
-            if (!TadFrameCodec.TryDecode(data.AsSpan(offset, length - offset), out var cmd, out var payload, out int consumed))
+            if (!TADFrameCodec.TryDecode(data.AsSpan(offset, length - offset), out var cmd, out var payload, out int consumed))
                 break;
 
             offset += consumed;
@@ -217,41 +205,41 @@ public sealed class TadTcpListener : BackgroundService
 
     // ─── Command Router ───────────────────────────────────────────────
 
-    private void RouteCommand(TadCommand cmd, ReadOnlyMemory<byte> payload, CancellationToken ct)
+    private void RouteCommand(TADCommand cmd, ReadOnlyMemory<byte> payload, CancellationToken ct)
     {
         _log.LogDebug("Received command: {Cmd}", cmd);
 
         switch (cmd)
         {
-            case TadCommand.Ping:
-                SendFrame(TadCommand.Pong);
+            case TADCommand.Ping:
+                SendFrame(TADCommand.Pong);
                 break;
 
-            case TadCommand.Lock:
+            case TADCommand.Lock:
                 ExecuteLock();
                 break;
 
-            case TadCommand.Unlock:
+            case TADCommand.Unlock:
                 ExecuteUnlock();
                 break;
 
-            case TadCommand.RvStart:
+            case TADCommand.RvStart:
                 StartStreaming(ct);
                 break;
 
-            case TadCommand.RvStop:
+            case TADCommand.RvStop:
                 StopStreaming();
                 break;
 
-            case TadCommand.RvFocusStart:
+            case TADCommand.RvFocusStart:
                 StartMainStream();
                 break;
 
-            case TadCommand.RvFocusStop:
+            case TADCommand.RvFocusStop:
                 StopMainStream();
                 break;
 
-            case TadCommand.CollectFiles:
+            case TADCommand.CollectFiles:
                 try
                 {
                     var req = JsonSerializer.Deserialize<CollectFilesRequest>(payload.Span);
@@ -263,29 +251,29 @@ public sealed class TadTcpListener : BackgroundService
                 }
                 break;
 
-            case TadCommand.Snapshot:
+            case TADCommand.Snapshot:
                 _ = SendSnapshotAsync();
                 break;
 
-            case TadCommand.BlankScreen:
+            case TADCommand.BlankScreen:
                 ExecuteBlankScreen();
                 break;
 
-            case TadCommand.UnblankScreen:
+            case TADCommand.UnblankScreen:
                 ExecuteUnblankScreen();
                 break;
 
-            case TadCommand.Freeze:
+            case TADCommand.Freeze:
                 // Freeze is replaced by Lock — redirect
                 ExecuteLock();
                 break;
 
-            case TadCommand.Unfreeze:
+            case TADCommand.Unfreeze:
                 // Freeze is replaced by Lock — redirect
                 ExecuteUnlock();
                 break;
 
-            case TadCommand.PushMessage:
+            case TADCommand.PushMessage:
                 try
                 {
                     var req = JsonSerializer.Deserialize<PushMessageRequest>(payload.Span);
@@ -298,7 +286,7 @@ public sealed class TadTcpListener : BackgroundService
                 }
                 break;
 
-            case TadCommand.KillProcess:
+            case TADCommand.KillProcess:
                 try
                 {
                     var req = System.Text.Json.JsonSerializer.Deserialize<KillProcessRequest>(payload.Span);
@@ -310,15 +298,15 @@ public sealed class TadTcpListener : BackgroundService
                 }
                 break;
 
-            case TadCommand.LaunchApp:
+            case TADCommand.LaunchApp:
                 ExecuteLaunchApp(System.Text.Encoding.UTF8.GetString(payload.Span));
                 break;
 
-            case TadCommand.LaunchUrl:
+            case TADCommand.LaunchUrl:
                 ExecuteLaunchUrl(System.Text.Encoding.UTF8.GetString(payload.Span));
                 break;
 
-            case TadCommand.SetBlocklist:
+            case TADCommand.SetBlocklist:
                 try
                 {
                     var bl = JsonSerializer.Deserialize<BlocklistUpdate>(payload.Span);
@@ -335,15 +323,15 @@ public sealed class TadTcpListener : BackgroundService
                 }
                 break;
 
-            case TadCommand.WebLock:
+            case TADCommand.WebLock:
                 ExecuteWebLock();
                 break;
 
-            case TadCommand.WebUnlock:
+            case TADCommand.WebUnlock:
                 ExecuteWebUnlock();
                 break;
 
-            case TadCommand.ProgramLock:
+            case TADCommand.ProgramLock:
                 try
                 {
                     var pl = JsonSerializer.Deserialize<BlocklistUpdate>(payload.Span);
@@ -355,35 +343,19 @@ public sealed class TadTcpListener : BackgroundService
                 }
                 break;
 
-            case TadCommand.ProgramUnlock:
+            case TADCommand.ProgramUnlock:
                 ExecuteProgramUnlock();
                 break;
 
-            case TadCommand.AcademicWebLock:
-                try
-                {
-                    var req = JsonSerializer.Deserialize<BlocklistUpdate>(payload.Span);
-                    if (req != null) ExecuteAcademicWebLock(req);
-                }
-                catch (Exception ex)
-                {
-                    _log.LogWarning(ex, "Bad AcademicWebLock payload");
-                }
-                break;
-
-            case TadCommand.AcademicWebUnlock:
-                ExecuteAcademicWebUnlock();
-                break;
-
-            case TadCommand.Logoff:
+            case TADCommand.Logoff:
                 ExecuteLogoff();
                 break;
 
-            case TadCommand.Reboot:
+            case TADCommand.Reboot:
                 ExecuteReboot();
                 break;
 
-            case TadCommand.Shutdown:
+            case TADCommand.Shutdown:
                 ExecuteShutdown();
                 break;
 
@@ -414,15 +386,45 @@ public sealed class TadTcpListener : BackgroundService
     {
         try
         {
-            _log.LogInformation("Executing Launch App: {Cmd}", cmdOrPath);
-            string safe = (cmdOrPath ?? string.Empty).Replace("\"", "");
+            string raw = (cmdOrPath ?? string.Empty).Replace("\0", string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                _log.LogWarning("LaunchApp rejected: empty payload");
+                return;
+            }
+
+            if (!TrySplitLaunchCommand(raw, out string fileName, out string arguments))
+            {
+                _log.LogWarning("LaunchApp rejected: invalid command format");
+                return;
+            }
+
+            string bareName = Path.GetFileName(fileName);
+            if (bareName.Equals("cmd.exe", StringComparison.OrdinalIgnoreCase)
+                || bareName.Equals("powershell.exe", StringComparison.OrdinalIgnoreCase)
+                || bareName.Equals("pwsh.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                _log.LogWarning("LaunchApp rejected: command interpreters are not allowed ({App})", bareName);
+                return;
+            }
+
+            if (Uri.TryCreate(fileName, UriKind.Absolute, out var asUri)
+                && (asUri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                    || asUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                ExecuteLaunchUrl(asUri.ToString());
+                return;
+            }
+
+            _log.LogInformation("Executing Launch App: {File}", fileName);
+
             var psi = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c start \"\" \"{safe}\"",
-                CreateNoWindow = true,
-                UseShellExecute = false
+                FileName = fileName,
+                Arguments = arguments,
+                UseShellExecute = true
             };
+
             Process.Start(psi);
         }
         catch (Exception ex)
@@ -435,21 +437,73 @@ public sealed class TadTcpListener : BackgroundService
     {
         try
         {
-            _log.LogInformation("Executing Launch URL: {Url}", url);
-            string safe = (url ?? string.Empty).Replace("\"", "");
+            string candidate = (url ?? string.Empty).Replace("\0", string.Empty).Trim();
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
+                || !(uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                     || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                _log.LogWarning("LaunchUrl rejected: unsupported or invalid URL ({Url})", candidate);
+                return;
+            }
+
+            _log.LogInformation("Executing Launch URL: {Url}", uri);
+
             var psi = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = $"/c start \"\" \"{safe}\"",
-                CreateNoWindow = true,
-                UseShellExecute = false
+                FileName = uri.ToString(),
+                UseShellExecute = true
             };
+
             Process.Start(psi);
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "Failed to launch URL");
         }
+    }
+
+    private static bool TrySplitLaunchCommand(string raw, out string fileName, out string arguments)
+    {
+        fileName = string.Empty;
+        arguments = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        string text = raw.Trim();
+
+        if (text[0] == '"')
+        {
+            int endQuote = text.IndexOf('"', 1);
+            if (endQuote <= 1)
+                return false;
+
+            fileName = text[1..endQuote].Trim();
+            arguments = endQuote + 1 < text.Length
+                ? text[(endQuote + 1)..].Trim()
+                : string.Empty;
+        }
+        else
+        {
+            int firstSpace = text.IndexOf(' ');
+            if (firstSpace < 0)
+            {
+                fileName = text;
+            }
+            else
+            {
+                fileName = text[..firstSpace].Trim();
+                arguments = text[(firstSpace + 1)..].Trim();
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        if (fileName.IndexOfAny(['\r', '\n', '"']) >= 0)
+            return false;
+
+        return true;
     }
 
     private void ExecuteBlankScreen()
@@ -459,13 +513,10 @@ public sealed class TadTcpListener : BackgroundService
         try
         {
             _blankOverlayProcess = LaunchOverlay("--blank");
-            if (_blankOverlayProcess == null)
-                _blankOverlayProcess = LaunchFallbackOverlay(isLockMode: false);
-
             if (_blankOverlayProcess != null)
                 _log.LogInformation("Blank screen activated (PID {Pid})", _blankOverlayProcess.Id);
             else
-                _log.LogWarning("Failed to launch blank overlay in all modes");
+                _log.LogWarning("Failed to launch blank overlay — TADOverlay.exe not found or CreateProcessAsUser failed");
         }
         catch (Exception ex)
         {
@@ -617,9 +668,8 @@ public sealed class TadTcpListener : BackgroundService
     // ─── Network Disconnect Monitor ───────────────────────────────────
 
     /// <summary>
-    /// Monitors LAN connectivity and upstream reachability.
-    /// If LAN is disconnected OR both Teacher and Domain Controller are unreachable
-    /// for 5 minutes, enforce a security lock.
+    /// Monitors LAN connectivity. If all non-loopback NICs go down for more
+    /// than <see cref="NetworkLockGraceSeconds"/>, auto-lock the workstation.
     /// </summary>
     private async Task NetworkMonitorAsync(CancellationToken ct)
     {
@@ -638,36 +688,27 @@ public sealed class TadTcpListener : BackgroundService
                     }
                 }
 
-                _networkDisconnected = !anyUp;
-
-                bool teacherReachable = IsTeacherReachable();
-                bool dcReachable = IsDomainControllerReachable();
-
-                bool countdownCondition = !anyUp || (!teacherReachable && !dcReachable);
-                string reason = !anyUp
-                    ? "LAN disconnected"
-                    : "Teacher and Domain Controller unreachable";
-
-                if (countdownCondition)
+                if (!anyUp && !_networkDisconnected)
                 {
-                    ArmSecurityCountdown(reason);
+                    _networkDisconnected = true;
+                    _networkLostAt = DateTime.UtcNow;
+                    _log.LogWarning("Network disconnected — auto-lock in {Sec}s if not restored",
+                        NetworkLockGraceSeconds);
                 }
-                else
+                else if (!anyUp && _networkDisconnected)
                 {
-                    DisarmSecurityCountdown();
-                }
-
-                if (_securityCountdownActive && !_isLocked)
-                {
-                    int remaining = GetSecurityCountdownSecondsRemaining();
-                    if (remaining <= 0)
+                    double elapsed = (DateTime.UtcNow - _networkLostAt).TotalSeconds;
+                    if (elapsed >= NetworkLockGraceSeconds && !_isLocked)
                     {
-                        _log.LogWarning("Security countdown elapsed — enforcing workstation lock");
+                        _log.LogWarning("Network disconnected for >{Sec}s — auto-locking workstation",
+                            NetworkLockGraceSeconds);
                         ExecuteLock();
-                        _securityCountdownActive = false;
-                        _securityCountdownReason = "Security lock active";
-                        SendStatusNow();
                     }
+                }
+                else if (anyUp && _networkDisconnected)
+                {
+                    _networkDisconnected = false;
+                    _log.LogInformation("Network restored — auto-lock cancelled (teacher must manually unlock)");
                 }
             }
             catch (Exception ex)
@@ -702,9 +743,6 @@ public sealed class TadTcpListener : BackgroundService
         try
         {
             _lockOverlayProcess = LaunchOverlay("--lock");
-            if (_lockOverlayProcess == null)
-                _lockOverlayProcess = LaunchFallbackOverlay(isLockMode: true);
-
             if (_lockOverlayProcess != null)
             {
                 _log.LogInformation("Lock overlay launched (PID {Pid})", _lockOverlayProcess.Id);
@@ -713,7 +751,7 @@ public sealed class TadTcpListener : BackgroundService
             }
             else
             {
-                _log.LogWarning("Failed to launch lock overlay in all modes");
+                _log.LogWarning("Failed to launch lock overlay — TADOverlay.exe not found or CreateProcessAsUser failed");
             }
         }
         catch (Exception ex)
@@ -767,12 +805,11 @@ public sealed class TadTcpListener : BackgroundService
     {
         if (_isStreaming) return;
         _isStreaming = true;
-        StopSnapshotFallback();
 
         // Sub-stream callback: 1fps 480p → VideoFrame/VideoKeyFrame
         _capture.OnSubFrameEncoded = (frameData, isKeyFrame) =>
         {
-            var cmd = isKeyFrame ? TadCommand.VideoKeyFrame : TadCommand.VideoFrame;
+            var cmd = isKeyFrame ? TADCommand.VideoKeyFrame : TADCommand.VideoFrame;
             SendFrame(cmd, frameData);
         };
 
@@ -785,7 +822,7 @@ public sealed class TadTcpListener : BackgroundService
         // Main-stream callback: 30fps 720p → MainFrame/MainKeyFrame
         _capture.OnMainFrameEncoded = (frameData, isKeyFrame) =>
         {
-            var cmd = isKeyFrame ? TadCommand.MainKeyFrame : TadCommand.MainFrame;
+            var cmd = isKeyFrame ? TADCommand.MainKeyFrame : TADCommand.MainFrame;
             SendFrame(cmd, frameData);
         };
 
@@ -799,8 +836,8 @@ public sealed class TadTcpListener : BackgroundService
             // DXGI Desktop Duplication fails when the service runs in Session 0
             // because there is no interactive desktop to capture. This is expected
             // for Windows Service mode.  Streaming works in emulation/interactive mode.
-            _log.LogWarning(ex, "Screen capture start failed (Session 0?) — switching to snapshot fallback");
-            StartSnapshotFallback(ct);
+            _log.LogWarning(ex, "Screen capture start failed (Session 0?) — streaming unavailable");
+            _isStreaming = false;
         }
     }
 
@@ -808,7 +845,6 @@ public sealed class TadTcpListener : BackgroundService
     {
         if (!_isStreaming) return;
         _isStreaming = false;
-        StopSnapshotFallback();
 
         _capture.Stop();
         _log.LogInformation("Screen streaming stopped");
@@ -861,10 +897,10 @@ public sealed class TadTcpListener : BackgroundService
                 for (int offset = 0; offset < data.Length; offset += chunkSize)
                 {
                     int len = Math.Min(chunkSize, data.Length - offset);
-                    SendFrame(TadCommand.FileChunk, data.AsSpan(offset, len));
+                    SendFrame(TADCommand.FileChunk, data.AsSpan(offset, len));
                 }
 
-                SendFrame(TadCommand.FileComplete, meta);
+                SendFrame(TADCommand.FileComplete, meta);
             }
             catch (Exception ex)
             {
@@ -907,7 +943,7 @@ public sealed class TadTcpListener : BackgroundService
                 if (File.Exists(tempFile))
                 {
                     var data = await File.ReadAllBytesAsync(tempFile);
-                    SendFrame(TadCommand.SnapshotData, data);
+                    SendFrame(TADCommand.SnapshotData, data);
                     try { File.Delete(tempFile); } catch { }
                     _log.LogDebug("Snapshot sent via user-session capture ({Bytes} bytes)", data.Length);
                     return;
@@ -945,7 +981,7 @@ public sealed class TadTcpListener : BackgroundService
                     bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
                 }
 
-                SendFrame(TadCommand.SnapshotData, ms.GetBuffer().AsSpan(0, (int)ms.Length));
+                SendFrame(TADCommand.SnapshotData, ms.GetBuffer().AsSpan(0, (int)ms.Length));
                 _log.LogDebug("Snapshot sent via direct capture ({Bytes} bytes)", ms.Length);
             });
         }
@@ -953,44 +989,6 @@ public sealed class TadTcpListener : BackgroundService
         {
             _log.LogWarning(ex, "Snapshot capture failed");
         }
-    }
-
-    private void StartSnapshotFallback(CancellationToken outerCt)
-    {
-        if (_isSnapshotFallbackActive) return;
-
-        _isSnapshotFallbackActive = true;
-        _snapshotFallbackCts?.Cancel();
-        _snapshotFallbackCts?.Dispose();
-        _snapshotFallbackCts = CancellationTokenSource.CreateLinkedTokenSource(outerCt);
-        var ct = _snapshotFallbackCts.Token;
-
-        _ = Task.Run(async () =>
-        {
-            _log.LogInformation("Snapshot fallback started (1 fps)");
-            while (!ct.IsCancellationRequested && _isStreaming)
-            {
-                try
-                {
-                    await SendSnapshotAsync();
-                }
-                catch { }
-
-                try { await Task.Delay(1000, ct); }
-                catch (OperationCanceledException) { break; }
-            }
-
-            _isSnapshotFallbackActive = false;
-            _log.LogInformation("Snapshot fallback stopped");
-        }, ct);
-    }
-
-    private void StopSnapshotFallback()
-    {
-        _snapshotFallbackCts?.Cancel();
-        _snapshotFallbackCts?.Dispose();
-        _snapshotFallbackCts = null;
-        _isSnapshotFallbackActive = false;
     }
 
     // ─── Status Beacon ────────────────────────────────────────────────
@@ -1018,7 +1016,7 @@ public sealed class TadTcpListener : BackgroundService
                 "ShellExperienceHost", "TextInputHost", "SecurityHealthSystray",
                 "SearchIndexer", "spoolsv", "CompPkgSrv", "uhssvc",
                 "MsMpEng", "NisSrv", "SgrmBroker", "WmiPrvSE",
-                "TadBridgeService", "audiodg", "powershell",
+                "TADBridgeService", "audiodg", "powershell",
                 // Shell & UWP infrastructure
                 "explorer", "ApplicationFrameHost", "SystemSettings",
                 "UserOOBEBroker", "WidgetService", "Widgets",
@@ -1121,13 +1119,7 @@ public sealed class TadTcpListener : BackgroundService
             IsBlankScreen  = _isBlanked,
             IsWebLocked    = _isWebLocked,
             IsProgramLocked = _isProgramLocked,
-            IsAcademicWebFilterEnabled = _isAcademicWebFilterEnabled,
             IsNetworkConnected = !_networkDisconnected,
-            IsSecurityCountdownActive = _securityCountdownActive && !_isLocked,
-            SecurityCountdownSecondsRemaining = _securityCountdownActive
-                ? Math.Max(0, GetSecurityCountdownSecondsRemaining())
-                : 0,
-            SecurityCountdownReason = _securityCountdownActive ? _securityCountdownReason : string.Empty,
             ActiveWindow   = GetForegroundWindowTitle(),
             CpuUsage       = cpuUsage,
             RamUsedMb      = ramUsedMb,
@@ -1243,7 +1235,7 @@ public sealed class TadTcpListener : BackgroundService
 
     private void SendStatusNow()
     {
-        try { SendFrame(TadCommand.Status, JsonSerializer.SerializeToUtf8Bytes(BuildStatus())); }
+        try { SendFrame(TADCommand.Status, JsonSerializer.SerializeToUtf8Bytes(BuildStatus())); }
         catch { }
     }
 
@@ -1251,7 +1243,7 @@ public sealed class TadTcpListener : BackgroundService
     {
         while (!ct.IsCancellationRequested)
         {
-            try { SendFrame(TadCommand.Status, JsonSerializer.SerializeToUtf8Bytes(BuildStatus())); }
+            try { SendFrame(TADCommand.Status, JsonSerializer.SerializeToUtf8Bytes(BuildStatus())); }
             catch { /* Best effort */ }
 
             // Enforce blocklist — kill blocked programs and browsers showing blocked sites
@@ -1268,16 +1260,7 @@ public sealed class TadTcpListener : BackgroundService
         BlocklistUpdate bl;
         lock (_blocklistLock) bl = _blocklist;
 
-        List<string> academicSites;
-        lock (_academicLock) academicSites = _academicBlockedSites.ToList();
-
-        var blockedSites = bl.BlockedWebsites
-            .Concat(academicSites)
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (bl.BlockedPrograms.Count == 0 && blockedSites.Count == 0) return;
+        if (bl.BlockedPrograms.Count == 0 && bl.BlockedWebsites.Count == 0) return;
 
         var browserNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { "chrome", "msedge", "firefox", "opera", "brave", "iexplore", "ApplicationFrameHost" };
@@ -1300,12 +1283,12 @@ public sealed class TadTcpListener : BackgroundService
                 }
 
                 // Check blocked websites (match in browser window titles)
-                if (blockedSites.Count > 0 && browserNames.Contains(name))
+                if (bl.BlockedWebsites.Count > 0 && browserNames.Contains(name))
                 {
                     string title = proc.MainWindowTitle ?? "";
                     if (string.IsNullOrEmpty(title)) continue;
 
-                    foreach (var site in blockedSites)
+                    foreach (var site in bl.BlockedWebsites)
                     {
                         if (title.Contains(site, StringComparison.OrdinalIgnoreCase))
                         {
@@ -1455,47 +1438,16 @@ public sealed class TadTcpListener : BackgroundService
         SendStatusNow();
     }
 
-    // ─── Academic Web Filter (non-academic websites) ───────────────
-
-    private void ExecuteAcademicWebLock(BlocklistUpdate req)
-    {
-        var sites = (req.BlockedWebsites ?? new List<string>())
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .Select(s => s.Trim().ToLowerInvariant())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        lock (_academicLock)
-        {
-            _academicBlockedSites.Clear();
-            _academicBlockedSites.AddRange(sites);
-        }
-
-        _isAcademicWebFilterEnabled = _academicBlockedSites.Count > 0;
-        _log.LogInformation("Academic Web Filter enabled ({Count} domains)", _academicBlockedSites.Count);
-        SendStatusNow();
-    }
-
-    private void ExecuteAcademicWebUnlock()
-    {
-        lock (_academicLock)
-            _academicBlockedSites.Clear();
-
-        _isAcademicWebFilterEnabled = false;
-        _log.LogInformation("Academic Web Filter disabled");
-        SendStatusNow();
-    }
-
     // ─── Helpers ──────────────────────────────────────────────────────
 
-    private void SendFrame(TadCommand cmd, ReadOnlySpan<byte> payload = default)
+    private void SendFrame(TADCommand cmd, ReadOnlySpan<byte> payload = default)
     {
         lock (_streamLock)
         {
             if (_activeStream == null) return;
             try
             {
-                var frame = TadFrameCodec.Encode(cmd, payload);
+                var frame = TADFrameCodec.Encode(cmd, payload);
                 _activeStream.Write(frame);
             }
             catch { /* Connection may be lost */ }
@@ -1527,89 +1479,6 @@ public sealed class TadTcpListener : BackgroundService
             return ver;
         }
         catch { return "unknown"; }
-    }
-
-    private static string LoadDomainControllerHost()
-    {
-        try
-        {
-            using var policy = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\TAD_RV\Policy");
-            var p = policy?.GetValue("DomainControllerHost")?.ToString();
-            if (!string.IsNullOrWhiteSpace(p)) return p.Trim();
-
-            using var root = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\TAD_RV");
-            var r = root?.GetValue("DomainController")?.ToString();
-            if (!string.IsNullOrWhiteSpace(r)) return r.Trim();
-        }
-        catch { }
-
-        return "dc01.school.local";
-    }
-
-    private bool IsTeacherReachable()
-    {
-        lock (_streamLock)
-            return _activeStream != null;
-    }
-
-    private bool IsDomainControllerReachable()
-    {
-        if (string.IsNullOrWhiteSpace(_domainControllerHost)) return false;
-
-        if ((DateTime.UtcNow - _lastDcProbeAt).TotalSeconds < 15)
-            return _lastDcProbeReachable;
-
-        _lastDcProbeAt = DateTime.UtcNow;
-        try
-        {
-            using var ping = new Ping();
-            var reply = ping.Send(_domainControllerHost, 1200);
-            _lastDcProbeReachable = reply?.Status == IPStatus.Success;
-        }
-        catch
-        {
-            _lastDcProbeReachable = false;
-        }
-
-        return _lastDcProbeReachable;
-    }
-
-    private void ArmSecurityCountdown(string reason)
-    {
-        if (_securityCountdownActive)
-        {
-            if (!string.Equals(_securityCountdownReason, reason, StringComparison.Ordinal))
-            {
-                _securityCountdownReason = reason;
-                SendStatusNow();
-            }
-            return;
-        }
-
-        _securityCountdownActive = true;
-        _securityCountdownStartedAt = DateTime.UtcNow;
-        _securityCountdownReason = reason;
-        _log.LogWarning("{Reason} — security lock in {Sec}s if not restored",
-            reason, SecurityEnforcementGraceSeconds);
-        SendStatusNow();
-    }
-
-    private void DisarmSecurityCountdown()
-    {
-        if (!_securityCountdownActive) return;
-
-        _securityCountdownActive = false;
-        _securityCountdownStartedAt = DateTime.MaxValue;
-        _securityCountdownReason = string.Empty;
-        _log.LogInformation("Connectivity restored — security countdown cancelled");
-        SendStatusNow();
-    }
-
-    private int GetSecurityCountdownSecondsRemaining()
-    {
-        if (!_securityCountdownActive) return 0;
-        var elapsed = (int)(DateTime.UtcNow - _securityCountdownStartedAt).TotalSeconds;
-        return SecurityEnforcementGraceSeconds - elapsed;
     }
 
     private static string GetForegroundWindowTitle()
@@ -1707,16 +1576,16 @@ public sealed class TadTcpListener : BackgroundService
     }
 
     /// <summary>
-    /// Resolve and launch TadOverlay.exe with the given mode argument.
+    /// Resolve and launch TADOverlay.exe with the given mode argument.
     /// Tries CreateProcessAsUser first (for Session 0 service), falls back to direct launch.
     /// </summary>
     private Process? LaunchOverlay(string modeArg)
     {
-        // Locate TadOverlay.exe next to the service binary
-        string overlayPath = Path.Combine(AppContext.BaseDirectory, "TadOverlay.exe");
+        // Locate TADOverlay.exe next to the service binary
+        string overlayPath = Path.Combine(AppContext.BaseDirectory, "TADOverlay.exe");
         if (!File.Exists(overlayPath))
         {
-            _log.LogWarning("TadOverlay.exe not found at {Path} — overlay unavailable", overlayPath);
+            _log.LogWarning("TADOverlay.exe not found at {Path} — overlay unavailable", overlayPath);
             return null;
         }
 
@@ -1747,60 +1616,6 @@ public sealed class TadTcpListener : BackgroundService
             _log.LogWarning(ex, "Direct overlay launch also failed");
             return null;
         }
-    }
-
-    private Process? LaunchFallbackOverlay(bool isLockMode)
-    {
-        try
-        {
-            string scriptPath = Path.Combine(
-                Path.GetTempPath(),
-                isLockMode ? "tad_lock_overlay.ps1" : "tad_blank_overlay.ps1");
-
-            File.WriteAllText(scriptPath, BuildFallbackOverlayScript(isLockMode));
-            string cmd = $"powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\"";
-
-            var proc = LaunchInUserSession(cmd, showWindow: true);
-            if (proc != null)
-            {
-                _log.LogInformation("Fallback overlay launched ({Mode}) PID {Pid}",
-                    isLockMode ? "lock" : "blank", proc.Id);
-            }
-            return proc;
-        }
-        catch (Exception ex)
-        {
-            _log.LogWarning(ex, "Fallback overlay launch failed");
-            return null;
-        }
-    }
-
-    private static string BuildFallbackOverlayScript(bool isLockMode)
-    {
-        string message = isLockMode
-            ? "This workstation is locked by TAD-RV security policy."
-            : "Screen hidden by teacher.";
-
-        return $@"Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$form = New-Object System.Windows.Forms.Form
-$form.Text = 'TAD-RV Overlay'
-$form.FormBorderStyle = 'None'
-$form.WindowState = 'Maximized'
-$form.TopMost = $true
-$form.BackColor = [System.Drawing.Color]::Black
-$form.ShowInTaskbar = $false
-$form.ControlBox = $false
-$label = New-Object System.Windows.Forms.Label
-$label.Dock = 'Fill'
-$label.TextAlign = 'MiddleCenter'
-$label.ForeColor = [System.Drawing.Color]::White
-$label.Font = New-Object System.Drawing.Font('Segoe UI',24,[System.Drawing.FontStyle]::Bold)
-$label.Text = '{message.Replace("'", "''")}'
-$form.Controls.Add($label)
-$form.Add_KeyDown({{ if ($_.Alt -and $_.KeyCode -eq 'F4') {{ $_.Handled = $true }} }})
-[System.Windows.Forms.Application]::Run($form)
-";
     }
 
     /// <summary>

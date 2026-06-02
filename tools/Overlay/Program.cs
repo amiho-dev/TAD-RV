@@ -1,11 +1,11 @@
 // ───────────────────────────────────────────────────────────────────────────
-// TadOverlay — Fullscreen overlay for teacher-controlled screen commands
+// TADOverlay — Fullscreen overlay for teacher-controlled screen commands
 //
 // (C) 2026 TAD Europe — https://tad-it.eu
 //
 // Usage:
-//   TadOverlay.exe --lock      Dark fullscreen lock screen with lock icon
-//   TadOverlay.exe --blank     Pure black fullscreen (eyes on teacher)
+//   TADOverlay.exe --lock      Dark fullscreen lock screen with lock icon
+//   TADOverlay.exe --blank     Pure black fullscreen (eyes on teacher)
 //
 // Launched by TADBridgeService via CreateProcessAsUser in the user's session.
 // Killed by the service when the teacher unlocks/unblanks.

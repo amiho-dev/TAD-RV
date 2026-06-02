@@ -36,7 +36,7 @@ if (args.Any(a => a.Equals("--tray", StringComparison.OrdinalIgnoreCase)))
     return;
 }
 
-var licenseState = TadLicenseManager.EnsureLicense("client");
+var licenseState = TADLicenseManager.EnsureLicense("client");
 if (!licenseState.IsLicensed)
 {
     Console.Error.WriteLine("TAD.RV Client licensing failed: " + licenseState.Message);
@@ -139,7 +139,7 @@ builder.Services.AddSingleton<MulticastDiscovery>();
 builder.Services.AddHostedService<TADBridgeWorker>();
 builder.Services.AddHostedService<HeartbeatWorker>();
 builder.Services.AddHostedService<AlertReaderWorker>();
-builder.Services.AddHostedService<TadTcpListener>();
+builder.Services.AddHostedService<TADTcpListener>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MulticastDiscovery>());
 builder.Services.AddHostedService<UpdateWorker>();
 

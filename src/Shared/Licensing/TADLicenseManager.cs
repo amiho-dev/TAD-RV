@@ -18,7 +18,7 @@ public sealed class LicenseState
     public string Message { get; init; } = "";
 }
 
-public static class TadLicenseManager
+public static class TADLicenseManager
 {
     private const int TrialDays = 40;
     private const string ProductName = "TAD-RV";

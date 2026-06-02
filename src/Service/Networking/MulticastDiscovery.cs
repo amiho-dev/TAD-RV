@@ -56,7 +56,7 @@ public sealed class DiscoveryPacket
     public string IpAddress { get; set; } = "";
 
     [JsonPropertyName("port")]
-    public int TcpPort { get; set; } = TadTcpListener.ListenPort;
+    public int TcpPort { get; set; } = TADTcpListener.ListenPort;
 
     [JsonPropertyName("role")]
     public string Role { get; set; } = "student"; // "student" | "teacher"
@@ -203,7 +203,7 @@ public sealed class MulticastDiscovery : BackgroundService
                     RoomId = _roomId,
                     Hostname = Environment.MachineName,
                     IpAddress = _localIp,
-                    TcpPort = TadTcpListener.ListenPort,
+                    TcpPort = TADTcpListener.ListenPort,
                     Role = _role,
                     TimestampUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 };

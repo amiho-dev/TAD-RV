@@ -3,7 +3,7 @@ using System.Windows.Forms;
 
 namespace TADBridge.Shared.Licensing;
 
-public static class TadLicenseDialogs
+public static class TADLicenseDialogs
 {
     public static string? PromptForActivationKey(string serial, string title)
     {

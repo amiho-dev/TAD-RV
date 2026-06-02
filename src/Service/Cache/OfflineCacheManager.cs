@@ -49,7 +49,7 @@ public sealed class OfflineCacheManager
     /// <summary>
     /// Persists a successful AD resolution to the encrypted local cache.
     /// </summary>
-    public void CacheUserResolution(string sid, TadUserRole role, List<string> groups)
+    public void CacheUserResolution(string sid, TADUserRole role, List<string> groups)
     {
         try
         {
@@ -186,7 +186,7 @@ public sealed class OfflineCacheManager
 public sealed class CacheEntry
 {
     public string        Sid         { get; set; } = string.Empty;
-    public TadUserRole   Role        { get; set; } = TadUserRole.Unknown;
+    public TADUserRole   Role        { get; set; } = TADUserRole.Unknown;
     public List<string>  Groups      { get; set; } = [];
     public DateTime      CachedAtUtc { get; set; }
     public string        MachineName { get; set; } = string.Empty;

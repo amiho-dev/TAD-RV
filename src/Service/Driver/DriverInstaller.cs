@@ -27,7 +27,7 @@ namespace TADBridge.Driver;
 /// </summary>
 public static class DriverInstaller
 {
-    private const string DriverName  = "TadRv";
+    private const string DriverName  = "TADRv";
     private const string ServiceName = "TAD.RV";
     private const string SysFileName = "TAD.RV.sys";
     private const string InfFileName = "TAD_RV.inf";

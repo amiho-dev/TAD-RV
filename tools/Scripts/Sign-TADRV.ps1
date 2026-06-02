@@ -42,7 +42,7 @@
     Validity period of the certificate in years.
 
 .EXAMPLE
-    .\Sign-TadRV.ps1 -DriverPath "C:\Build\TAD_RV" -Domain "school.local"
+    .\Sign-TADRV.ps1 -DriverPath "C:\Build\TAD_RV" -Domain "school.local"
 #>
 
 param(

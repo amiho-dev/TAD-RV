@@ -22,7 +22,7 @@
     Skip service installation.
 
 .EXAMPLE
-    .\Deploy-TadRV.ps1 -ServicePath .\Service\bin\Release\net8.0-windows\win-x64\publish
+    .\Deploy-TADRV.ps1 -ServicePath .\Service\bin\Release\net8.0-windows\win-x64\publish
 #>
 
 [CmdletBinding()]

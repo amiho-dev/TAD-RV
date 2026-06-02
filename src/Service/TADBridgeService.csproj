@@ -42,7 +42,7 @@
     <Compile Include="..\Shared\TADSharedInterop.cs" Link="Shared\TADSharedInterop.cs" />
     <Compile Include="..\Shared\TADProtocol.cs" Link="Shared\TADProtocol.cs" />
     <Compile Include="..\Shared\UpdateManager.cs" Link="Shared\UpdateManager.cs" />
-    <Compile Include="..\Shared\Licensing\TadLicenseManager.cs" Link="Shared\Licensing\TadLicenseManager.cs" />
+    <Compile Include="..\Shared\Licensing\TADLicenseManager.cs" Link="Shared\Licensing\TADLicenseManager.cs" />
   </ItemGroup>
 
 </Project>

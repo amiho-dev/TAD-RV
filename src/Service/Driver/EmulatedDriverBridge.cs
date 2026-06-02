@@ -12,7 +12,7 @@ namespace TADBridge.Driver;
 
 /// <summary>
 /// Drop-in replacement for <see cref="DriverBridge"/> that responds with
-/// user-mode state instead of talking to \\.\TadRvLink.
+/// user-mode state instead of talking to \\.\TADRvLink.
 /// </summary>
 public sealed class EmulatedDriverBridge : DriverBridge
 {
@@ -20,9 +20,9 @@ public sealed class EmulatedDriverBridge : DriverBridge
     private readonly bool _enableSyntheticAlerts;
     private bool _connected;
     private uint _protectedPid;
-    private TadUserRole _currentRole = TadUserRole.Student;
+    private TADUserRole _currentRole = TADUserRole.Student;
     private uint _currentSession;
-    private TadPolicyFlags _policyFlags;
+    private TADPolicyFlags _policyFlags;
     private bool _hardLocked;
     private bool _stealthActive;
     private int _alertCounter;
@@ -65,9 +65,9 @@ public sealed class EmulatedDriverBridge : DriverBridge
         return true;
     }
 
-    public override TadHeartbeatOutput? Heartbeat()
+    public override TADHeartbeatOutput? Heartbeat()
     {
-        return new TadHeartbeatOutput
+        return new TADHeartbeatOutput
         {
             DriverVersionMajor = 1,
             DriverVersionMinor = 0,
@@ -82,7 +82,7 @@ public sealed class EmulatedDriverBridge : DriverBridge
         };
     }
 
-    public override void SetUserRole(TadUserRole role, uint sessionId, string userSid)
+    public override void SetUserRole(TADUserRole role, uint sessionId, string userSid)
     {
         _currentRole = role;
         _currentSession = sessionId;
@@ -90,13 +90,13 @@ public sealed class EmulatedDriverBridge : DriverBridge
             role, sessionId);
     }
 
-    public override void SetPolicy(TadPolicyBuffer policy)
+    public override void SetPolicy(TADPolicyBuffer policy)
     {
-        _policyFlags = (TadPolicyFlags)policy.Flags;
+        _policyFlags = (TADPolicyFlags)policy.Flags;
         _log.LogInformation("[USERMODE] Policy applied: flags=0x{Flags:X}", policy.Flags);
     }
 
-    public override TadAlertOutput? ReadAlert()
+    public override TADAlertOutput? ReadAlert()
     {
         if (!_enableSyntheticAlerts)
         {
@@ -110,9 +110,9 @@ public sealed class EmulatedDriverBridge : DriverBridge
         if (_alertCounter % 3 == 0)
         {
             _log.LogInformation("[USERMODE] Generating demo alert #{Counter}", _alertCounter);
-            return new TadAlertOutput
+            return new TADAlertOutput
             {
-                AlertType = (uint)TadAlertType.ServiceTamper,
+                AlertType = (uint)TADAlertType.ServiceTamper,
                 // Use Windows FILETIME format to match KeQuerySystemTime in the real driver
                 Timestamp = DateTime.UtcNow.ToFileTimeUtc(),
                 SourcePid = (uint)Random.Shared.Next(1000, 65000),
@@ -135,7 +135,7 @@ public sealed class EmulatedDriverBridge : DriverBridge
             pid, protect ? "ON" : "OFF");
     }
 
-    public override void SetStealth(bool enable, TadStealthFlags flags = TadStealthFlags.All)
+    public override void SetStealth(bool enable, TADStealthFlags flags = TADStealthFlags.All)
     {
         _stealthActive = enable;
         _log.LogInformation("[USERMODE] Stealth mode {State} (flags=0x{Flags:X})",
